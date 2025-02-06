@@ -1,0 +1,332 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+ 
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+ 
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+ 
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+ 
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+ 
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+ 
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+ 
+    --radius: 0.5rem;
+  }
+ 
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+ 
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+ 
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+ 
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+ 
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+ 
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+ 
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+ 
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+ 
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer components {
+  /* Layout Components */
+  .root-layout {
+    @apply min-h-screen bg-background font-sans antialiased;
+  }
+
+  .root-container {
+    @apply grid lg:grid-cols-[280px_1fr];
+  }
+
+  .root-sidebar {
+    @apply hidden border-r bg-muted/40 lg:block;
+  }
+
+  .root-main {
+    @apply flex flex-col;
+  }
+
+  .root-content {
+    @apply flex-1 space-y-4 p-4 md:p-8 pt-6;
+  }
+
+  /* Header Components */
+  .header-container {
+    @apply sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60;
+  }
+
+  .header-content {
+    @apply container flex h-14 items-center px-4;
+  }
+
+  .header-icon-button {
+    @apply relative rounded-full p-2 hover:bg-accent transition-colors;
+  }
+
+  /* Navigation Components */
+  .nav-item {
+    @apply flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground;
+  }
+
+  .nav-item-active {
+    @apply bg-accent text-accent-foreground;
+  }
+
+  .nav-item-icon {
+    @apply h-4 w-4;
+  }
+
+  /* Form Components */
+  .form-input {
+    @apply flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm 
+      ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium 
+      placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 
+      focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  /* Card Components */
+  .stat-card {
+    @apply relative overflow-hidden rounded-lg border bg-card p-4 hover:shadow-md transition-all;
+  }
+
+  .stat-card-header {
+    @apply flex items-center justify-between space-y-0 pb-2;
+  }
+
+  .stat-card-title {
+    @apply text-sm font-medium text-muted-foreground;
+  }
+
+  .stat-card-value {
+    @apply text-2xl font-bold;
+  }
+
+  .stat-card-description {
+    @apply text-xs text-muted-foreground;
+  }
+
+  /* Chart Components */
+  .chart-container {
+    @apply rounded-lg border bg-card p-4 hover:shadow-md transition-all;
+  }
+
+  .chart-header {
+    @apply flex items-center justify-between pb-4;
+  }
+
+  /* User Navigation */
+  .user-nav {
+    @apply flex items-center gap-4;
+  }
+
+  .user-avatar {
+    @apply relative h-8 w-8 rounded-full bg-muted;
+  }
+
+  /* Search Component */
+  .search-container {
+    @apply relative w-full md:w-auto;
+  }
+
+  .search-input {
+    @apply h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm 
+      shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none 
+      focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  /* Theme Toggle */
+  .theme-toggle {
+    @apply inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background 
+      transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none 
+      focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none 
+      disabled:opacity-50 h-9 w-9;
+  }
+}
+
+@layer utilities {
+  /* Animations */
+  .fade-in {
+    @apply animate-fade-in;
+  }
+
+  .slide-in {
+    @apply animate-slide-in;
+  }
+
+  .zoom-in {
+    @apply animate-zoom-in;
+  }
+
+  .zoom-out {
+    @apply animate-zoom-out;
+  }
+
+  /* Responsive Utilities */
+  .show-on-mobile {
+    @apply block md:hidden;
+  }
+
+  .hide-on-mobile {
+    @apply hidden md:block;
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    @apply w-1.5 h-1.5;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-secondary;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/50 rounded-full;
+  }
+}
+
+/* Container Styles */
+.container {
+  @apply mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl;
+}
+
+/* Card Styles */
+.card {
+  @apply rounded-lg border bg-card p-6 shadow-sm;
+}
+
+/* Form Styles */
+input, textarea, select {
+  @apply rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background 
+    file:border-0 file:bg-transparent file:text-sm file:font-medium 
+    placeholder:text-muted-foreground 
+    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 
+    disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+/* Typography */
+h1 {
+  @apply scroll-m-20 text-4xl font-extrabold tracking-tight lg:text-5xl;
+}
+
+h2 {
+  @apply scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight first:mt-0;
+}
+
+h3 {
+  @apply scroll-m-20 text-2xl font-semibold tracking-tight;
+}
+
+h4 {
+  @apply scroll-m-20 text-xl font-semibold tracking-tight;
+}
+
+p {
+  @apply leading-7 [&:not(:first-child)]:mt-6;
+}
+
+blockquote {
+  @apply mt-6 border-l-2 pl-6 italic;
+}
+
+/* Navigation */
+.nav-link {
+  @apply inline-flex items-center rounded-md text-sm font-medium transition-colors 
+    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 
+    disabled:pointer-events-none disabled:opacity-50 
+    hover:bg-accent hover:text-accent-foreground 
+    h-10 px-4 py-2;
+}
+
+/* Dashboard Components */
+.dashboard-header {
+  @apply flex items-center justify-between space-y-2;
+}
+
+.dashboard-title {
+  @apply text-3xl font-bold tracking-tight;
+}
+
+.dashboard-grid {
+  @apply grid gap-4;
+}
+
+.dashboard-grid-cols-1 {
+  @apply grid-cols-1;
+}
+
+.dashboard-grid-cols-2 {
+  @apply md:grid-cols-2;
+}
+
+.dashboard-grid-cols-3 {
+  @apply md:grid-cols-3;
+}
+
+.dashboard-grid-cols-4 {
+  @apply md:grid-cols-4;
+}
+
+/* Chart Enhancements */
+.chart-grid {
+  @apply stroke-muted;
+}
+
+.chart-line {
+  @apply stroke-primary;
+}
+
+/* Stats Card */
+.stat-trend-positive {
+  @apply text-green-600;
+}
+
+.stat-trend-negative {
+  @apply text-red-600;
+}
