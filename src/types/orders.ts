@@ -1,30 +1,41 @@
+import type { Product } from "./product"
+
+export interface Address {
+  street: string
+  city: string
+  state: string
+  country: string
+  postalCode: string
+}
+
 export type OrderStatus = 
-  | 'pending'
-  | 'confirmed'
-  | 'processing'
-  | 'shipped'
-  | 'delivered'
-  | 'cancelled'
+  | "pending"
+  | "processing"
+  | "shipped"
+  | "delivered"
+  | "cancelled"
 
 export type PaymentStatus = 
-  | 'pending'
-  | 'paid'
-  | 'refunded'
-  | 'failed'
+  | "pending"
+  | "paid"
+  | "failed"
+  | "refunded"
+export type PaymentMethod = "credit_card" | "bank_transfer" | "financing" | "wire_transfer"
 
-export type FulfillmentStatus = 
-  | 'pending'
-  | 'processing'
-  | 'shipped'
-  | 'delivered'
-  | 'failed'
+export type FulfillmentStatus = "pending" | "processing" | "shipped" | "delivered" | "failed"
 
 export interface OrderItem {
   productId: string
+  productName: string
   quantity: number
   price: number
-  name: string
-  sku: string
+  weight?: number
+  dimensions?: {
+    length: number
+    width: number
+    height: number
+  }
+  product?: Product
 }
 
 export interface ShippingDetails {
@@ -42,19 +53,17 @@ export interface ShippingDetails {
 
 export interface TransportQuote {
   id: string
-  provider: string
-  method: string
-  cost: number
+  orderId: string
+  carrier: string
+  price: number
   estimatedDays: number
-  validUntil: string
-  distance?: number
-  weightBased?: boolean
-  restrictions?: string[]
+  distance: number
+  services: string[]
   insurance?: {
     included: boolean
     cost?: number
-    coverage?: number
   }
+  validUntil: string
 }
 
 export interface ShippingCalculation {
@@ -77,19 +86,26 @@ export interface ShippingCalculation {
 export interface Order {
   id: string
   customerId: string
+  customerName: string
   items: OrderItem[]
   status: OrderStatus
+  createdAt: string
+  updatedAt: string
+  shippingAddress: Address
   paymentStatus: PaymentStatus
+  paymentMethod: PaymentMethod
+  notes?: string
+  shipping?: {
+    trackingNumber?: string
+    carrier?: string
+    estimatedDelivery?: string
+  }
   fulfillmentStatus: FulfillmentStatus
   subtotal: number
   tax: number
-  shippingCost: number
   total: number
-  shipping: ShippingDetails
-  notes?: string
+  totalAmount: number
   assignedTo?: string
-  createdAt: string
-  updatedAt: string
 }
 
 export interface FulfillmentDetails {

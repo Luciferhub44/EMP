@@ -1,4 +1,4 @@
-import type { Product, ProductCategory } from "@/types"
+import type { ProductCategory } from "@/types"
 import type { Product as ProductType } from "@/types/products"
 
 // Main categories from the catalog

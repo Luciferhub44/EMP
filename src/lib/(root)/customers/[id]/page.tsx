@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { formatDate, formatCurrency } from "@/lib/utils"
 import { ArrowLeft, Mail, Phone, MapPin, Building, Loader2, Pencil } from "lucide-react"
 import { customerService } from "@/lib/services/customer"
@@ -12,21 +11,12 @@ import { toast } from "@/components/ui/use-toast"
 import type { Customer, Order } from "@/types"
 import { useAuth } from "@/contexts/auth-context"
 
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map(part => part[0])
-    .join('')
-    .toUpperCase()
-}
-
 export default function CustomerDetailsPage() {
   const { id } = useParams()
   const { user } = useAuth()
   const navigate = useNavigate()
   const [customer, setCustomer] = React.useState<Customer | null>(null)
   const [orders, setOrders] = React.useState<Order[]>([])
-  const [stats, setStats] = React.useState<any>(null)
   const [isLoading, setIsLoading] = React.useState(true)
 
   React.useEffect(() => {
@@ -34,14 +24,12 @@ export default function CustomerDetailsPage() {
       if (!id) return
       setIsLoading(true)
       try {
-        const [customerData, customerOrders, customerStats] = await Promise.all([
+        const [customerData, customerOrders] = await Promise.all([
           customerService.getCustomer(id),
-          customerService.getCustomerOrders(id),
-          customerService.getCustomerStats(id)
+          customerService.getCustomerOrders(id)
         ])
         setCustomer(customerData)
         setOrders(customerOrders)
-        setStats(customerStats)
       } catch (error) {
         console.error("Error loading customer data:", error)
         toast({
@@ -80,14 +68,7 @@ export default function CustomerDetailsPage() {
     )
   }
 
-  const handleEditCustomer = () => {
-    toast({
-      title: "Coming Soon",
-      description: "Customer editing will be available in a future update",
-    })
-  }
-
-  const totalSpent = orders.reduce((sum, order) => sum + order.totalAmount, 0)
+  const totalSpent = orders.reduce((sum, order) => sum + order.total, 0)
 
   return (
     <div className="space-y-6">
@@ -204,7 +185,7 @@ export default function CustomerDetailsPage() {
                       </div>
                       <div className="text-right">
                         <p className="font-medium">
-                          {formatCurrency(order.totalAmount)}
+                          {formatCurrency(order.total)}
                         </p>
                         <Badge variant="outline" className="mt-1">
                           {order.paymentStatus}

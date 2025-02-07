@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc --project tsconfig.ts && vite build",
+    "build": "tsc --project tsconfig.json && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "vite preview --port $PORT"

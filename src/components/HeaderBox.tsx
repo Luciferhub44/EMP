@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { Search } from '@/components/Search'
 import { UserNav } from '@/components/UserNav'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { Bell, Menu } from 'lucide-react'
+import { Bell } from 'lucide-react'
 import { MobileNav } from '@/components/mobile-nav'
 
 export function HeaderBox() {

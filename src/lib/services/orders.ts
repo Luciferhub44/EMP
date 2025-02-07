@@ -1,4 +1,4 @@
-import type { Order, OrderStatus, FulfillmentStatus, TransportQuote } from "@/types/orders"
+import type { Order, OrderStatus, PaymentStatus, FulfillmentStatus, TransportQuote } from "@/types/orders"
 import { orders as mockOrders } from "@/data/orders"
 import { employeeService } from "./employee"
 
@@ -23,9 +23,9 @@ export const ordersService = {
     try {
       const orders = await ordersService.getOrders(userId, isAdmin)
       return orders.filter(order => 
-        (order.status === 'confirmed' || order.status === 'processing') &&
-        order.paymentStatus === 'paid' &&
-        order.fulfillmentStatus !== 'delivered'
+        ((order.status as OrderStatus) === 'confirmed' || (order.status as OrderStatus) === 'processing') &&
+        (order.paymentStatus as PaymentStatus) === 'paid' &&
+        (order.fulfillmentStatus as FulfillmentStatus) !== 'delivered'
       )
     } catch (error) {
       console.error("Failed to get pending orders:", error)
@@ -89,43 +89,47 @@ export const ordersService = {
       ...mockOrders[orderIndex],
       ...updates,
       updatedAt: new Date().toISOString()
-    }
+    } as Order
     
     return mockOrders[orderIndex]
   },
 
-  // Get transport quotes for an order
   getTransportQuotes: async (orderId: string): Promise<TransportQuote[]> => {
     // Mock transport quotes - in real app, would call shipping APIs
     return [
       {
         id: "TQ001",
-        provider: "FastShip",
-        method: "Express",
-        cost: 49.99,
+        orderId,
+        carrier: "FastShip",
+        price: 49.99,
         estimatedDays: 2,
+        distance: 500,
+        services: ["Express"],
         validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
       },
       {
         id: "TQ002",
-        provider: "EcoShip",
-        method: "Standard",
-        cost: 29.99,
+        orderId,
+        carrier: "EcoShip",
+        price: 29.99,
         estimatedDays: 5,
+        distance: 500,
+        services: ["Standard"],
         validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
       },
       {
         id: "TQ003",
-        provider: "BulkFreight",
-        method: "Economy",
-        cost: 19.99,
+        orderId,
+        carrier: "BulkFreight",
+        price: 19.99,
         estimatedDays: 7,
+        distance: 500,
+        services: ["Economy"],
         validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
       }
     ]
   },
 
-  // Accept a transport quote
   acceptTransportQuote: async (orderId: string, quoteId: string) => {
     const order = mockOrders.find(o => o.id === orderId)
     if (!order) throw new Error("Order not found")
@@ -136,14 +140,12 @@ export const ordersService = {
 
     // Update order with shipping details
     return ordersService.updateOrder(orderId, {
-      shippingCost: quote.cost,
       shipping: {
-        ...order.shipping,
-        method: quote.method,
-        cost: quote.cost,
+        carrier: quote.carrier,
         estimatedDelivery: new Date(
           Date.now() + quote.estimatedDays * 24 * 60 * 60 * 1000
-        ).toISOString()
+        ).toISOString(),
+        price: quote.price
       }
     })
   },
@@ -168,7 +170,7 @@ export const ordersService = {
       // Ensure required fields have defaults
       subtotal: orderData.subtotal || 0,
       tax: orderData.tax || 0,
-      shippingCost: orderData.shippingCost || 0,
+      shipping: orderData.shipping || {},
       total: orderData.total || 0,
       items: orderData.items || []
     }

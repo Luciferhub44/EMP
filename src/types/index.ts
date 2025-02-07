@@ -129,6 +129,10 @@ export interface Customer {
   }
 }
 
-export * from './order'
+export * from './orders'
+export * from './products'
 export * from './customer'
-export * from './product' 
+export * from './employee'
+
+// Re-export common types
+export type { Address } from './orders' 

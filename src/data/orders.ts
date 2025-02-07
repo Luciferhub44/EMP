@@ -17,7 +17,7 @@ const generateRandomDate = () => {
 
 // Helper function to generate random order status
 const generateRandomStatus = (): Order["status"] => {
-  const statuses: Order["status"][] = ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled"]
+  const statuses: Order["status"][] = ["pending", "processing", "shipped", "delivered", "cancelled"]
   const weights = [15, 20, 25, 20, 15, 5] // Probability weights for each status
   const totalWeight = weights.reduce((a, b) => a + b, 0)
   const random = Math.random() * totalWeight
@@ -34,7 +34,7 @@ const generateRandomStatus = (): Order["status"] => {
 const generatePaymentStatus = (orderStatus: Order["status"]): Order["paymentStatus"] => {
   if (orderStatus === "cancelled") return "refunded"
   if (["delivered", "shipped"].includes(orderStatus)) return "paid"
-  if (orderStatus === "confirmed") return Math.random() > 0.3 ? "paid" : "pending"
+  if (orderStatus === "pending") return Math.random() > 0.3 ? "paid" : "pending"
   return "pending"
 }
 
@@ -74,9 +74,11 @@ export const orders: Order[] = Array.from({ length: 55 }, (_, index) => {
     shippingAddress: customer.address,
     billingAddress: customer.address,
     items,
+    total: totalAmount,
     totalAmount,
     createdAt,
     updatedAt: createdAt,
-    notes: Math.random() > 0.7 ? "Special handling required" : undefined
+    notes: Math.random() > 0.7 ? "Special handling required" : undefined,
+    fulfillmentStatus: "pending"
   }
 }) 

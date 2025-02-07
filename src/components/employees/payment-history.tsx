@@ -1,4 +1,3 @@
-import * as React from "react"
 import {
   Table,
   TableBody,
@@ -37,7 +36,7 @@ export function PaymentHistory({ payments }: PaymentHistoryProps) {
                 {payment.type}
               </Badge>
             </TableCell>
-            <TableCell>{formatCurrency(payment.amount, payment.currency)}</TableCell>
+            <TableCell>{formatCurrency(payment.amount as number)}</TableCell>
             <TableCell>{payment.description}</TableCell>
             <TableCell>
               <Badge

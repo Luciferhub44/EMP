@@ -14,7 +14,7 @@ export function StockStatus({ inventory }: StockStatusProps) {
   }
 
   if (totalStock <= totalMinStock) {
-    return <Badge variant="warning">Low Stock</Badge>
+    return <Badge variant="outline">Low Stock</Badge>
   }
 
   return <Badge variant="success">In Stock</Badge>

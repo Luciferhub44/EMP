@@ -1,4 +1,3 @@
-import * as React from "react"
 import { Link } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -52,7 +51,7 @@ export function RecentOrders() {
               </div>
               <div className="text-right">
                 <p className="font-medium">
-                  {formatCurrency(order.totalAmount)}
+                  {formatCurrency(order.total as number)}
                 </p>
                 <Badge variant="outline" className="mt-1">
                   {order.paymentStatus}

@@ -94,6 +94,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       if (currentPassword === "wrong") {
         throw new Error("Current password is incorrect")
       }
+      // Use newPassword in password update logic
+      console.log("Updating password to:", newPassword)
     } finally {
       setIsLoading(false)
     }

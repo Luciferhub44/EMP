@@ -2,10 +2,10 @@ import { Badge } from "@/components/ui/badge"
 import { OrderStatus, PaymentStatus } from "@/types"
 
 export function OrderStatusBadge({ status }: { status: OrderStatus }) {
-  const variants: Record<OrderStatus, "default" | "success" | "warning" | "destructive" | "secondary"> = {
-    pending: "warning",
+  const variants: Record<OrderStatus, "default" | "destructive" | "outline" | "secondary" | "success"> = {
+    pending: "outline",
     processing: "default",
-    shipped: "info",
+    shipped: "secondary",
     delivered: "success",
     cancelled: "destructive"
   }
@@ -18,8 +18,8 @@ export function OrderStatusBadge({ status }: { status: OrderStatus }) {
 }
 
 export function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
-  const variants: Record<PaymentStatus, "default" | "success" | "warning" | "destructive"> = {
-    pending: "warning",
+  const variants: Record<PaymentStatus, "default" | "destructive" | "outline" | "secondary" | "success"> = {
+    pending: "outline",
     paid: "success",
     failed: "destructive",
     refunded: "default"

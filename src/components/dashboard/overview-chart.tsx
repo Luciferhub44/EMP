@@ -34,7 +34,7 @@ function getChartData(): ChartData[] {
     })
     
     // Calculate total revenue for this month
-    const total = monthOrders.reduce((sum, order) => sum + order.totalAmount, 0)
+    const total = monthOrders.reduce((sum, order) => sum + (order.total as number), 0)
     
     data.push({
       name: monthName,
@@ -47,8 +47,6 @@ function getChartData(): ChartData[] {
 
 export function Overview() {
   const data = React.useMemo(() => getChartData(), [])
-  const [hoveredValue, setHoveredValue] = React.useState<string | null>(null)
-
   return (
     <Card>
       <CardHeader>
@@ -77,7 +75,6 @@ export function Overview() {
                 content={({ active, payload }) => {
                   if (active && payload && payload.length) {
                     const value = formatCurrency(payload[0].value as number)
-                    setHoveredValue(value)
                     return (
                       <div className="rounded-lg border bg-background p-2 shadow-sm">
                         <div className="grid grid-cols-2 gap-2">
@@ -93,7 +90,6 @@ export function Overview() {
                       </div>
                     )
                   }
-                  setHoveredValue(null)
                   return null
                 }}
               />

@@ -15,7 +15,6 @@ interface TransportQuotesProps {
 
 export function TransportQuotes({ orderId }: TransportQuotesProps) {
   const [quotes, setQuotes] = React.useState<TransportQuote[]>([])
-  const [selectedQuote, setSelectedQuote] = React.useState<string | null>(null)
   const [isLoading, setIsLoading] = React.useState(true)
   const [isAccepting, setIsAccepting] = React.useState(false)
 
@@ -86,19 +85,17 @@ export function TransportQuotes({ orderId }: TransportQuotesProps) {
       {quotes.map((quote) => (
         <Card
           key={quote.id}
-          className={`relative overflow-hidden transition-colors ${
-            selectedQuote === quote.id ? 'ring-2 ring-primary' : ''
-          }`}
+          className={`relative overflow-hidden transition-colors`}
         >
           <CardContent className="p-6">
             <div className="space-y-4">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">{quote.provider}</h3>
-                  <Badge variant="secondary">{quote.method}</Badge>
+                  <h3 className="font-semibold">{quote.carrier}</h3>
+                  <Badge variant="secondary">{quote.services.join(', ')}</Badge>
                 </div>
                 <p className="text-2xl font-bold">
-                  {formatCurrency(quote.cost)}
+                  {formatCurrency(quote.price)}
                 </p>
               </div>
 

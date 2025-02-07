@@ -19,4 +19,13 @@ export interface Fulfillment {
   items: FulfillmentItem[]
   createdAt: string
   updatedAt: string
+}
+
+export interface FulfillmentDetails {
+  orderId: string
+  status: 'pending' | 'processing' | 'completed' | 'failed'
+  assignedTo?: string
+  startedAt?: string
+  completedAt?: string
+  notes?: string[]
 } 

@@ -56,12 +56,12 @@ export function OnboardingChecklist() {
   })
 
   const progress = Math.round(
-    (items.filter(item => item.completed).length / items.length) * 100
+    (items.filter((item: ChecklistItem) => item.completed).length / items.length) * 100
   )
 
   const handleComplete = (id: string) => {
-    setItems(prev => {
-      const updated = prev.map(item =>
+    setItems((prev: ChecklistItem[]) => {
+      const updated = prev.map((item: ChecklistItem) =>
         item.id === id ? { ...item, completed: !item.completed } : item
       )
       localStorage.setItem("onboarding-checklist", JSON.stringify(updated))
@@ -81,7 +81,7 @@ export function OnboardingChecklist() {
         <Progress value={progress} className="h-2" />
       </CardHeader>
       <CardContent className="grid gap-4">
-        {items.map((item) => (
+        {items.map((item: ChecklistItem) => (
           <div
             key={item.id}
             className="flex items-start gap-4 rounded-lg border p-4"
