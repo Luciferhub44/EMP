@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: equipment-manager
+    env: node
+    buildCommand: yarn install && yarn build
+    startCommand: yarn start
+    envVars:
+      - key: NODE_VERSION
+        value: 18.x
+      - key: DATABASE_URL
+        fromDatabase:
+          name: equipment-db
+          property: connectionString
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: REDIS_URL
+        fromService:
+          name: equipment-cache
+          type: redis
+          property: connectionString
+
+  - type: redis
+    name: equipment-cache
+    ipAllowList: []
+    plan: starter
+
+databases:
+  - name: equipment-db
+    databaseName: equipment
+    user: equipment_admin
+    plan: starter 
