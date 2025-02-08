@@ -19,7 +19,11 @@ export default defineConfig({
     port: 3000,
     host: true,
     proxy: {
-      "/api": "https://emp-i6gc.onrender.com/"
+      "/api": {
+        target: "https://emp-i6gc.onrender.com/",
+        changeOrigin: true,
+        secure: true
+      }
     }
   },
   preview: {
