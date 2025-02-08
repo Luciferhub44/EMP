@@ -5,9 +5,9 @@ import { employees as mockEmployees } from "@/data/employees"
 
 // Store employee credentials separately for security
 const employeeCredentials: Record<string, string> = {
-  "ADMIN001": "admin123",
-  "AGT001": "agent123",
-  "AGT002": "agent456"
+  [import.meta.env.VITE_ADMIN_ID]: import.meta.env.VITE_ADMIN_PASSWORD,
+  [import.meta.env.VITE_AGENT1_ID]: import.meta.env.VITE_AGENT1_PASSWORD,
+  [import.meta.env.VITE_AGENT2_ID]: import.meta.env.VITE_AGENT2_PASSWORD
 }
 
 export const employeeService = {

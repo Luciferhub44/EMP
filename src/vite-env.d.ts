@@ -7,6 +7,12 @@ interface ImportMetaEnv {
   readonly VITE_DATABASE_URL: string
   readonly VITE_SESSION_SECRET: string
   readonly VITE_NODE_ENV: 'development' | 'production' | 'test'
+  readonly VITE_ADMIN_ID: string
+  readonly VITE_ADMIN_PASSWORD: string
+  readonly VITE_AGENT1_ID: string
+  readonly VITE_AGENT1_PASSWORD: string
+  readonly VITE_AGENT2_ID: string
+  readonly VITE_AGENT2_PASSWORD: string
 }
 
 interface ImportMeta {
