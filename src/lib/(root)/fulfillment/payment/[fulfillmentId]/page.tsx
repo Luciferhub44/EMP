@@ -2,7 +2,6 @@ import * as React from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
   DialogContent,
@@ -12,13 +11,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { formatCurrency } from "@/lib/utils"
@@ -136,11 +128,12 @@ export default function PaymentPage() {
     if (!selectedPaymentMethod) return null
 
     if (selectedMethod === "crypto") {
-      const network = selectedPaymentMethod.details.networks[selectedCrypto]
+      const network = selectedPaymentMethod.details?.networks?.[selectedCrypto]
+      if (!network) return null
       return (
         <div className="space-y-4">
           <div className="flex gap-4">
-            {selectedPaymentMethod.details.networks.map((n, index) => (
+            {selectedPaymentMethod.details?.networks?.map((n, index) => (
               <Button
                 key={n.name}
                 variant={selectedCrypto === index ? "default" : "outline"}

@@ -18,7 +18,7 @@ import { products } from "@/data/products"
 import { customers } from "@/data/customers"
 import { createOrder } from "@/lib/utils/orders"
 import { formatCurrency } from "@/lib/utils"
-import { OrderItem } from "@/types"
+import { OrderItem, PaymentStatus } from "@/types"
 
 interface OrderFormData {
   customerId: string
@@ -92,7 +92,7 @@ export default function NewOrderPage() {
           productId: product.id,
           quantity: parseInt(quantity),
           price: product.price,
-          product
+          productName: product.name
         }
       ]
     }))
@@ -116,8 +116,9 @@ export default function NewOrderPage() {
     try {
       const order = await createOrder({
         ...formData,
-        totalAmount: calculateTotal(),
-        paymentStatus: "pending"
+        paymentStatus: "pending" as PaymentStatus,
+        customerName: customers.find(c => c.id === formData.customerId)?.name || "",
+        total: calculateTotal()
       })
       alert("Order created successfully!")
       navigate(`/orders/${order.id}`)
@@ -218,7 +219,7 @@ export default function NewOrderPage() {
                   className="flex items-center justify-between border-b py-2"
                 >
                   <div>
-                    <p className="font-medium">{item.product?.name}</p>
+                    <p className="font-medium">{item.productName}</p>
                     <p className="text-sm text-muted-foreground">
                       {item.quantity} x {formatCurrency(item.price)}
                     </p>

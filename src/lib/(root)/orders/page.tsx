@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { Link } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -49,7 +49,6 @@ function getPaymentStatusColor(status: Order['paymentStatus']) {
 
 export default function OrdersPage() {
   const { user } = useAuth()
-  const navigate = useNavigate()
   const [orders, setOrders] = React.useState<Order[]>([])
   const [search, setSearch] = React.useState("")
   const [isLoading, setIsLoading] = React.useState(true)
@@ -63,7 +62,7 @@ export default function OrdersPage() {
           user.id,
           user.role === 'admin'
         )
-        setOrders(data)
+        setOrders(data as Order[])
       } catch (error) {
         console.error("Failed to load orders:", error)
         toast({
