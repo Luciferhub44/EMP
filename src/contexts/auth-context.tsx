@@ -27,7 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Verify the user session is still valid
           const employee = await employeeService.getEmployee(parsedUser.id)
           if (employee) {
-            setUser(employee)
+            setUser(employee as Employee)
           } else {
             // Invalid session, clear it
             localStorage.removeItem("auth_user")
@@ -47,7 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (agentId: string, password: string) => {
     try {
       const employee = await employeeService.login({ agentId, password })
-      setUser(employee)
+      setUser(employee as Employee)
       localStorage.setItem("auth_user", JSON.stringify(employee))
       
       // Update last login time

@@ -1,7 +1,6 @@
 import type { Employee, EmployeeCredentials, PaymentHistory, PaymentType } from "@/types/employee"
 import type { Order } from "@/types/orders"
 import { orders as mockOrders } from "@/data/orders"
-import { employees as mockEmployees } from "@/data/employees"
 
 // Store employee credentials separately for security
 const employeeCredentials: Record<string, string> = {
@@ -9,6 +8,76 @@ const employeeCredentials: Record<string, string> = {
   [import.meta.env.VITE_AGENT1_ID]: import.meta.env.VITE_AGENT1_PASSWORD,
   [import.meta.env.VITE_AGENT2_ID]: import.meta.env.VITE_AGENT2_PASSWORD
 }
+
+// Update mock employees to match env credentials
+const mockEmployees: Employee[] = [
+  {
+    id: "EMP001",
+    agentId: import.meta.env.VITE_ADMIN_ID,
+    name: "Admin User",
+    email: "admin@emp.com",
+    role: "admin",
+    status: "active",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    assignedOrders: [],
+    businessInfo: {
+      companyName: "EMP",
+      registrationNumber: "1234567890",
+      taxId: "1234567890",
+      businessAddress: {
+        street: "123 Main St",
+        city: "Anytown",
+        state: "CA",
+        postalCode: "12345",
+        country: "USA"
+      }
+    },
+    payrollInfo: {
+      baseRate: 100000,
+      paymentFrequency: "monthly",
+      currency: "USD",
+      lastPaymentDate: new Date().toISOString(),
+      bankName: "Bank of America",
+      accountNumber: "1234567890",
+      routingNumber: "1234567890",
+      paymentHistory: []
+    }
+  },
+  {
+    id: "EMP002",
+    agentId: import.meta.env.VITE_AGENT1_ID,
+    name: "Sales Agent 1",
+    email: "agent1@emp.com",
+    role: "employee",
+    status: "active",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    assignedOrders: [],
+    businessInfo: {
+      companyName: "EMP",
+      registrationNumber: "1234567890",
+      taxId: "1234567890",
+      businessAddress: {
+        street: "123 Main St",
+        city: "Anytown",
+        state: "CA",
+        postalCode: "12345",
+        country: "USA"
+      }
+    },
+    payrollInfo: {
+      baseRate: 50000,
+      paymentFrequency: "biweekly",
+      currency: "USD",
+      lastPaymentDate: new Date().toISOString(),
+      bankName: "Bank of America",
+      accountNumber: "1234567890",
+      routingNumber: "1234567890",
+      paymentHistory: []
+    }
+  }
+]
 
 export const employeeService = {
   // Authentication
