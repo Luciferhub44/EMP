@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Loader2, DollarSign } from "lucide-react"
+import { ArrowLeft, Loader2, DollarSign, Trash2 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { employeeService } from "@/lib/services/employee"
 import { formatDate, formatCurrency } from "@/lib/utils"
@@ -79,6 +79,29 @@ export default function EmployeeDetailsPage() {
     }
   }
 
+  const handleDelete = async () => {
+    if (user?.role !== 'admin' || !employee) return
+    
+    if (!confirm("Are you sure you want to delete this employee? This action cannot be undone.")) {
+      return
+    }
+
+    try {
+      await employeeService.deleteEmployee(employee.id, true)
+      toast({
+        title: "Success",
+        description: "Employee deleted successfully",
+      })
+      navigate("/employees")
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete employee",
+        variant: "destructive",
+      })
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[50vh]">
@@ -93,28 +116,39 @@ export default function EmployeeDetailsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate("/employees")}
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div className="flex-1">
-          <h2 className="text-3xl font-bold tracking-tight">
-            {employee.name}
-          </h2>
-          <p className="text-muted-foreground">
-            Employee ID: {employee.id}
-          </p>
-        </div>
-        {user?.role === 'admin' && (
-          <Button onClick={() => setShowPaymentDialog(true)}>
-            <DollarSign className="mr-2 h-4 w-4" />
-            Issue Payment
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/employees")}
+          >
+            <ArrowLeft className="h-4 w-4" />
           </Button>
-        )}
+          <div className="flex-1">
+            <h2 className="text-3xl font-bold tracking-tight">
+              {employee.name}
+            </h2>
+            <p className="text-muted-foreground">
+              Employee ID: {employee.id}
+            </p>
+          </div>
+          {user?.role === 'admin' && (
+            <Button onClick={() => setShowPaymentDialog(true)}>
+              <DollarSign className="mr-2 h-4 w-4" />
+              Issue Payment
+            </Button>
+          )}
+          {user?.role === 'admin' && (
+            <Button 
+              variant="destructive" 
+              onClick={handleDelete}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete Employee
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">

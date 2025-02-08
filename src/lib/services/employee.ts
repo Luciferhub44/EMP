@@ -307,5 +307,16 @@ export const employeeService = {
           return false
       }
     })
+  },
+
+  deleteEmployee: async (employeeId: string, isAdmin: boolean): Promise<void> => {
+    if (!isAdmin) {
+      throw new Error("Only administrators can delete employees")
+    }
+    
+    const employeeIndex = mockEmployees.findIndex(e => e.id === employeeId)
+    if (employeeIndex === -1) throw new Error("Employee not found")
+    
+    mockEmployees.splice(employeeIndex, 1)
   }
 } 

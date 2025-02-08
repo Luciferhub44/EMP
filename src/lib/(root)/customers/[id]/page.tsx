@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { formatDate, formatCurrency } from "@/lib/utils"
-import { ArrowLeft, Mail, Phone, MapPin, Building, Loader2, Pencil } from "lucide-react"
+import { ArrowLeft, Mail, Phone, MapPin, Building, Loader2, Pencil, Trash2 } from "lucide-react"
 import { customerService } from "@/lib/services/customer"
 import { toast } from "@/components/ui/use-toast"
 import type { Customer, Order } from "@/types"
@@ -43,6 +43,29 @@ export default function CustomerDetailsPage() {
     }
     loadCustomerData()
   }, [id])
+
+  const handleDelete = async () => {
+    if (user?.role !== 'admin' || !customer) return
+    
+    if (!confirm("Are you sure you want to delete this customer? This action cannot be undone.")) {
+      return
+    }
+
+    try {
+      await customerService.deleteCustomer(customer.id, true)
+      toast({
+        title: "Success",
+        description: "Customer deleted successfully",
+      })
+      navigate("/customers")
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete customer",
+        variant: "destructive",
+      })
+    }
+  }
 
   if (isLoading) {
     return (
@@ -89,10 +112,19 @@ export default function CustomerDetailsPage() {
           </div>
         </div>
         {user?.role === 'admin' && (
-          <Button onClick={() => navigate(`/customers/${id}/edit`)}>
-            <Pencil className="mr-2 h-4 w-4" />
-            Edit Customer
-          </Button>
+          <>
+            <Button onClick={() => navigate(`/customers/${id}/edit`)}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit Customer
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDelete}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete Customer
+            </Button>
+          </>
         )}
       </div>
 

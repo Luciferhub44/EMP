@@ -37,10 +37,14 @@ export const productService = {
     return mockProducts[index]
   },
 
-  deleteProduct: async (id: string) => {
-    const index = mockProducts.findIndex(p => p.id === id)
-    if (index === -1) throw new Error("Product not found")
+  deleteProduct: async (productId: string, isAdmin: boolean): Promise<void> => {
+    if (!isAdmin) {
+      throw new Error("Only administrators can delete products")
+    }
     
-    mockProducts.splice(index, 1)
+    const productIndex = mockProducts.findIndex(p => p.id === productId)
+    if (productIndex === -1) throw new Error("Product not found")
+    
+    mockProducts.splice(productIndex, 1)
   }
 } 

@@ -15,9 +15,11 @@ import { products } from "@/data/products"
 import { warehouses } from "@/data/warehouses"
 import { getTotalStock, needsRestock } from "@/lib/utils/inventory"
 import { formatCurrency } from "@/lib/utils"
-import { Package, AlertTriangle, ArrowLeft, Pencil } from "lucide-react"
+import { Package, AlertTriangle, ArrowLeft, Pencil, Trash2 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { Product } from "@/types/products"
+import { toast } from "@/components/ui/use-toast"
+import { productService } from "@/lib/services/product"
 
 export default function ProductDetailsPage() {
   const { id } = useParams()
@@ -29,6 +31,29 @@ export default function ProductDetailsPage() {
     const product = products.find(p => p.id === id)
     setProduct(product || null)
   }, [id])
+
+  const handleDelete = async () => {
+    if (user?.role !== 'admin' || !product) return
+    
+    if (!confirm("Are you sure you want to delete this product? This action cannot be undone.")) {
+      return
+    }
+
+    try {
+      await productService.deleteProduct(product.id, true)
+      toast({
+        title: "Success",
+        description: "Product deleted successfully",
+      })
+      navigate("/products")
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete product",
+        variant: "destructive",
+      })
+    }
+  }
 
   if (!product) {
     return (
@@ -61,10 +86,19 @@ export default function ProductDetailsPage() {
           </div>
         </div>
         {user?.role === 'admin' && (
-          <Button onClick={() => navigate(`/products/${id}/edit`)}>
-            <Pencil className="mr-2 h-4 w-4" />
-            Edit Product
-          </Button>
+          <div className="flex items-center gap-4">
+            <Button onClick={() => navigate(`/products/${id}/edit`)}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit Product
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDelete}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete Product
+            </Button>
+          </div>
         )}
       </div>
 

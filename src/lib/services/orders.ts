@@ -227,5 +227,16 @@ export const ordersService = {
     } else if (["delivered", "shipped"].includes(status)) {
       order.paymentStatus = "paid" as PaymentStatus
     }
+  },
+
+  deleteOrder: async (orderId: string, isAdmin: boolean): Promise<void> => {
+    if (!isAdmin) {
+      throw new Error("Only administrators can delete orders")
+    }
+    
+    const orderIndex = mockOrders.findIndex(o => o.id === orderId)
+    if (orderIndex === -1) throw new Error("Order not found")
+    
+    mockOrders.splice(orderIndex, 1)
   }
 } 

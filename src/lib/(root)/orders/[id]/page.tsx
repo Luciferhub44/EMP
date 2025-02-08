@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { formatDate, formatCurrency } from "@/lib/utils"
-import { ArrowLeft, Loader2, Package } from "lucide-react"
+import { ArrowLeft, Loader2, Package, Trash2 } from "lucide-react"
 import { ordersService } from "@/lib/services/orders"
 import { customerService } from "@/lib/services/customer"
 import { useAuth } from "@/contexts/auth-context"
@@ -99,6 +99,29 @@ export default function OrderDetailsPage() {
     loadOrderDetails()
   }, [id, user, navigate])
 
+  const handleDelete = async () => {
+    if (user?.role !== 'admin' || !order) return
+    
+    if (!confirm("Are you sure you want to delete this order? This action cannot be undone.")) {
+      return
+    }
+
+    try {
+      await ordersService.deleteOrder(order.id, true)
+      toast({
+        title: "Success",
+        description: "Order deleted successfully",
+      })
+      navigate("/orders")
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete order",
+        variant: "destructive",
+      })
+    }
+  }
+
   const renderShippingInfo = () => {
     if (!order?.shipping) return null;
 
@@ -188,6 +211,15 @@ export default function OrderDetailsPage() {
             <Package className="mr-2 h-4 w-4" />
             Manage Fulfillment
           </Button>
+          {user?.role === 'admin' && (
+            <Button 
+              variant="destructive" 
+              onClick={handleDelete}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete Order
+            </Button>
+          )}
         </div>
       </div>
 

@@ -110,5 +110,16 @@ export const customerService = {
         customerOrders[customerOrders.length - 1].createdAt : 
         null
     }
+  },
+
+  deleteCustomer: async (customerId: string, isAdmin: boolean): Promise<void> => {
+    if (!isAdmin) {
+      throw new Error("Only administrators can delete customers")
+    }
+    
+    const customerIndex = mockCustomers.findIndex(c => c.id === customerId)
+    if (customerIndex === -1) throw new Error("Customer not found")
+    
+    mockCustomers.splice(customerIndex, 1)
   }
 } 
