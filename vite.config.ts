@@ -22,6 +22,11 @@ export default defineConfig({
       "/api": "https://emp-i6gc.onrender.com/"
     }
   },
+  preview: {
+    port: 3000,
+    host: true,
+    allowedHosts: ["emp-i6gc.onrender.com"]
+  },
   build: {
     outDir: "dist",
     sourcemap: true,
