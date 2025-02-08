@@ -9,8 +9,8 @@ export default function SignInPage() {
   const { login } = useAuth()
   const [loading, setLoading] = React.useState(false)
   const [credentials, setCredentials] = React.useState({
-    agentId: import.meta.env.VITE_ADMIN_ID,
-    password: import.meta.env.VITE_ADMIN_PASSWORD
+    agentId: "",
+    password: ""
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
