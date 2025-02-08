@@ -67,7 +67,7 @@ export default function OrderDetailsPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [order] = React.useState<Order | null>(null)
+  const [order, setOrder] = React.useState<Order | null>(null)
   const [customer, setCustomer] = React.useState<Customer | null>(null)
   const [isLoading, setIsLoading] = React.useState(true)
 
@@ -78,6 +78,7 @@ export default function OrderDetailsPage() {
       try {
         const orderData = await ordersService.getOrder(id, user.id, user.role === 'admin')
         if (orderData) {
+          setOrder(orderData)
           const customerData = await customerService.getCustomer(orderData.customerId)
           setCustomer(customerData)
         }
