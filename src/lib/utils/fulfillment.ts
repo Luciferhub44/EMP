@@ -33,13 +33,17 @@ export function generateTransportQuote({
   return {
     id: `quote-${Math.random().toString(36).substr(2, 9)}`,
     orderId,
-    carrier: company.name,
+    provider: company.name,
     method: vehicle.name,
     cost: totalPrice,
     estimatedDays,
     distance,
-    services: [vehicle.name],
-    validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+    validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    weightBased: true,
+    insurance: {
+      included: true,
+      coverage: totalPrice
+    }
   }
 }
 

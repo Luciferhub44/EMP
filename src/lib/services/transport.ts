@@ -48,7 +48,7 @@ export const transportService = {
       const order = await ordersService.getOrder(orderId)
       if (!order) throw new Error("Order not found")
 
-      const shipping = transportService.calculateShipping(order)
+      const shipping = transportService.calculateShipping(order as unknown as Order)
       const distance = await calculateDistance(shipping.origin, shipping.destination)
 
       return [
@@ -85,10 +85,10 @@ export const transportService = {
             ratePerKm: 0.3,
             ratePerKg: 1
           }),
-          estimatedDays: Math.ceil(distance / 300), // 300km per day
-          validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          estimatedDays: Math.ceil(distance / 300),
           distance,
           weightBased: true,
+          validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
           insurance: {
             included: false,
             cost: shipping.totalValue * 0.01

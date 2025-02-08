@@ -1,5 +1,6 @@
 import type { Employee, EmployeeCredentials, PaymentHistory, PaymentType } from "@/types/employee"
-import { orders } from "@/data/orders"
+import type { Order } from "@/types/orders"
+import { orders as mockOrders } from "@/data/orders"
 import { employees as mockEmployees } from "@/data/employees"
 
 // Store employee credentials separately for security
@@ -88,12 +89,12 @@ export const employeeService = {
     return mockEmployees[employeeIndex]
   },
 
-  getAssignedOrders: async (employeeId: string) => {
+  getAssignedOrders: async (employeeId: string): Promise<Order[]> => {
     if (!employeeId) return []
     
     try {
       const employee = await employeeService.getEmployee(employeeId)
-      return orders.filter(order => employee.assignedOrders.includes(order.id))
+      return mockOrders.filter(order => employee.assignedOrders.includes(order.id))
     } catch (error) {
       console.error("Failed to get assigned orders:", error)
       return []
@@ -103,6 +104,10 @@ export const employeeService = {
   assignOrder: async (orderId: string, employeeId: string) => {
     const employee = mockEmployees.find(e => e.id === employeeId)
     if (!employee) throw new Error(`Employee not found with ID: ${employeeId}`)
+    
+    // Check if order exists in orders array
+    const orderExists = mockOrders.some(o => o.id === orderId)
+    if (!orderExists) throw new Error(`Order not found with ID: ${orderId}`)
     
     // Check if order is already assigned to someone else
     const currentAssignee = mockEmployees.find(e => 
@@ -174,7 +179,7 @@ export const employeeService = {
   },
 
   // Calculate commission for an employee
-  calculateCommission: async (employeeId: string, orderId: string, orderAmount: number) => {
+  calculateCommission: async (employeeId: string, orderId: string, orderAmount: number): Promise<number> => {
     const employee = mockEmployees.find(e => e.id === employeeId)
     if (!employee) throw new Error(`Employee not found with ID: ${employeeId}`)
     
@@ -201,7 +206,7 @@ export const employeeService = {
   },
 
   // Get employees due for salary payment
-  getEmployeesDuePayment: async (requesterId: string, isAdmin: boolean): Promise<Employee[]> => {
+  getEmployeesDuePayment: async (requestId: string, isAdmin: boolean): Promise<Employee[]> => {
     if (!isAdmin) {
       throw new Error("Only administrators can view payment due information")
     }

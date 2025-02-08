@@ -1,3 +1,5 @@
+import { Address } from './orders'
+
 export type OrderStatus = 
   | "pending"
   | "processing"
@@ -62,7 +64,7 @@ export interface Order {
   total: number
   status: OrderStatus
   paymentStatus: PaymentStatus
-  shippingAddress: string
+  shippingAddress: Address | string
   notes?: string
   createdAt: string
   updatedAt: string

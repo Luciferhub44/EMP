@@ -19,7 +19,7 @@ export const fulfillmentService = {
     }
   },
 
-  getFulfillment: async (orderId: string, userId?: string, isAdmin?: boolean) => {
+  getOrderFulfillment: async (orderId: string, userId?: string, isAdmin?: boolean) => {
     // Check access first
     const hasAccess = await fulfillmentService.checkAccess(orderId, userId, isAdmin)
     if (!hasAccess) {
@@ -27,10 +27,11 @@ export const fulfillmentService = {
     }
 
     // Return existing fulfillment or create new one
-    if (!fulfillments[orderId]) {
+    const fulfillment = fulfillmentStore.get(orderId)
+    if (!fulfillment) {
       return fulfillmentService.createFulfillment(orderId, userId, isAdmin)
     }
-    return fulfillments[orderId]
+    return fulfillment
   },
 
   createFulfillment: async (orderId: string, userId?: string, isAdmin?: boolean) => {
@@ -139,31 +140,26 @@ export const fulfillmentService = {
     )
   },
 
-  markAsShipped: async (
-    orderId: string,
-    userId?: string,
-    isAdmin?: boolean
-  ) => {
-    const fulfillment = await fulfillmentService.getFulfillment(orderId, userId, isAdmin)
-    if (!fulfillment.trackingNumber) {
+  markAsShipped: async (orderId: string, userId?: string, isAdmin?: boolean) => {
+    const fulfillment = await fulfillmentService.getOrderFulfillment(orderId, userId, isAdmin)
+    if (!fulfillment?.trackingNumber) {
       throw new Error("Cannot mark as shipped without tracking information")
     }
 
     return fulfillmentService.updateStatus(
       orderId,
       'shipped',
-      `Order shipped via ${fulfillment.carrier}`,
+      `Order shipped via ${fulfillment.carrier || 'unknown carrier'}`,
       userId,
       isAdmin
     )
   },
 
-  markAsDelivered: async (
-    orderId: string,
-    userId?: string,
-    isAdmin?: boolean
-  ) => {
-    await fulfillmentService.getFulfillment(orderId, userId, isAdmin)
+  markAsDelivered: async (orderId: string, userId?: string, isAdmin?: boolean) => {
+    const fulfillment = await fulfillmentService.getOrderFulfillment(orderId, userId, isAdmin)
+    if (!fulfillment) {
+      throw new Error("Fulfillment not found")
+    }
     
     return fulfillmentService.updateStatus(
       orderId,

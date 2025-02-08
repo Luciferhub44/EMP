@@ -1,4 +1,10 @@
-import type { Order, OrderStatus, PaymentStatus, FulfillmentStatus, TransportQuote } from "@/types/orders"
+import type { 
+  Order, 
+  OrderStatus, 
+  PaymentStatus, 
+  FulfillmentStatus,
+  TransportQuote 
+} from "@/types/orders"
 import { orders as mockOrders } from "@/data/orders"
 import { employeeService } from "./employee"
 
@@ -203,14 +209,14 @@ export const ordersService = {
     const order = mockOrders.find(o => o.id === orderId)
     if (!order) throw new Error("Order not found")
 
-    order.status = status
+    order.status = status as OrderStatus
     order.updatedAt = new Date().toISOString()
 
     // Update payment status based on order status
     if (status === "cancelled") {
-      order.paymentStatus = "refunded"
+      order.paymentStatus = "refunded" as PaymentStatus
     } else if (["delivered", "shipped"].includes(status)) {
-      order.paymentStatus = "paid"
+      order.paymentStatus = "paid" as PaymentStatus
     }
   }
 } 

@@ -29,7 +29,7 @@ export default function CustomerDetailsPage() {
           customerService.getCustomerOrders(id, user?.id || "")
         ])
         setCustomer(customerData)
-        setOrders(customerOrders)
+        setOrders(customerOrders as Order[])
       } catch (error) {
         console.error("Error loading customer data:", error)
         toast({

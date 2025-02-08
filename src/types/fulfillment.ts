@@ -10,6 +10,12 @@ export interface FulfillmentItem {
   name: string
   quantity: number
   status: FulfillmentStatus
+  weight: number
+  dimensions: {
+    length: number
+    width: number
+    height: number
+  }
 }
 
 export interface Fulfillment {
@@ -33,4 +39,9 @@ export interface FulfillmentDetails {
   notes?: string[]
   createdAt: string
   updatedAt: string
+  weightBased: boolean
+  insurance: {
+    included: boolean
+    coverage: number
+  }
 } 

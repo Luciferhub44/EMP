@@ -6,8 +6,6 @@ import {
   HelpCircle,
   LifeBuoy,
   Package,
-  Shield,
-  CreditCard,
   LineChart,
   Mail,
   MessageSquare,
