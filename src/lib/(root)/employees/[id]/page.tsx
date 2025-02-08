@@ -3,7 +3,6 @@ import { useParams, useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ArrowLeft, Loader2, DollarSign } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { employeeService } from "@/lib/services/employee"
@@ -153,7 +152,7 @@ export default function EmployeeDetailsPage() {
             <div>
               <p className="font-medium">Base Rate</p>
               <p className="text-muted-foreground">
-                {formatCurrency(employee.payrollInfo.baseRate, employee.payrollInfo.currency)}
+                {formatCurrency(employee.payrollInfo.baseRate)}
               </p>
             </div>
             <div>

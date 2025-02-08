@@ -61,7 +61,6 @@ export default function CustomerEditPage() {
       await customerService.updateCustomer(
         id, 
         updates,
-        "user123",
         true
       )
       toast({

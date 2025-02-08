@@ -11,15 +11,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
 import { products } from "@/data/products"
 import { warehouses } from "@/data/warehouses"
 import { updateStock, transferStock, getWarehouseStock } from "@/lib/utils/inventory"

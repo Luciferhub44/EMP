@@ -7,9 +7,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Separator } from "@/components/ui/separator"
-import { formatDate, formatCurrency } from "@/lib/utils"
-import { ArrowLeft, Loader2, Package, Truck } from "lucide-react"
+import { formatDate } from "@/lib/utils"
+import { ArrowLeft, Loader2 } from "lucide-react"
 import { ordersService } from "@/lib/services/orders"
 import { fulfillmentService } from "@/lib/services/fulfillment"
 import { useAuth } from "@/contexts/auth-context"
@@ -32,11 +31,11 @@ export default function FulfillmentPage() {
       setIsLoading(true)
       try {
         const [orderData, fulfillmentData] = await Promise.all([
-          ordersService.getOrder(orderId, user.id, user.role === 'admin'),
-          fulfillmentService.getFulfillment(orderId, user.id, user.role === 'admin')
+          ordersService.getOrder(orderId),
+          fulfillmentService.getFulfillment(orderId)
         ])
-        setOrder(orderData)
-        setFulfillment(fulfillmentData)
+        setOrder(orderData as Order | null)
+        setFulfillment(fulfillmentData as FulfillmentDetails | null)
       } catch (error) {
         console.error("Failed to load fulfillment:", error)
         toast({
@@ -44,7 +43,7 @@ export default function FulfillmentPage() {
           description: "Failed to load fulfillment details",
           variant: "destructive",
         })
-        if (error.message === "Access denied") {
+        if (error instanceof Error && error.message === "Access denied") {
           navigate("/orders")
         }
       } finally {
@@ -153,10 +152,10 @@ export default function FulfillmentPage() {
                   </p>
                   <p>{order.shipping.address.country}</p>
                 </div>
-                {order.shipping.method && (
+                {order.shipping.carrier && (
                   <div className="space-y-2">
                     <p className="text-sm text-muted-foreground">Shipping Method</p>
-                    <p>{order.shipping.method}</p>
+                    <p>{order.shipping.carrier}</p>
                   </div>
                 )}
                 {order.shipping.estimatedDelivery && (

@@ -67,8 +67,6 @@ export async function handleAcceptQuote(quoteId: string, orderId: string): Promi
         actualDelivery: '',
         notes: '',
         history: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
       })
 
       resolve(fulfillmentId)

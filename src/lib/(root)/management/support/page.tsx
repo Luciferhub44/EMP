@@ -9,7 +9,6 @@ import {
   MessageSquare,
   Clock,
   CheckCircle2,
-  XCircle,
   AlertCircle
 } from "lucide-react"
 

@@ -30,7 +30,7 @@ export default function FulfillmentListPage() {
       setIsLoading(true)
       try {
         const orders = await ordersService.getPendingOrders(user.id, user.role === 'admin')
-        setPendingOrders(orders)
+        setPendingOrders(orders as Order[])
       } catch (error) {
         console.error("Failed to load pending orders:", error)
         toast({
@@ -97,7 +97,7 @@ export default function FulfillmentListPage() {
                     <TableCell>{order.id}</TableCell>
                     <TableCell>{order.customerName}</TableCell>
                     <TableCell>
-                      <Badge variant={order.status === "paid" ? "success" : "default"}>
+                      <Badge variant={order.paymentStatus === "paid" ? "success" : "default"}>
                         {order.status}
                       </Badge>
                     </TableCell>

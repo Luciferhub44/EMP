@@ -25,7 +25,6 @@ export default function EditProductPage() {
     sku: product.sku,
     price: product.price.toString(),
     category: product.category,
-    subCategory: product.subCategory || "",
     specifications: { ...product.specifications }
   } : null)
 
@@ -37,8 +36,6 @@ export default function EditProductPage() {
       </div>
     )
   }
-
-  const selectedCategory = productCategories.find(c => c.name === formData.category)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -131,8 +128,7 @@ export default function EditProductPage() {
                   value={formData.category}
                   onValueChange={(value) => setFormData(prev => ({ 
                     ...prev!, 
-                    category: value,
-                    subCategory: "" // Reset subcategory when category changes
+                    category: value
                   }))}
                 >
                   <SelectTrigger>
@@ -147,29 +143,6 @@ export default function EditProductPage() {
                   </SelectContent>
                 </Select>
               </div>
-              {selectedCategory?.subCategories && (
-                <div className="grid gap-2">
-                  <Label>Sub Category</Label>
-                  <Select
-                    value={formData.subCategory}
-                    onValueChange={(value) => setFormData(prev => ({ 
-                      ...prev!, 
-                      subCategory: value 
-                    }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {selectedCategory.subCategories.map((sub) => (
-                        <SelectItem key={sub} value={sub}>
-                          {sub}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>

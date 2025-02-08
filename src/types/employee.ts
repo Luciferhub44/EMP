@@ -80,4 +80,11 @@ export interface Employee {
 export interface EmployeeCredentials {
   agentId: string
   password: string
-} 
+}  
+
+export interface EmployeeStats {
+  totalOrders: number
+  totalRevenue: number
+  averageOrderValue: number
+  customerSatisfaction: number
+}

@@ -1,7 +1,6 @@
-import * as React from "react"
 import { Navigate, Outlet, useLocation } from "react-router-dom"
-import { Sidebar } from "@/components/sidebar"
-import { Header } from "@/components/header"
+import { Sidebar } from "@/components/Sidebar"
+import { Header } from "@/components/Header"
 import { useAuth } from "@/contexts/auth-context"
 
 export default function RootLayout() {

@@ -47,7 +47,7 @@ export const customerService = {
   },
 
   // Only admins can create/update customers
-  createCustomer: async (customerData: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>, userId: string, isAdmin: boolean) => {
+  createCustomer: async (customerData: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>, isAdmin: boolean) => {
     if (!isAdmin) {
       throw new Error("Only administrators can create customers")
     }
@@ -67,7 +67,6 @@ export const customerService = {
   updateCustomer: async (
     id: string, 
     updates: Partial<Customer>,
-    userId: string,
     isAdmin: boolean
   ) => {
     // Only admins can update customer details
@@ -81,25 +80,24 @@ export const customerService = {
     mockCustomers[customerIndex] = {
       ...mockCustomers[customerIndex],
       ...updates,
-      updatedAt: new Date().toISOString()
     }
 
     return mockCustomers[customerIndex]
   },
 
-  getCustomerOrders: async (customerId: string, userId: string = "") => {
+  getCustomerOrders: async (customerId: string) => {
     await new Promise(resolve => setTimeout(resolve, 500))
-    const orders = await ordersService.getOrders(customerId, userId)
+    const orders = await ordersService.getOrders(customerId, false)
     return orders
       .filter(order => order.customerId === customerId)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   },
 
-  getCustomerStats: async (customerId: string, userId: string) => {
+  getCustomerStats: async (customerId: string) => {
     await new Promise(resolve => setTimeout(resolve, 500))
-    const orders = await ordersService.getOrders(customerId, userId)
+    const orders = await ordersService.getOrders(customerId, false)
     const customerOrders = orders.filter(order => order.customerId === customerId)
-    const totalSpent = customerOrders.reduce((sum, order) => sum + order.totalAmount, 0)
+    const totalSpent = customerOrders.reduce((sum, order) => sum + order.total, 0)
     const lastOrder = customerOrders.sort((a, b) => 
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     )[0]

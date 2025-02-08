@@ -44,11 +44,17 @@ export default function EmployeesPage() {
   const [loading, setLoading] = React.useState(true)
   const [search, setSearch] = React.useState("")
   const [isAddingEmployee, setIsAddingEmployee] = React.useState(false)
-  const [newEmployee, setNewEmployee] = React.useState({
+  const [newEmployee, setNewEmployee] = React.useState<{
+    name: string
+    email: string
+    agentId: string
+    role: "employee" | "admin"
+    password: string
+  }>({
     name: "",
     email: "",
     agentId: "",
-    role: "employee" as const,
+    role: "employee",
     password: "",
   })
   const [resetPasswordFor, setResetPasswordFor] = React.useState<string | null>(null)
@@ -91,8 +97,8 @@ export default function EmployeesPage() {
     e.preventDefault()
     setIsAddingEmployee(true)
     try {
-      const employee = await employeeService.createEmployee(newEmployee, newEmployee.password)
-      setEmployees(prev => [...prev, employee])
+      const employee = await employeeService.createEmployee(newEmployee as Omit<Employee, "id" | "createdAt" | "updatedAt" | "status" | "assignedOrders" | "businessInfo" | "payrollInfo">, newEmployee.password)
+      setEmployees(prev => [...prev, employee as Employee])
       toast({
         title: "Success",
         description: "Employee added successfully",
@@ -240,8 +246,8 @@ export default function EmployeesPage() {
                   <Label htmlFor="role">Role</Label>
                   <Select
                     value={newEmployee.role}
-                    onValueChange={(value: "admin" | "employee") => 
-                      setNewEmployee(prev => ({
+                    onValueChange={(value: "employee" | "admin") => 
+                      setNewEmployee((prev) => ({
                         ...prev,
                         role: value
                       }))

@@ -5,8 +5,19 @@ import type {
   FulfillmentStatus,
   TransportQuote 
 } from "@/types/orders"
-import { orders as mockOrders } from "@/data/orders"
+import { orders } from "@/data/orders"
 import { employeeService } from "./employee"
+
+// Update mock orders with type assertion
+const mockOrders = orders.map(order => ({
+  ...order,
+  paymentMethod: "credit_card",
+  subtotal: order.total,
+  tax: order.total * 0.1,
+  shippingCost: 0,
+  fulfillmentStatus: "pending",
+  status: order.status as OrderStatus
+})) as Order[]
 
 export const ordersService = {
   getOrders: async (userId: string, isAdmin: boolean) => {
@@ -30,8 +41,7 @@ export const ordersService = {
       const orders = await ordersService.getOrders(userId, isAdmin)
       return orders.filter(order => 
         (order.status === "confirmed" || order.status === "processing") &&
-        order.paymentStatus === "paid" &&
-        order.fulfillmentStatus !== "delivered"
+        order.paymentStatus === "paid"
       )
     } catch (error) {
       console.error("Failed to get pending orders:", error)
@@ -170,7 +180,7 @@ export const ordersService = {
     })
   },
 
-  createOrder: async (orderData: Partial<Order>, userId: string, isAdmin: boolean) => {
+  createOrder: async (orderData: Partial<Order>, isAdmin: boolean) => {
     // Only admins can create orders
     if (!isAdmin) {
       throw new Error("Only administrators can create orders")
@@ -203,8 +213,7 @@ export const ordersService = {
 
   updateOrderStatus: async (
     orderId: string, 
-    status: OrderStatus,
-    userId: string
+    status: OrderStatus
   ): Promise<void> => {
     const order = mockOrders.find(o => o.id === orderId)
     if (!order) throw new Error("Order not found")

@@ -38,12 +38,6 @@ const generatePaymentStatus = (orderStatus: Order["status"]): Order["paymentStat
   return "pending"
 }
 
-// Helper function to generate random payment method
-const generatePaymentMethod = (): Order["paymentMethod"] => {
-  const methods = ["credit_card", "bank_transfer", "financing", "wire_transfer"]
-  return methods[Math.floor(Math.random() * methods.length)]
-}
-
 // Generate 50+ orders
 export const orders: Order[] = Array.from({ length: 55 }, (_, index) => {
   const customer = customers[Math.floor(Math.random() * customers.length)]
@@ -72,7 +66,6 @@ export const orders: Order[] = Array.from({ length: 55 }, (_, index) => {
     customerName: customer.name,
     status: orderStatus,
     paymentStatus: generatePaymentStatus(orderStatus),
-    paymentMethod: generatePaymentMethod(),
     shippingAddress: customer.address,
     billingAddress: customer.address,
     items,

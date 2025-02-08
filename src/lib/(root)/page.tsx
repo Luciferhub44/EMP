@@ -7,6 +7,7 @@ import { ordersService } from "@/lib/services/orders"
 import { fulfillmentService } from "@/lib/services/fulfillment"
 import { formatCurrency } from "@/lib/utils"
 import type { Order, FulfillmentDetails } from "@/types/orders"
+import { Loader2 } from "lucide-react"
 
 export default function DashboardPage() {
   const navigate = useNavigate()
@@ -22,7 +23,7 @@ export default function DashboardPage() {
       try {
         // Load orders based on user role
         const orderData = await ordersService.getOrders(user.id, user.role === 'admin')
-        setOrders(orderData)
+        setOrders(orderData as Order[])
 
         // Load fulfillments based on user role
         let fulfillmentData: FulfillmentDetails[]
@@ -145,37 +146,45 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {renderMetrics()}
-
-      {/* Recent Activity Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {/* Show relevant recent activity based on user role */}
-          {orders.slice(0, 5).map(order => (
-            <div
-              key={order.id}
-              className="flex items-center justify-between border-b py-4 last:border-0"
-            >
-              <div>
-                <p className="font-medium">Order {order.id}</p>
-                <p className="text-sm text-muted-foreground">
-                  Status: {order.status}
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate(`/orders/${order.id}`)}
-              >
-                View Details
-              </Button>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+      {isLoading ? (
+        <div className="flex items-center justify-center h-[200px]">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      ) : (
+        <>
+          {renderMetrics()}
+          
+          {/* Recent Activity Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Activity</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {/* Show relevant recent activity based on user role */}
+              {orders.slice(0, 5).map(order => (
+                <div
+                  key={order.id}
+                  className="flex items-center justify-between border-b py-4 last:border-0"
+                >
+                  <div>
+                    <p className="font-medium">Order {order.id}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Status: {order.status}
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/orders/${order.id}`)}
+                  >
+                    View Details
+                  </Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   )
 }

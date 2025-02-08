@@ -76,7 +76,15 @@ export default function NewOrderPage() {
     const customer = customers.find(c => c.id === customerId)
     setFormData(prev => ({
       ...prev,
-      customerId
+      customerId,
+      shippingAddress: {
+        ...prev.shippingAddress,
+        street: customer?.address?.street || "",
+        city: customer?.address?.city || "",
+        state: customer?.address?.state || "",
+        country: customer?.address?.country || "",
+        postalCode: customer?.address?.postalCode || ""
+      }
     }))
   }
 

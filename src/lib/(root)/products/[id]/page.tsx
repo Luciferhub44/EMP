@@ -13,16 +13,22 @@ import {
 } from "@/components/ui/table"
 import { products } from "@/data/products"
 import { warehouses } from "@/data/warehouses"
-import { getTotalStock, getWarehouseStock, needsRestock } from "@/lib/utils/inventory"
+import { getTotalStock, needsRestock } from "@/lib/utils/inventory"
 import { formatCurrency } from "@/lib/utils"
-import { Package, Edit, AlertTriangle, ArrowLeft, Pencil } from "lucide-react"
+import { Package, AlertTriangle, ArrowLeft, Pencil } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
+import { Product } from "@/types/products"
 
 export default function ProductDetailsPage() {
   const { id } = useParams()
   const { user } = useAuth()
   const navigate = useNavigate()
   const [product, setProduct] = React.useState<Product | null>(null)
+
+  React.useEffect(() => {
+    const product = products.find(p => p.id === id)
+    setProduct(product || null)
+  }, [id])
 
   if (!product) {
     return (

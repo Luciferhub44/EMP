@@ -1,8 +1,5 @@
 import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { 
-  MessageSquare, 
-  Search, 
   Star, 
   Circle, 
   CheckCircle2, 

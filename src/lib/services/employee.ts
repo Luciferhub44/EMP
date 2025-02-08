@@ -25,17 +25,17 @@ export const employeeService = {
   },
 
   // Employee management (admin only)
-  createEmployee: async (employee: Omit<Employee, 'id' | 'createdAt'>, password: string) => {
+  createEmployee: async (employee: Omit<Employee, 'id' | 'createdAt' | 'updatedAt' | 'status' | 'assignedOrders' | 'businessInfo' | 'payrollInfo'>, password: string) => {
     const id = `EMP${(mockEmployees.length + 1).toString().padStart(3, '0')}`
     const newEmployee = {
       ...employee,
       id,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      assignedOrders: []
+      assignedOrders: [] as string[]
     }
     
-    mockEmployees.push(newEmployee)
+    mockEmployees.push(newEmployee as Employee)
     employeeCredentials[employee.agentId] = password
     
     return newEmployee
@@ -94,7 +94,16 @@ export const employeeService = {
     
     try {
       const employee = await employeeService.getEmployee(employeeId)
-      return mockOrders.filter(order => employee.assignedOrders.includes(order.id))
+      return mockOrders
+        .filter(order => employee.assignedOrders.includes(order.id))
+        .map(order => ({
+          ...order,
+          paymentMethod: "credit_card",
+          subtotal: order.total,
+          tax: order.total * 0.1,
+          shippingCost: 0,
+          fulfillmentStatus: "pending"
+        })) as Order[]
     } catch (error) {
       console.error("Failed to get assigned orders:", error)
       return []
@@ -179,7 +188,7 @@ export const employeeService = {
   },
 
   // Calculate commission for an employee
-  calculateCommission: async (employeeId: string, orderId: string, orderAmount: number): Promise<number> => {
+  calculateCommission: async (employeeId: string, orderAmount: number): Promise<number> => {
     const employee = mockEmployees.find(e => e.id === employeeId)
     if (!employee) throw new Error(`Employee not found with ID: ${employeeId}`)
     
@@ -206,7 +215,7 @@ export const employeeService = {
   },
 
   // Get employees due for salary payment
-  getEmployeesDuePayment: async (requestId: string, isAdmin: boolean): Promise<Employee[]> => {
+  getEmployeesDuePayment: async (isAdmin: boolean): Promise<Employee[]> => {
     if (!isAdmin) {
       throw new Error("Only administrators can view payment due information")
     }

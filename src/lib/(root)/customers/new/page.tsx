@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label"
 import { ArrowLeft } from "lucide-react"
 import { customerService } from "@/lib/services/customer"
 import { toast } from "@/components/ui/use-toast"
-import type { Customer } from "@/types"
 
 export default function CustomerNewPage() {
   const navigate = useNavigate()
@@ -33,7 +32,7 @@ export default function CustomerNewPage() {
         }
       }
 
-      const newCustomer = await customerService.createCustomer(customerData)
+      const newCustomer = await customerService.createCustomer(customerData, true)
       toast({
         title: "Success",
         description: "Customer created successfully",

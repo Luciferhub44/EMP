@@ -25,11 +25,11 @@ export default function CustomerDetailsPage() {
       setIsLoading(true)
       try {
         const [customerData, customerOrders] = await Promise.all([
-          customerService.getCustomer(id, user?.id || "", user?.role === "admin"),
-          customerService.getCustomerOrders(id, user?.id || "")
+          customerService.getCustomer(id),
+          customerService.getCustomerOrders(id)
         ])
         setCustomer(customerData)
-        setOrders(customerOrders as Order[])
+        setOrders(customerOrders as unknown as Order[])
       } catch (error) {
         console.error("Error loading customer data:", error)
         toast({

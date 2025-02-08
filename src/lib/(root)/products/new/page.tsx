@@ -42,7 +42,10 @@ export default function NewProductPage() {
     try {
       const product = await createProduct({
         ...formData,
-        price: parseFloat(formData.price)
+        price: parseFloat(formData.price),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        status: "active"
       })
       alert("Product created successfully!")
       navigate(`/products/${product.id}`)

@@ -1,6 +1,5 @@
-import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { BarChart, LineChart, PieChart, ArrowUpDown, Download } from "lucide-react"
+import { BarChart, PieChart, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AreaChart } from "@/components/charts/AreaChart"
 

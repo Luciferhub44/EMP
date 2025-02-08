@@ -7,7 +7,6 @@ import {
   ArrowUpDown,
   Trash2,
   Archive,
-  Tag
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { SearchInput } from "@/components/ui/search-input"

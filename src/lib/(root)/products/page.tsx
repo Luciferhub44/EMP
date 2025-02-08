@@ -127,9 +127,9 @@ export default function ProductsPage() {
                           )}
                           <Badge 
                             className="absolute top-2 right-2"
-                            variant={product.status === 'in_stock' ? 'success' : 'destructive'}
+                            variant={product.status === 'active' ? 'success' : 'destructive'}
                           >
-                            {product.status === 'in_stock' ? 'In Stock' : 'Out of Stock'}
+                            {product.status === 'active' ? 'In Stock' : 'Out of Stock'}
                           </Badge>
                         </div>
                         <div className="space-y-2">
