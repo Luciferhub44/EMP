@@ -57,6 +57,7 @@ export const orders: Order[] = Array.from({ length: 55 }, (_, index) => {
     const quantity = Math.floor(Math.random() * 3) + 1
     return {
       productId: product.id,
+      productName: product.name,
       product,
       quantity,
       price: product.price
@@ -68,17 +69,20 @@ export const orders: Order[] = Array.from({ length: 55 }, (_, index) => {
   return {
     id: generateOrderId(index),
     customerId: customer.id,
+    customerName: customer.name,
     status: orderStatus,
     paymentStatus: generatePaymentStatus(orderStatus),
     paymentMethod: generatePaymentMethod(),
     shippingAddress: customer.address,
     billingAddress: customer.address,
     items,
+    subtotal: totalAmount,
+    tax: totalAmount * 0.1,
+    shippingCost: 0,
     total: totalAmount,
-    totalAmount,
     createdAt,
     updatedAt: createdAt,
-    notes: Math.random() > 0.7 ? "Special handling required" : undefined,
-    fulfillmentStatus: "pending"
+    fulfillmentStatus: "pending",
+    notes: Math.random() > 0.7 ? "Special handling required" : undefined
   }
 }) 

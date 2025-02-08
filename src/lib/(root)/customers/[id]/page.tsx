@@ -25,8 +25,8 @@ export default function CustomerDetailsPage() {
       setIsLoading(true)
       try {
         const [customerData, customerOrders] = await Promise.all([
-          customerService.getCustomer(id),
-          customerService.getCustomerOrders(id)
+          customerService.getCustomer(id, user?.id || "", user?.role === "admin"),
+          customerService.getCustomerOrders(id, user?.id || "")
         ])
         setCustomer(customerData)
         setOrders(customerOrders)

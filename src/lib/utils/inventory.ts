@@ -1,4 +1,4 @@
-import { Product, Inventory } from "@/types"
+import { Product, Warehouse } from "@/types"
 import { products } from "@/data/products"
 import { warehouses } from "@/data/warehouses"
 
@@ -13,6 +13,14 @@ interface TransferStockParams {
   fromWarehouseId: string
   toWarehouseId: string
   quantity: number
+}
+
+interface InventoryAlert {
+  type: 'out_of_stock' | 'low_stock'
+  severity: 'high' | 'medium' | 'low'
+  product: Product
+  warehouse: Warehouse | undefined
+  message: string
 }
 
 // Get total stock for a product across all warehouses
@@ -96,8 +104,8 @@ export function transferStock({
 }
 
 // Get inventory alerts (low stock, out of stock)
-export function getInventoryAlerts() {
-  const alerts = []
+export function getInventoryAlerts(): InventoryAlert[] {
+  const alerts: InventoryAlert[] = []
   
   for (const product of products) {
     for (const inv of product.inventory) {

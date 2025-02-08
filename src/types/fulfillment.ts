@@ -25,7 +25,12 @@ export interface FulfillmentDetails {
   orderId: string
   status: 'pending' | 'processing' | 'completed' | 'failed'
   assignedTo?: string
-  startedAt?: string
-  completedAt?: string
+  transportQuoteId: string
+  trackingNumber: string
+  carrier: string
+  estimatedDelivery: string
+  actualDelivery: string
   notes?: string[]
+  createdAt: string
+  updatedAt: string
 } 

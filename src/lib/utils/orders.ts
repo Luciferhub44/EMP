@@ -34,16 +34,16 @@ export async function updateOrderStatus(
     order.updatedAt = new Date().toISOString()
 
     // Handle inventory updates based on status
-    if (status === "confirmed") {
+    if (status === ("confirmed" as OrderStatus)) {
       // Reserve inventory
       for (const item of order.items) {
         await updateProductInventory(
           item.productId,
-          "wh-1", // Default warehouse
-          -item.quantity // Decrease inventory
+          "wh-1",
+          -item.quantity
         )
       }
-    } else if (status === "cancelled" && order.status === "confirmed") {
+    } else if (status === ("cancelled" as OrderStatus) && order.status === ("confirmed" as OrderStatus)) {
       // Return inventory if cancelling a confirmed order
       for (const item of order.items) {
         await updateProductInventory(
@@ -105,8 +105,6 @@ export function getOrderStatusColor(status: OrderStatus): {
   switch (status) {
     case "pending":
       return { color: "text-yellow-700", bgColor: "bg-yellow-50" }
-    case "confirmed":
-      return { color: "text-blue-700", bgColor: "bg-blue-50" }
     case "processing":
       return { color: "text-purple-700", bgColor: "bg-purple-50" }
     case "shipped":

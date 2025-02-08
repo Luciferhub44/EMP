@@ -58,7 +58,12 @@ export default function CustomerEditPage() {
         }
       }
 
-      await customerService.updateCustomer(id, updates)
+      await customerService.updateCustomer(
+        id, 
+        updates,
+        "user123",
+        true
+      )
       toast({
         title: "Success",
         description: "Customer updated successfully",

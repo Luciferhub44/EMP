@@ -7,7 +7,8 @@ export function OrderStatusBadge({ status }: { status: OrderStatus }) {
     processing: "default",
     shipped: "secondary",
     delivered: "success",
-    cancelled: "destructive"
+    cancelled: "destructive",
+    paid: "success"
   }
 
   return (

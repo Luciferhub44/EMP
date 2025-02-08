@@ -1,4 +1,4 @@
-import type { Product } from "./product"
+import type { Product } from "./products"
 
 export interface Address {
   street: string
@@ -14,6 +14,7 @@ export type OrderStatus =
   | "shipped"
   | "delivered"
   | "cancelled"
+  | "confirmed"
 
 export type PaymentStatus = 
   | "pending"
@@ -54,33 +55,35 @@ export interface ShippingDetails {
 export interface TransportQuote {
   id: string
   orderId: string
-  carrier: string
-  price: number
+  provider: string
+  method: string
+  cost: number
   estimatedDays: number
   distance: number
-  services: string[]
-  insurance?: {
+  weightBased: boolean
+  validUntil: string
+  insurance: {
     included: boolean
+    coverage?: number
     cost?: number
   }
-  validUntil: string
 }
 
 export interface ShippingCalculation {
   origin: Address
   destination: Address
-  items: {
+  items: Array<{
     weight: number
+    quantity: number
     dimensions?: {
       length: number
       width: number
       height: number
     }
-    quantity: number
-  }[]
+  }>
   totalWeight: number
   totalValue: number
-  requiresInsurance?: boolean
+  requiresInsurance: boolean
 }
 
 export interface Order {
@@ -89,23 +92,30 @@ export interface Order {
   customerName: string
   items: OrderItem[]
   status: OrderStatus
-  createdAt: string
-  updatedAt: string
-  shippingAddress: Address
   paymentStatus: PaymentStatus
   paymentMethod: PaymentMethod
-  notes?: string
   shipping?: {
-    trackingNumber?: string
+    address?: Address
     carrier?: string
+    trackingNumber?: string
     estimatedDelivery?: string
   }
-  fulfillmentStatus: FulfillmentStatus
   subtotal: number
   tax: number
   total: number
-  totalAmount: number
+  shippingCost: number
+  createdAt: string
+  updatedAt: string
+  fulfillmentStatus: FulfillmentStatus
   assignedTo?: string
+  notes?: string
+}
+
+interface FulfillmentHistoryEntry {
+  status: FulfillmentStatus
+  timestamp: string
+  note?: string
+  updatedBy?: string
 }
 
 export interface FulfillmentDetails {
@@ -115,11 +125,7 @@ export interface FulfillmentDetails {
   carrier?: string
   estimatedDelivery?: string
   actualDelivery?: string
-  transportQuote?: TransportQuote
+  transportQuote?: string
   notes?: string
-  history: {
-    status: FulfillmentStatus
-    timestamp: string
-    note?: string
-  }[]
+  history: FulfillmentHistoryEntry[]
 } 

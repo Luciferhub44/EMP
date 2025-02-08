@@ -1,4 +1,4 @@
-import { Product } from "@/types"
+import { Product } from "@/types/products"
 import { products } from "@/data/products"
 
 // Sync functions for direct updates
@@ -69,7 +69,10 @@ export async function createProduct(newProduct: Omit<Product, "id" | "inventory"
       const product: Product = {
         id: `P-${Math.random().toString(36).substr(2, 9)}`,
         ...newProduct,
-        inventory: []
+        inventory: [],
+        status: 'active',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       }
       products.push(product)
       resolve(product)

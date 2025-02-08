@@ -1,5 +1,6 @@
 import type { TransportQuote, ShippingCalculation, Order } from "@/types/orders"
 import { calculateDistance, calculateShippingCost } from "@/lib/utils/shipping"
+import { ordersService } from "./orders"
 
 const WAREHOUSE_ADDRESS = {
   street: "123 Warehouse St",
@@ -50,10 +51,10 @@ export const transportService = {
       const shipping = transportService.calculateShipping(order)
       const distance = await calculateDistance(shipping.origin, shipping.destination)
 
-      // Generate quotes based on distance, weight, and value
       return [
         {
           id: "express",
+          orderId,
           provider: "FastShip",
           method: "Express",
           cost: calculateShippingCost({
@@ -63,10 +64,10 @@ export const transportService = {
             ratePerKm: 0.5,
             ratePerKg: 2
           }),
-          estimatedDays: Math.ceil(distance / 500), // 500km per day
-          validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          estimatedDays: Math.ceil(distance / 500),
           distance,
           weightBased: true,
+          validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
           insurance: {
             included: true,
             coverage: shipping.totalValue
@@ -74,6 +75,7 @@ export const transportService = {
         },
         {
           id: "standard",
+          orderId,
           provider: "EcoShip",
           method: "Standard",
           cost: calculateShippingCost({
@@ -94,6 +96,7 @@ export const transportService = {
         },
         {
           id: "economy",
+          orderId,
           provider: "BulkFreight",
           method: "Economy",
           cost: calculateShippingCost({

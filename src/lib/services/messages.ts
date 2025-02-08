@@ -152,7 +152,7 @@ export const messagesService = {
     userId: string,
     isAdmin: boolean
   ) => {
-    if (!isAdmin) {
+    if (!isAdmin || !userId) {
       throw new Error("Only administrators can update chat identities")
     }
 
@@ -161,7 +161,8 @@ export const messagesService = {
 
     const updatedIdentity = {
       ...identity,
-      ...updates
+      ...updates,
+      lastUpdatedBy: userId
     }
 
     adminIdentities.set(department, updatedIdentity)
@@ -169,7 +170,7 @@ export const messagesService = {
   },
 
   getAdminIdentities: async (userId: string, isAdmin: boolean) => {
-    if (!isAdmin) {
+    if (!isAdmin || !userId) {
       throw new Error("Only administrators can view chat identities")
     }
 

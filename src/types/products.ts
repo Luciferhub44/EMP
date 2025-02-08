@@ -5,23 +5,25 @@ export interface ProductSpecifications {
 }
 
 export interface ProductInventory {
+  productId: string
   warehouseId: string
   quantity: number
   minimumStock: number
+  lastUpdated: string
 }
 
 export interface Product {
   id: string
-  category: string
   name: string
+  status: 'active' | 'inactive'
+  createdAt: string
+  updatedAt: string
+  inventory: ProductInventory[]
+  category: string
   model: string
   sku: string
   description?: string
   price: number
-  status: ProductStatus
   image?: string
   specifications: ProductSpecifications
-  inventory: ProductInventory[]
-  createdAt: string
-  updatedAt: string
 } 

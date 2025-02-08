@@ -20,8 +20,6 @@ function getStatusColor(status: Order['status']) {
   switch (status) {
     case 'pending':
       return 'bg-yellow-500/20 text-yellow-500'
-    case 'confirmed':
-      return 'bg-blue-500/20 text-blue-500'
     case 'processing':
       return 'bg-purple-500/20 text-purple-500'
     case 'shipped':
@@ -69,7 +67,7 @@ export default function OrderDetailsPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [order, setOrder] = React.useState<Order | null>(null)
+  const [order] = React.useState<Order | null>(null)
   const [customer, setCustomer] = React.useState<Customer | null>(null)
   const [isLoading, setIsLoading] = React.useState(true)
 
@@ -79,7 +77,6 @@ export default function OrderDetailsPage() {
       setIsLoading(true)
       try {
         const orderData = await ordersService.getOrder(id, user.id, user.role === 'admin')
-        setOrder(orderData)
         if (orderData) {
           const customerData = await customerService.getCustomer(orderData.customerId)
           setCustomer(customerData)
@@ -91,7 +88,7 @@ export default function OrderDetailsPage() {
           description: "Failed to load order details",
           variant: "destructive",
         })
-        if (error.message === "Access denied") {
+        if (error instanceof Error && error.message === "Access denied") {
           navigate("/orders")
         }
       } finally {
@@ -122,10 +119,10 @@ export default function OrderDetailsPage() {
               <p>{order.shipping.address.country}</p>
             </div>
           )}
-          {order.shipping.method && (
+          {order.shipping.carrier && (
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Shipping Method</p>
-              <p>{order.shipping.method}</p>
+              <p>{order.shipping.carrier}</p>
             </div>
           )}
           {order.shipping.estimatedDelivery && (
@@ -265,9 +262,9 @@ export default function OrderDetailsPage() {
                     className="flex items-center justify-between rounded-lg border p-4"
                   >
                     <div className="space-y-1">
-                      <p className="font-medium">{item.name}</p>
+                      <p className="font-medium">{item.productId}</p>
                       <p className="text-sm text-muted-foreground">
-                        SKU: {item.sku}
+                        SKU: {item.productId}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         Quantity: {item.quantity}

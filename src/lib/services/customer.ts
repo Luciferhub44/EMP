@@ -24,7 +24,7 @@ export const customerService = {
   },
 
   // Get single customer with access check
-  getCustomer: async (id: string, userId?: string, isAdmin?: boolean) => {
+  getCustomer: async (id: string, userId: string = "", isAdmin: boolean = false) => {
     const customer = mockCustomers.find(c => c.id === id)
     if (!customer) return null
 
@@ -47,13 +47,13 @@ export const customerService = {
   },
 
   // Only admins can create/update customers
-  createCustomer: async (customerData: Omit<Customer, 'id'>, userId: string, isAdmin: boolean) => {
+  createCustomer: async (customerData: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>, userId: string, isAdmin: boolean) => {
     if (!isAdmin) {
       throw new Error("Only administrators can create customers")
     }
 
     const id = `CM${(mockCustomers.length + 1).toString().padStart(3, '0')}`
-    const newCustomer = {
+    const newCustomer: Customer = {
       id,
       ...customerData,
       createdAt: new Date().toISOString(),
@@ -87,16 +87,18 @@ export const customerService = {
     return mockCustomers[customerIndex]
   },
 
-  getCustomerOrders: async (customerId: string) => {
+  getCustomerOrders: async (customerId: string, userId: string = "") => {
     await new Promise(resolve => setTimeout(resolve, 500))
-    return ordersService.getOrders()
+    const orders = await ordersService.getOrders(customerId, userId)
+    return orders
       .filter(order => order.customerId === customerId)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   },
 
-  getCustomerStats: async (customerId: string) => {
+  getCustomerStats: async (customerId: string, userId: string) => {
     await new Promise(resolve => setTimeout(resolve, 500))
-    const customerOrders = ordersService.getOrders().filter(order => order.customerId === customerId)
+    const orders = await ordersService.getOrders(customerId, userId)
+    const customerOrders = orders.filter(order => order.customerId === customerId)
     const totalSpent = customerOrders.reduce((sum, order) => sum + order.totalAmount, 0)
     const lastOrder = customerOrders.sort((a, b) => 
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()

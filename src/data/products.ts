@@ -32,7 +32,7 @@ export const products: ProductType[] = [
     sku: "SWP2024-BLK",
     description: "Advanced smartwatch with health monitoring features",
     price: 299.99,
-    status: "in_stock",
+    status: "active",
     image: "/images/products/smartwatch.jpg",
     specifications: {
       display: "1.4 inch AMOLED",
@@ -42,14 +42,18 @@ export const products: ProductType[] = [
     },
     inventory: [
       {
+        productId: "PRD001",
         warehouseId: "WH001",
         quantity: 150,
-        minimumStock: 20
+        minimumStock: 20,
+        lastUpdated: new Date().toISOString()
       },
       {
+        productId: "PRD001",
         warehouseId: "WH002",
         quantity: 75,
-        minimumStock: 15
+        minimumStock: 15,
+        lastUpdated: new Date().toISOString()
       }
     ],
     createdAt: new Date().toISOString(),
@@ -58,11 +62,11 @@ export const products: ProductType[] = [
   {
     id: "EX-001",
     category: "Excavators",
-    subCategory: "Mini Excavators",
     name: "Compact Mini Excavator",
     model: "ME-2000",
     sku: "ME2000-001",
     price: 15000,
+    status: "active",
     image: "/images/products/mini-excavator.jpg",
     specifications: {
       weight: 2000,
@@ -79,25 +83,27 @@ export const products: ProductType[] = [
         warehouseId: "wh-1",
         quantity: 5,
         minimumStock: 2,
-        lastUpdated: "2024-02-15T10:00:00Z"
+        lastUpdated: new Date().toISOString()
       },
       {
         productId: "EX-001",
         warehouseId: "wh-2",
         quantity: 3,
         minimumStock: 1,
-        lastUpdated: "2024-02-15T10:00:00Z"
+        lastUpdated: new Date().toISOString()
       }
-    ]
+    ],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   },
   {
     id: "CR-001",
     category: "Cranes",
-    subCategory: "Tower Cranes",
     name: "Heavy Duty Tower Crane",
     model: "TC-5000",
     sku: "TC5000-001",
     price: 180000,
+    status: "active",
     image: "/images/products/tower-crane.jpg",
     specifications: {
       liftingCapacity: 5000,
@@ -114,18 +120,20 @@ export const products: ProductType[] = [
         warehouseId: "wh-2",
         quantity: 2,
         minimumStock: 1,
-        lastUpdated: "2024-02-15T10:00:00Z"
+        lastUpdated: new Date().toISOString()
       }
-    ]
+    ],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   },
   {
     id: "CM-001",
     category: "Concrete Equipment",
-    subCategory: "Concrete Mixers",
     name: "Professional Concrete Mixer",
     model: "PCM-3000",
     sku: "PCM3000-001",
     price: 8500,
+    status: "active",
     image: "/images/products/concrete-mixer.jpg",
     specifications: {
       capacity: 3,
@@ -142,15 +150,17 @@ export const products: ProductType[] = [
         warehouseId: "wh-1",
         quantity: 8,
         minimumStock: 3,
-        lastUpdated: "2024-02-15T10:00:00Z"
+        lastUpdated: new Date().toISOString()
       },
       {
         productId: "CM-001",
         warehouseId: "wh-3",
         quantity: 4,
         minimumStock: 2,
-        lastUpdated: "2024-02-15T10:00:00Z"
+        lastUpdated: new Date().toISOString()
       }
-    ]
+    ],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   }
 ] 

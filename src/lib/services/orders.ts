@@ -23,9 +23,9 @@ export const ordersService = {
     try {
       const orders = await ordersService.getOrders(userId, isAdmin)
       return orders.filter(order => 
-        ((order.status as OrderStatus) === 'confirmed' || (order.status as OrderStatus) === 'processing') &&
-        (order.paymentStatus as PaymentStatus) === 'paid' &&
-        (order.fulfillmentStatus as FulfillmentStatus) !== 'delivered'
+        (order.status === "confirmed" || order.status === "processing") &&
+        order.paymentStatus === "paid" &&
+        order.fulfillmentStatus !== "delivered"
       )
     } catch (error) {
       console.error("Failed to get pending orders:", error)
@@ -100,31 +100,46 @@ export const ordersService = {
       {
         id: "TQ001",
         orderId,
-        carrier: "FastShip",
-        price: 49.99,
+        provider: "FastShip",
+        method: "Express",
+        cost: 49.99,
         estimatedDays: 2,
         distance: 500,
-        services: ["Express"],
+        weightBased: false,
+        insurance: {
+          included: false,
+          coverage: 1000
+        },
         validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
       },
       {
         id: "TQ002",
         orderId,
-        carrier: "EcoShip",
-        price: 29.99,
+        provider: "EcoShip",
+        method: "Standard",
+        cost: 29.99,
         estimatedDays: 5,
         distance: 500,
-        services: ["Standard"],
+        weightBased: false,
+        insurance: {
+          included: false,
+          coverage: 1000
+        },
         validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
       },
       {
         id: "TQ003",
         orderId,
-        carrier: "BulkFreight",
-        price: 19.99,
+        provider: "BulkFreight",
+        method: "Economy",
+        cost: 19.99,
         estimatedDays: 7,
         distance: 500,
-        services: ["Economy"],
+        weightBased: true,
+        insurance: {
+          included: false,
+          coverage: 1000
+        },
         validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
       }
     ]
@@ -141,11 +156,10 @@ export const ordersService = {
     // Update order with shipping details
     return ordersService.updateOrder(orderId, {
       shipping: {
-        carrier: quote.carrier,
+        carrier: quote.provider,
         estimatedDelivery: new Date(
           Date.now() + quote.estimatedDays * 24 * 60 * 60 * 1000
-        ).toISOString(),
-        price: quote.price
+        ).toISOString()
       }
     })
   },
@@ -162,20 +176,41 @@ export const ordersService = {
     const newOrder: Order = {
       id: orderId,
       ...orderData,
-      status: 'pending',
-      paymentStatus: 'pending',
-      fulfillmentStatus: 'pending',
+      status: "pending" as OrderStatus,
+      paymentStatus: "pending" as PaymentStatus,
+      fulfillmentStatus: "pending" as FulfillmentStatus,
       createdAt: now,
       updatedAt: now,
-      // Ensure required fields have defaults
       subtotal: orderData.subtotal || 0,
       tax: orderData.tax || 0,
-      shipping: orderData.shipping || {},
       total: orderData.total || 0,
-      items: orderData.items || []
+      shippingCost: orderData.shippingCost || 0,
+      items: orderData.items || [],
+      customerName: orderData.customerName || "",
+      customerId: orderData.customerId || "",
+      paymentMethod: orderData.paymentMethod || "credit_card"
     }
 
     mockOrders.push(newOrder)
     return newOrder
+  },
+
+  updateOrderStatus: async (
+    orderId: string, 
+    status: OrderStatus,
+    userId: string
+  ): Promise<void> => {
+    const order = mockOrders.find(o => o.id === orderId)
+    if (!order) throw new Error("Order not found")
+
+    order.status = status
+    order.updatedAt = new Date().toISOString()
+
+    // Update payment status based on order status
+    if (status === "cancelled") {
+      order.paymentStatus = "refunded"
+    } else if (["delivered", "shipped"].includes(status)) {
+      order.paymentStatus = "paid"
+    }
   }
 } 

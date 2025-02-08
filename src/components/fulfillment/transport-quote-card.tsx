@@ -91,11 +91,11 @@ export function TransportQuotes({ orderId }: TransportQuotesProps) {
             <div className="space-y-4">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">{quote.carrier}</h3>
-                  <Badge variant="secondary">{quote.services.join(', ')}</Badge>
+                  <h3 className="font-semibold">{quote.provider}</h3>
+                  <Badge variant="secondary">{quote.method}</Badge>
                 </div>
                 <p className="text-2xl font-bold">
-                  {formatCurrency(quote.price)}
+                  {formatCurrency(quote.cost)}
                 </p>
               </div>
 

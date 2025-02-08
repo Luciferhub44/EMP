@@ -2,6 +2,7 @@ import type { FulfillmentDetails, FulfillmentStatus } from "@/types/orders"
 import { fulfillments } from "@/data/fulfillments"
 import { ordersService } from "./orders"
 import { employeeService } from "./employee"
+import { fulfillmentStore } from "@/lib/utils/fulfillment"
 
 export const fulfillmentService = {
   // Check if employee has access to the fulfillment
@@ -83,8 +84,7 @@ export const fulfillmentService = {
       fulfillment.history.push({
         status: updates.status,
         timestamp: new Date().toISOString(),
-        note: updates.notes,
-        updatedBy: userId // Track who made the change
+        note: updates.notes
       })
 
       // Also update the order's fulfillment status
@@ -185,5 +185,14 @@ export const fulfillmentService = {
       console.error("Failed to get employee fulfillments:", error)
       return []
     }
+  },
+
+  getAllFulfillments: async (): Promise<FulfillmentDetails[]> => {
+    // Convert Map to array of fulfillment details
+    return Array.from(fulfillmentStore.values())
+  },
+
+  getFulfillment: async (id: string): Promise<FulfillmentDetails | null> => {
+    return fulfillmentStore.get(id) || null
   }
 } 
