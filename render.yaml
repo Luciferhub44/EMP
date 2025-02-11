@@ -20,22 +20,25 @@ services:
       - key: VITE_NODE_ENV
         value: production
       - key: VITE_PUSHER_APP_KEY
-        sync: false
+        value: ${VITE_PUSHER_APP_KEY}
       - key: VITE_PUSHER_CLUSTER
-        sync: false
+        value: ${VITE_PUSHER_CLUSTER}
       - key: VITE_ADMIN_ID
-        sync: false
+        value: ${VITE_ADMIN_ID}
       - key: VITE_ADMIN_PASSWORD
-        sync: false
+        value: ${VITE_ADMIN_PASSWORD}
       - key: VITE_AGENT1_ID
-        sync: false
+        value: ${VITE_AGENT1_ID}
       - key: VITE_AGENT1_PASSWORD
-        sync: false
+        value: ${VITE_AGENT1_PASSWORD}
 
   - type: redis
     name: equipment-cache
     ipAllowList: []
     plan: starter
+    envVars:
+      - key: VITE_REDIS_URL
+        value: ${REDIS_URL}
 
 - type: web
   name: pgAdmin-dpg-cujmioaj1k6c73cv6rhg-a
