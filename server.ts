@@ -44,10 +44,21 @@ async function initializeDatabase() {
         status TEXT,
         data JSONB NOT NULL
       );
+
+      CREATE TABLE IF NOT EXISTS customers (
+        id TEXT PRIMARY KEY,
+        data JSONB NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS transport_quotes (
+        id TEXT PRIMARY KEY,
+        data JSONB NOT NULL
+      );
     `);
     console.log('Database initialized');
   } catch (err) {
-    console.error('Database initialization failed:', err);
+    const error = err as Error;
+    console.error('Database initialization failed:', error);
   } finally {
     client.release();
   }
@@ -71,14 +82,22 @@ app.get('/api/db/test', async (req, res) => {
 
 app.post('/api/db/query', async (req, res) => {
   const { text, params } = req.body;
+  console.log('Received query:', { text, params });
+
   try {
     const client = await pool.connect();
     try {
       const result = await client.query(text, params);
+      console.log('Query success:', result.rows.length, 'rows');
       res.json(result);
     } catch (err) {
       const error = err as Error;
-      console.error('Query error:', error);
+      console.error('Query error details:', {
+        message: error.message,
+        stack: error.stack,
+        query: text,
+        params: params
+      });
       res.status(500).json({ error: error.message });
     } finally {
       client.release();
