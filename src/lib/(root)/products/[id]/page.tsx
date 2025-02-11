@@ -7,6 +7,7 @@ import { formatCurrency } from "@/lib/utils"
 import { db } from "@/lib/db"
 import { Product, ProductStatus } from "@/types/product"
 import { getTotalStock, needsRestocking } from "@/lib/utils/inventory"
+import { Loader2 } from "lucide-react"
 
 export default function ProductPage() {
   const { id } = useParams()
@@ -54,7 +55,14 @@ export default function ProductPage() {
     }
   }
 
-  if (loading) return <div>Loading...</div>
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[50vh]">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    )
+  }
+  
   if (!product) return <div>Product not found</div>
 
   return (
