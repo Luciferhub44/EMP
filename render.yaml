@@ -3,34 +3,38 @@ services:
     name: EMP
     env: node
     buildCommand: yarn install && yarn build
-    startCommand: node server.js
+    startCommand: yarn start
     envVars:
       - key: NODE_VERSION
         value: 18.x
       - key: DATABASE_URL
-        value: ${VITE_DATABASE_URL}
+        fromDatabase:
+          name: equipment-db
+          property: connectionString
       - key: VITE_DATABASE_URL
-        value: ${VITE_DATABASE_URL}
+        fromDatabase:
+          name: equipment-db
+          property: connectionString
       - key: SESSION_SECRET
         generateValue: true
-      - key: REDIS_URL
-        value: ${REDIS_URL}
+      - key: PORT
+        value: 10000
       - key: VITE_STORAGE_URL
         value: https://emp-i6gc.onrender.com/api
       - key: VITE_NODE_ENV
         value: production
       - key: VITE_PUSHER_APP_KEY
-        value: ${VITE_PUSHER_APP_KEY}
+        sync: false
       - key: VITE_PUSHER_CLUSTER
-        value: ${VITE_PUSHER_CLUSTER}
+        sync: false
       - key: VITE_ADMIN_ID
-        value: ${VITE_ADMIN_ID}
+        sync: false
       - key: VITE_ADMIN_PASSWORD
-        value: ${VITE_ADMIN_PASSWORD}
+        sync: false
       - key: VITE_AGENT1_ID
-        value: ${VITE_AGENT1_ID}
+        sync: false
       - key: VITE_AGENT1_PASSWORD
-        value: ${VITE_AGENT1_PASSWORD}
+        sync: false
 
 databases:
   - name: equipment-db
