@@ -9,7 +9,7 @@ const cache = new Map<string, any>()
 export const storageService = {
   // Generic methods
   get: async <T>(key: string): Promise<T | null> => {
-    if (import.meta.env.VITE_NODE_ENV === 'development') {
+    if (import.meta.env.VITE_NODE_ENV === 'production') {
       return cache.get(key) || null
     }
     
@@ -19,7 +19,7 @@ export const storageService = {
   },
 
   set: async <T>(key: string, value: T): Promise<void> => {
-    if (import.meta.env.VITE_NODE_ENV === 'development') {
+    if (import.meta.env.VITE_NODE_ENV === 'production') {
       cache.set(key, value)
       return
     }
