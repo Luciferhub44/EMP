@@ -86,13 +86,12 @@ services:
   region: singapore
 
 databases:
-- name: equipment-db
-  databaseName: equipment_db
-  user: equipment_db_user
-  plan: basic-256mb
-  region: singapore
-  ipAllowList:
-  - source: 0.0.0.0/0
-    description: everywhere
-  postgresMajorVersion: "16"
-  diskSizeGB: 15
+  - name: equipment-db
+    databaseName: equipment_db
+    user: equipment_db_user
+    plan: starter
+    region: singapore
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: everywhere
+    postgresMajorVersion: "16"
