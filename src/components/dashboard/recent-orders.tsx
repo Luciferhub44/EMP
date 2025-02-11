@@ -3,14 +3,34 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { formatDate, formatCurrency } from "@/lib/utils"
-import { orders } from "@/data/orders"
 import { ArrowRight } from "lucide-react"
+import { db } from "@/lib/db"
+import { Order } from "@/types"
+import * as React from "react"
 
 export function RecentOrders() {
-  // Get last 5 orders, sorted by date
-  const recentOrders = [...orders]
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 5)
+  const [recentOrders, setRecentOrders] = React.useState<Order[]>([])
+  const [loading, setLoading] = React.useState(true)
+
+  React.useEffect(() => {
+    async function loadOrders() {
+      try {
+        const { rows } = await db.query(
+          `SELECT data FROM orders 
+           ORDER BY (data->>'createdAt')::timestamp DESC 
+           LIMIT 5`
+        )
+        setRecentOrders(rows.map(row => row.data))
+      } catch (error) {
+        console.error('Failed to load orders:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadOrders()
+  }, [])
+
+  if (loading) return <Card><CardContent>Loading...</CardContent></Card>
 
   return (
     <Card>

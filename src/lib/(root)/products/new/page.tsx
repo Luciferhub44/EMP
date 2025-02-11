@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { productCategories } from "@/data/products"
 import {
   Select,
   SelectContent,
@@ -13,6 +12,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { createProduct } from "@/lib/utils/products"
+import { db } from "@/lib/db"
+import { ProductCategory } from "@/types"
 
 const defaultSpecifications = {
   weight: "",
@@ -25,6 +26,8 @@ const defaultSpecifications = {
 
 export default function NewProductPage() {
   const navigate = useNavigate()
+  const [categories, setCategories] = React.useState<ProductCategory[]>([])
+  const [loading, setLoading] = React.useState(true)
   const [formData, setFormData] = React.useState({
     name: "",
     model: "",
@@ -35,7 +38,21 @@ export default function NewProductPage() {
     specifications: { ...defaultSpecifications }
   })
 
-  const selectedCategory = productCategories.find(c => c.name === formData.category)
+  React.useEffect(() => {
+    async function loadCategories() {
+      try {
+        const { rows } = await db.query('SELECT data FROM product_categories')
+        setCategories(rows.map(row => row.data))
+      } catch (error) {
+        console.error('Failed to load categories:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadCategories()
+  }, [])
+
+  const selectedCategory = categories.find(c => c.name === formData.category)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -138,7 +155,7 @@ export default function NewProductPage() {
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    {productCategories.map((category) => (
+                    {categories.map((category) => (
                       <SelectItem key={category.name} value={category.name}>
                         {category.name}
                       </SelectItem>

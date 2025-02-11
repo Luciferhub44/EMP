@@ -47,21 +47,24 @@ export async function getWarehouseStock(productId: string, warehouseId: string):
 }
 
 // Check if product needs restock in any warehouse
-export async function needsRestock(productId: string): Promise<boolean> {
-  const { rows: [product] } = await db.query(
-    'SELECT data FROM products WHERE id = $1',
+export async function needsRestocking(productId: string): Promise<boolean> {
+  const { rows } = await db.query(
+    `SELECT EXISTS (
+      SELECT 1 FROM products, jsonb_array_elements(data->'inventory') as inv 
+      WHERE id = $1 AND (inv->>'quantity')::int <= (inv->>'minimumStock')::int
+    ) as needs_restock`,
     [productId]
   )
-  if (!product) return false
-
-  return product.inventory.some((inv: any) => 
-    inv.quantity <= inv.minimumStock
-  )
+  return rows[0]?.needs_restock || false
 }
 
 // Get list of products that need restocking
-export function getRestockNeededProducts(): Product[] {
-  return products.filter(product => needsRestock(product.id))
+export async function getRestockNeededProducts(): Promise<Product[]> {
+  const { rows } = await db.query(
+    `SELECT DISTINCT data FROM products, jsonb_array_elements(data->'inventory') as inv 
+     WHERE (inv->>'quantity')::int <= (inv->>'minimumStock')::int`
+  )
+  return rows.map(row => row.data)
 }
 
 // Update stock level for a product in a warehouse

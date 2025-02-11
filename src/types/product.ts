@@ -1,3 +1,5 @@
+export type ProductStatus = 'active' | 'inactive' | 'discontinued'
+
 export interface ProductInventory {
   warehouseId: string
   quantity: number
@@ -8,17 +10,17 @@ export interface ProductInventory {
 
 export interface Product {
   id: string
-  category: string
-  subCategory?: string
   name: string
   model: string
   sku: string
-  description?: string
   price: number
-  status: 'in_stock' | 'out_of_stock' | 'discontinued'
-  image?: string
+  category: string
+  subCategory?: string
   specifications: Record<string, string | number>
   inventory: ProductInventory[]
+  status: ProductStatus
   createdAt: string
   updatedAt: string
+  image?: string
+  description?: string
 } 
