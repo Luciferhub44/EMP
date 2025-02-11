@@ -11,15 +11,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { products } from "@/data/products"
-import { warehouses } from "@/data/warehouses"
+import { db } from "@/lib/db"
 import { updateStock, transferStock, getWarehouseStock } from "@/lib/utils/inventory"
 import { ArrowRight } from "lucide-react"
+import { Product, Warehouse } from "@/types"
 
 export default function ProductInventoryPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const product = products.find(p => p.id === id)
+  const [product, setProduct] = React.useState<Product | null>(null)
+  const [warehouses, setWarehouses] = React.useState<Warehouse[]>([])
+  const [loading, setLoading] = React.useState(true)
 
   const [selectedWarehouse, setSelectedWarehouse] = React.useState("")
   const [quantity, setQuantity] = React.useState("")
@@ -28,6 +30,42 @@ export default function ProductInventoryPage() {
     toWarehouse: "",
     quantity: "",
   })
+
+  // Add state for warehouse stocks
+  const [warehouseStocks, setWarehouseStocks] = React.useState<Record<string, number>>({})
+
+  React.useEffect(() => {
+    async function loadData() {
+      try {
+        // Load product
+        const { rows: [productRow] } = await db.query(
+          'SELECT data FROM products WHERE id = $1',
+          [id]
+        )
+        setProduct(productRow?.data || null)
+
+        // Load warehouses
+        const { rows: warehouseRows } = await db.query('SELECT data FROM warehouses')
+        setWarehouses(warehouseRows.map(row => row.data))
+
+        // Load warehouse stocks
+        const stocks: Record<string, number> = {}
+        for (const warehouse of warehouseRows) {
+          stocks[warehouse.data.id] = await getWarehouseStock(id!, warehouse.data.id)
+        }
+        setWarehouseStocks(stocks)
+      } catch (error) {
+        console.error('Failed to load data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadData()
+  }, [id])
+
+  if (loading) {
+    return <div>Loading...</div>
+  }
 
   if (!product) {
     return (
@@ -38,9 +76,9 @@ export default function ProductInventoryPage() {
     )
   }
 
-  const handleUpdateStock = () => {
+  const handleUpdateStock = async () => {
     try {
-      updateStock({
+      await updateStock({
         productId: product.id,
         warehouseId: selectedWarehouse,
         quantity: parseInt(quantity),
@@ -53,9 +91,9 @@ export default function ProductInventoryPage() {
     }
   }
 
-  const handleTransferStock = () => {
+  const handleTransferStock = async () => {
     try {
-      transferStock({
+      await transferStock({
         productId: product.id,
         fromWarehouseId: transferData.fromWarehouse,
         toWarehouseId: transferData.toWarehouse,
@@ -149,7 +187,7 @@ export default function ProductInventoryPage() {
                 <SelectContent>
                   {warehouses.map((warehouse) => (
                     <SelectItem key={warehouse.id} value={warehouse.id}>
-                      {warehouse.name} ({getWarehouseStock(product.id, warehouse.id)} units)
+                      {warehouse.name} ({warehouseStocks[warehouse.id] || 0} units)
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -188,7 +226,7 @@ export default function ProductInventoryPage() {
                 type="number"
                 min="1"
                 max={transferData.fromWarehouse ? 
-                  getWarehouseStock(product.id, transferData.fromWarehouse) : 
+                  warehouseStocks[transferData.fromWarehouse] || 0 : 
                   undefined
                 }
                 value={transferData.quantity}

@@ -1,6 +1,6 @@
 import { Order, OrderStatus } from "@/types"
 import { db } from "@/lib/db"
-import { updateStock } from "./inventory"
+//import { updateStock } from "./inventory"
 
 export async function getOrder(orderId: string): Promise<Order | null> {
   const { rows: [order] } = await db.query(
@@ -33,19 +33,6 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus): P
       'UPDATE orders SET data = jsonb_set(data, \'{status}\', $1::text::jsonb) WHERE id = $2',
       [JSON.stringify(status), orderId]
     )
-
-    if (status === 'confirmed') {
-      const { rows: [order] } = await client.query('SELECT data FROM orders WHERE id = $1', [orderId])
-      
-      // Reserve inventory
-      for (const item of order.data.items) {
-        await updateStock({
-          productId: item.productId,
-          warehouseId: "wh-1",
-          quantity: -item.quantity
-        })
-      }
-    }
 
     await client.query('COMMIT')
   } catch (error) {

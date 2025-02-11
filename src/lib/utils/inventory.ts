@@ -1,7 +1,7 @@
 import { Product, Warehouse } from "@/types"
 import { db } from "@/lib/db"
-import { warehouses } from "@/data/warehouses"
 import { products } from "@/data/products"
+import { warehouses } from "@/data/warehouses"
 
 interface StockUpdateParams {
   productId: string
@@ -47,11 +47,14 @@ export async function getWarehouseStock(productId: string, warehouseId: string):
 }
 
 // Check if product needs restock in any warehouse
-export function needsRestock(productId: string): boolean {
-  const product = products.find(p => p.id === productId)
+export async function needsRestock(productId: string): Promise<boolean> {
+  const { rows: [product] } = await db.query(
+    'SELECT data FROM products WHERE id = $1',
+    [productId]
+  )
   if (!product) return false
 
-  return product.inventory.some(inv => 
+  return product.inventory.some((inv: any) => 
     inv.quantity <= inv.minimumStock
   )
 }
@@ -143,7 +146,7 @@ export function getInventoryAlerts(): InventoryAlert[] {
           type: 'out_of_stock',
           severity: 'high',
           product,
-          warehouse: warehouses.find(w => w.id === inv.warehouseId),
+          warehouse: warehouses.find((w: any) => w.id === inv.warehouseId),
           message: `${product.name} is out of stock in ${inv.warehouseId}`
         })
       } else if (inv.quantity <= inv.minimumStock) {

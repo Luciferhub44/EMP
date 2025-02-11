@@ -11,22 +11,54 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { products, productCategories } from "@/data/products"
+import { db } from "@/lib/db"
 import { updateProduct } from "@/lib/utils/products"
+import { Product } from "@/types"
 
 export default function EditProductPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const product = products.find(p => p.id === id)
+  const [product, setProduct] = React.useState<Product | null>(null)
+  const [loading, setLoading] = React.useState(true)
+  const [categories, setCategories] = React.useState<{ name: string }[]>([])
 
-  const [formData, setFormData] = React.useState(product ? {
-    name: product.name,
-    model: product.model,
-    sku: product.sku,
-    price: product.price.toString(),
-    category: product.category,
-    specifications: { ...product.specifications }
-  } : null)
+  const [formData, setFormData] = React.useState<any>(null)
+
+  React.useEffect(() => {
+    async function loadData() {
+      try {
+        // Load product
+        const { rows: [productRow] } = await db.query(
+          'SELECT data FROM products WHERE id = $1',
+          [id]
+        )
+        setProduct(productRow?.data || null)
+        if (productRow?.data) {
+          setFormData({
+            name: productRow.data.name,
+            model: productRow.data.model,
+            sku: productRow.data.sku,
+            price: productRow.data.price.toString(),
+            category: productRow.data.category,
+            specifications: { ...productRow.data.specifications }
+          })
+        }
+
+        // Load categories
+        const { rows: categoryRows } = await db.query('SELECT data FROM product_categories')
+        setCategories(categoryRows.map(row => row.data))
+      } catch (error) {
+        console.error('Failed to load data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadData()
+  }, [id])
+
+  if (loading) {
+    return <div>Loading...</div>
+  }
 
   if (!product || !formData) {
     return (
@@ -53,10 +85,10 @@ export default function EditProductPage() {
   }
 
   const handleSpecificationChange = (key: string, value: string) => {
-    setFormData(prev => ({
-      ...prev!,
+    setFormData((prev: any) => ({
+      ...prev,
       specifications: {
-        ...prev!.specifications,
+        ...prev.specifications,
         [key]: value
       }
     }))
@@ -88,7 +120,7 @@ export default function EditProductPage() {
                 <Input
                   required
                   value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev!, name: e.target.value }))}
+                  onChange={(e) => setFormData((prev: any) => ({ ...prev, name: e.target.value }))}
                 />
               </div>
               <div className="grid gap-2">
@@ -96,7 +128,7 @@ export default function EditProductPage() {
                 <Input
                   required
                   value={formData.model}
-                  onChange={(e) => setFormData(prev => ({ ...prev!, model: e.target.value }))}
+                  onChange={(e) => setFormData((prev: any) => ({ ...prev, model: e.target.value }))}
                 />
               </div>
             </div>
@@ -106,7 +138,7 @@ export default function EditProductPage() {
                 <Input
                   required
                   value={formData.sku}
-                  onChange={(e) => setFormData(prev => ({ ...prev!, sku: e.target.value }))}
+                  onChange={(e) => setFormData((prev: any) => ({ ...prev, sku: e.target.value }))}
                 />
               </div>
               <div className="grid gap-2">
@@ -117,7 +149,7 @@ export default function EditProductPage() {
                   min="0"
                   step="0.01"
                   value={formData.price}
-                  onChange={(e) => setFormData(prev => ({ ...prev!, price: e.target.value }))}
+                  onChange={(e) => setFormData((prev: any) => ({ ...prev, price: e.target.value }))}
                 />
               </div>
             </div>
@@ -126,8 +158,8 @@ export default function EditProductPage() {
                 <Label>Category</Label>
                 <Select
                   value={formData.category}
-                  onValueChange={(value) => setFormData(prev => ({ 
-                    ...prev!, 
+                  onValueChange={(value: string) => setFormData((prev: any) => ({ 
+                    ...prev, 
                     category: value
                   }))}
                 >
@@ -135,7 +167,7 @@ export default function EditProductPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {productCategories.map((category) => (
+                    {categories.map((category) => (
                       <SelectItem key={category.name} value={category.name}>
                         {category.name}
                       </SelectItem>
@@ -158,7 +190,7 @@ export default function EditProductPage() {
                   {key.replace(/([A-Z])/g, ' $1').trim()}
                 </Label>
                 <Input
-                  value={value.toString()}
+                  value={(value as string | number).toString()}
                   onChange={(e) => handleSpecificationChange(key, e.target.value)}
                 />
               </div>

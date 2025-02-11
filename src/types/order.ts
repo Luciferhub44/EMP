@@ -1,12 +1,15 @@
 import { Product } from "./product"
 
-export type OrderStatus = 
-  | "pending"
-  | "confirmed"
-  | "processing"
-  | "shipped"
-  | "delivered"
-  | "cancelled"
+export const OrderStatus = {
+  pending: "pending",
+  confirmed: "confirmed",
+  processing: "processing",
+  shipped: "shipped",
+  delivered: "delivered",
+  cancelled: "cancelled"
+} as const;
+
+export type OrderStatus = typeof OrderStatus[keyof typeof OrderStatus];
 
 export type PaymentStatus = "pending" | "paid" | "failed"
 export type PaymentMethod = "credit_card" | "bank_transfer" | "cash"
