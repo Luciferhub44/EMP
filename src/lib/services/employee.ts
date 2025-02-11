@@ -95,7 +95,7 @@ export const employeeService = {
 
   getEmployees: async () => {
     const result = await db.query('SELECT data FROM employees')
-    return result.rows.map(row => row.data)
+    return result.rows.map((row: { data: any }) => row.data)
   },
 
   getEmployee: async (id: string) => {
@@ -144,7 +144,7 @@ export const employeeService = {
       'SELECT o.data FROM orders o, employees e WHERE e.id = $1 AND o.id = ANY(e.data->\'assignedOrders\')',
       [employeeId]
     )
-    return result.rows.map(row => row.data)
+    return result.rows.map((row: { data: any }) => row.data)
   },
 
   assignOrder: async (employeeId: string, orderId: string, isAdmin: boolean) => {
@@ -284,7 +284,7 @@ export const employeeService = {
     const now = new Date()
     const result = await db.query('SELECT data FROM employees')
     
-    return result.rows.map(row => row.data).filter(employee => {
+    return result.rows.map((row: { data: any }) => row.data).filter((employee: Employee) => {
       const lastPayment = new Date(employee.payrollInfo.lastPaymentDate)
       const daysSinceLastPayment = Math.floor(
         (now.getTime() - lastPayment.getTime()) / (1000 * 60 * 60 * 24)

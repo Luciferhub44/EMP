@@ -1,4 +1,4 @@
-import { db, query } from './db'
+import { db } from './db'
 
 export const api = {
   async get(endpoint: string) {
@@ -29,7 +29,7 @@ export const api = {
 
   // Database helpers
   db: {
-    query,
+    query: db.query,
     pool: db
   }
 } 

@@ -1,6 +1,4 @@
-import pkg from 'pg';
-const { Pool } = pkg;
-
+import { Pool } from 'pg';
 import express from 'express';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
@@ -14,9 +12,9 @@ const PORT = process.env.PORT || 3000;
 // Database setup
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: {
+  ssl: process.env.NODE_ENV === 'production' ? {
     rejectUnauthorized: false
-  }
+  } : false
 });
 
 // Middleware
@@ -54,4 +52,4 @@ app.get('*', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-}); 
+});

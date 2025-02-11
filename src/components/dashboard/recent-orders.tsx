@@ -20,7 +20,7 @@ export function RecentOrders() {
            ORDER BY (data->>'createdAt')::timestamp DESC 
            LIMIT 5`
         )
-        setRecentOrders(rows.map(row => row.data))
+        setRecentOrders(rows.map((row: { data: any }) => row.data))
       } catch (error) {
         console.error('Failed to load orders:', error)
       } finally {

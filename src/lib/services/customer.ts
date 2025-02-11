@@ -2,6 +2,7 @@ import type { Customer } from "@/types/customer"
 import { db } from "@/lib/api/db"
 import { employeeService } from "./employee"
 import { ordersService } from "./orders"
+import type { Order } from "@/types/orders"
 
 export const customerService = {
   // Get customers based on user role and access
@@ -10,15 +11,15 @@ export const customerService = {
       // Admins can see all customers
       if (isAdmin) {
         const result = await db.query('SELECT data FROM customers')
-        return result.rows.map(row => row.data)
+        return result.rows.map((row: { data: any }) => row.data)
       }
 
       // Employees can only see customers from their assigned orders
       const assignedOrders = await employeeService.getAssignedOrders(userId)
-      const customerIds = new Set(assignedOrders.map(order => order.customerId))
+      const customerIds = new Set(assignedOrders.map((order: Order) => order.customerId))
       
       const result = await db.query('SELECT data FROM customers WHERE id IN ($1)', [Array.from(customerIds)])
-      return result.rows.map(row => row.data)
+      return result.rows.map((row: { data: any }) => row.data)
     } catch (error) {
       console.error("Failed to get customers:", error)
       return []
@@ -40,7 +41,7 @@ export const customerService = {
     try {
       // Check if customer is associated with any of employee's assigned orders
       const assignedOrders = await employeeService.getAssignedOrders(userId)
-      const hasAccess = assignedOrders.some(order => order.customerId === id)
+      const hasAccess = assignedOrders.some((order: Order) => order.customerId === id)
       
       return hasAccess ? customer : null
     } catch (error) {
@@ -90,16 +91,16 @@ export const customerService = {
     await new Promise(resolve => setTimeout(resolve, 500))
     const orders = await ordersService.getOrders(customerId, false)
     return orders
-      .filter(order => order.customerId === customerId)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .filter((order: Order) => order.customerId === customerId)
+      .sort((a: Order, b: Order) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   },
 
   getCustomerStats: async (customerId: string) => {
     await new Promise(resolve => setTimeout(resolve, 500))
     const orders = await ordersService.getOrders(customerId, false)
-    const customerOrders = orders.filter(order => order.customerId === customerId)
-    const totalSpent = customerOrders.reduce((sum, order) => sum + order.total, 0)
-    const lastOrder = customerOrders.sort((a, b) => 
+    const customerOrders = orders.filter((order: Order) => order.customerId === customerId)
+    const totalSpent = customerOrders.reduce((sum: number, order: Order) => sum + order.total, 0)
+    const lastOrder = customerOrders.sort((a: Order, b: Order) => 
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     )[0]
 

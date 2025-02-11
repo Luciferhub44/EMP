@@ -46,7 +46,7 @@ export default function EditProductPage() {
 
         // Load categories
         const { rows: categoryRows } = await db.query('SELECT data FROM product_categories')
-        setCategories(categoryRows.map(row => row.data))
+        setCategories(categoryRows.map((row: { data: any }) => row.data))
       } catch (error) {
         console.error('Failed to load data:', error)
       } finally {

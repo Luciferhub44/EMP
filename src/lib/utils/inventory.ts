@@ -64,7 +64,7 @@ export async function getRestockNeededProducts(): Promise<Product[]> {
     `SELECT DISTINCT data FROM products, jsonb_array_elements(data->'inventory') as inv 
      WHERE (inv->>'quantity')::int <= (inv->>'minimumStock')::int`
   )
-  return rows.map(row => row.data)
+  return rows.map((row: { data: any }) => row.data)
 }
 
 // Update stock level for a product in a warehouse

@@ -12,7 +12,7 @@ export const ordersService = {
     try {
       if (isAdmin) {
         const result = await db.query('SELECT data FROM orders')
-        return result.rows.map(row => row.data)
+        return result.rows.map((row: { data: any }) => row.data)
       }
       
       // If employee, return only assigned orders
@@ -23,7 +23,7 @@ export const ordersService = {
         WHERE o.id = ANY(e.data->>'assignedOrders')
       `, [userId])
       
-      return result.rows.map(row => row.data)
+      return result.rows.map((row: { data: any }) => row.data)
     } catch (error) {
       console.error("Failed to get orders:", error)
       return []
@@ -33,7 +33,7 @@ export const ordersService = {
   getPendingOrders: async (userId: string, isAdmin: boolean) => {
     try {
       const orders = await ordersService.getOrders(userId, isAdmin)
-      return orders.filter(order => 
+      return orders.filter((order: Order) => 
         (order.status === "confirmed" || order.status === "processing") &&
         order.paymentStatus === "paid"
       )

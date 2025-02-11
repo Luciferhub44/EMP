@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import RootLayout from '@/lib/(root)/layout'
 import AuthLayout from '@/lib/(auth)/layout'
 import HomePage from '@/lib/(root)/page'
@@ -38,13 +38,30 @@ import ThreadPage from '@/lib/(root)/messages/[threadId]/page'
 import EmployeeDetailsPage from '@/lib/(root)/employees/[id]/page'
 import { ErrorBoundary } from 'react-error-boundary'
 
+function ErrorFallback({ error }: { error: Error }) {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen p-4">
+      <h2 className="text-2xl font-bold mb-4">Something went wrong</h2>
+      <pre className="text-sm bg-muted p-4 rounded-lg overflow-auto max-w-full">
+        {error.message}
+      </pre>
+      <button
+        className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-lg"
+        onClick={() => window.location.reload()}
+      >
+        Try again
+      </button>
+    </div>
+  )
+}
+
 export default function App() {
   return (
-    <ErrorBoundary fallback={<div>Something went wrong</div>}>
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
       <DatabaseProvider>
         <WebSocketProvider>
           <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-            <BrowserRouter>
+            <Router>
               <AuthProvider>
                 <NotificationProvider>
                   <SettingsProvider>
@@ -184,7 +201,7 @@ export default function App() {
                   </SettingsProvider>
                 </NotificationProvider>
               </AuthProvider>
-            </BrowserRouter>
+            </Router>
           </ThemeProvider>
         </WebSocketProvider>
       </DatabaseProvider>

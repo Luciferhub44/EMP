@@ -4,7 +4,7 @@ import { db } from "@/lib/api/db"
 export const productService = {
   getProducts: async () => {
     const result = await db.query('SELECT data FROM products')
-    return result.rows.map(row => row.data)
+    return result.rows.map((row: { data: any }) => row.data)
   },
 
   getProduct: async (id: string) => {

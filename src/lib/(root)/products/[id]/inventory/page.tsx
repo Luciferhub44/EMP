@@ -46,7 +46,7 @@ export default function ProductInventoryPage() {
 
         // Load warehouses
         const { rows: warehouseRows } = await db.query('SELECT data FROM warehouses')
-        setWarehouses(warehouseRows.map(row => row.data))
+        setWarehouses(warehouseRows.map((row: { data: any }) => row.data))
 
         // Load warehouse stocks
         const stocks: Record<string, number> = {}

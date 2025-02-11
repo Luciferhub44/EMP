@@ -1,21 +1,29 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import '@/index.css'
+import './index.css'
 import App from '@/App'
-import { initializeDatabase } from '@/lib/api/db'
 
-// Initialize database before rendering
-initializeDatabase().then(() => {
-  console.log('Database initialized')
-  const rootElement = document.getElementById('root')
-  if (!rootElement) throw new Error('Failed to find the root element')
+const rootElement = document.getElementById('root')
+if (!rootElement) throw new Error('Failed to find the root element')
 
+// Initialize app
+const init = async () => {
+  try {
+    // Test API connection
+    const response = await fetch('/api/db/test')
+    const data = await response.json()
+    console.log('API connection test:', data)
+  } catch (error) {
+    console.warn('API connection failed:', error)
+    // Continue loading app even if API fails
+  }
+
+  // Render app
   createRoot(rootElement).render(
     <StrictMode>
       <App />
-    </StrictMode>,
+    </StrictMode>
   )
-}).catch(error => {
-  console.error('Database initialization failed:', error)
-  // You might want to show an error UI here
-})
+}
+
+init().catch(console.error)

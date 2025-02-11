@@ -19,7 +19,7 @@ export async function getOrder(orderId: string): Promise<Order | null> {
     ...order.data,
     items: order.data.items.map((item: any) => ({
       ...item,
-      product: products.find(p => p.id === item.productId)?.data
+      product: products.find((p: { id: string }) => p.id === item.productId)?.data
     }))
   }
 }

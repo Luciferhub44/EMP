@@ -1,7 +1,7 @@
 import * as React from "react"
 import { Navigate, useLocation } from "react-router-dom"
 import { useAuth } from "@/contexts/auth-context"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { LoadingSpinner } from "@/components/ui/loading-spinner" 
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -9,13 +9,27 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
-  const { user, loading } = useAuth()
+  const { user, loading, error } = useAuth()
   const location = useLocation()
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <LoadingSpinner size="lg" />
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <LoadingSpinner size="lg" />
+          <p className="mt-4 text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <p className="text-destructive font-medium mb-4">{error}</p>
+        <Button onClick={() => navigate("/sign-in")}>
+          Return to Sign In
+        </Button>
       </div>
     )
   }

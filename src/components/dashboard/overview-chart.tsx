@@ -35,7 +35,7 @@ async function getChartData(): Promise<ChartData[]> {
     `, [new Date(now.getFullYear(), now.getMonth() - 11, 1).toISOString()])
     
     // Format the data for the chart
-    result.rows.forEach(row => {
+    result.rows.forEach((row: { month: string, total: string }) => {
       const date = new Date(row.month)
       data.push({
         name: date.toLocaleString('default', { month: 'short' }),

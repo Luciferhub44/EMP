@@ -30,20 +30,20 @@ export const auditService = {
       'SELECT data FROM storage WHERE key LIKE \'audit:%\' ORDER BY data->>\'timestamp\' DESC'
     )
 
-    let logs = result.rows.map(row => row.data)
+    let logs = result.rows.map((row: { data: any }) => row.data)
 
     // Apply filters
     if (startDate) {
-      logs = logs.filter(log => new Date(log.timestamp) >= startDate)
+      logs = logs.filter((log: AuditLog) => new Date(log.timestamp) >= startDate)
     }
     if (endDate) {
-      logs = logs.filter(log => new Date(log.timestamp) <= endDate)
+      logs = logs.filter((log: AuditLog)     => new Date(log.timestamp) <= endDate)
     }
     if (userId) {
-      logs = logs.filter(log => log.userId === userId)
+      logs = logs.filter((log: AuditLog) => log.userId === userId)
     }
     if (action) {
-      logs = logs.filter(log => log.action === action)
+      logs = logs.filter((log: AuditLog)     => log.action === action)
     }
 
     return logs
@@ -55,8 +55,8 @@ export const auditService = {
     )
 
     const keysToDelete = result.rows
-      .filter(row => new Date(row.data.timestamp) < olderThan)
-      .map(row => row.key)
+      .filter((row: { data: any }) => new Date(row.data.timestamp) < olderThan)
+      .map((row: { key: string }) => row.key)
 
     if (keysToDelete.length > 0) {
       await db.query(

@@ -50,8 +50,8 @@ export const sessionService = {
     )
 
     const sessionKeys = result.rows
-      .filter(row => row.data.userId === userId)
-      .map(row => row.key)
+      .filter((row: { data: any }) => row.data.userId === userId)
+      .map((row: { key: string }) => row.key)
 
     if (sessionKeys.length > 0) {
       await db.query(

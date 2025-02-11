@@ -53,7 +53,7 @@ export const transportService = {
       )
 
       if (existingQuotes.rows.length > 0) {
-        const quotes = existingQuotes.rows.map(row => row.data)
+        const quotes = existingQuotes.rows.map((row: { data: any }) => row.data)
         // Check if quotes are still valid
         if (new Date(quotes[0].validUntil) > new Date()) {
           return quotes

@@ -21,22 +21,22 @@ export const storageService = {
   // Typed methods for each data type
   getEmployees: async () => {
     const result = await db.query('SELECT data FROM employees')
-    return result.rows.map(row => row.data)
+    return result.rows.map((row: { data: any }) => row.data)
   },
 
   getOrders: async () => {
     const result = await db.query('SELECT data FROM orders')
-    return result.rows.map(row => row.data)
+    return result.rows.map((row: { data: any }) => row.data)
   },
 
   getCustomers: async () => {
     const result = await db.query('SELECT data FROM customers')
-    return result.rows.map(row => row.data)
+    return result.rows.map((row: { data: any }) => row.data)
   },
 
   getProducts: async () => {
     const result = await db.query('SELECT data FROM products')
-    return result.rows.map(row => row.data)
+    return result.rows.map((row: { data: any })  => row.data)
   },
 
   // Update methods
