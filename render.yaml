@@ -3,7 +3,7 @@ services:
     name: EMP
     env: node
     buildCommand: yarn install && yarn build
-    startCommand: yarn start
+    startCommand: node server.js
     envVars:
       - key: NODE_VERSION
         value: 18.x

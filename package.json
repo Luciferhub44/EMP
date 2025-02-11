@@ -9,10 +9,10 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc --project tsconfig.json && vite build",
+    "build": "yarn install && yarn build",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "start": "vite preview --port $PORT"
+    "preview": "vite preview --port $PORT",
+    "start": "node server.js"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.0.4",
