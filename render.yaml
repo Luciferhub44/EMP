@@ -11,6 +11,10 @@ services:
         fromDatabase:
           name: equipment-db
           property: connectionString
+      - key: VITE_DATABASE_URL
+        fromDatabase:
+          name: equipment-db
+          property: connectionString
       - key: SESSION_SECRET
         generateValue: true
       - key: REDIS_URL
@@ -18,6 +22,10 @@ services:
           name: equipment-cache
           type: redis
           property: connectionString
+      - key: VITE_STORAGE_URL
+        value: https://emp-i6gc.onrender.com/api
+      - key: VITE_NODE_ENV
+        value: production
 
   - type: redis
     name: equipment-cache

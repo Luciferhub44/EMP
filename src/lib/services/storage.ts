@@ -2,6 +2,7 @@ import type { Employee } from "@/types/employee"
 import type { Order } from "@/types/orders"
 import type { Customer } from "@/types/customer"
 import type { Product } from "@/types/products"
+import { db } from "@/lib/db"
 
 // In-memory cache for development
 const cache = new Map<string, any>()
@@ -10,7 +11,8 @@ export const storageService = {
   // Generic methods
   get: async <T>(key: string): Promise<T | null> => {
     if (import.meta.env.VITE_NODE_ENV === 'production') {
-      return cache.get(key) || null
+      const result = await db.query('SELECT data FROM storage WHERE key = $1', [key])
+      return result.rows[0]?.data || null
     }
     
     const response = await fetch(`${import.meta.env.VITE_STORAGE_URL}/api/${key}`)
@@ -20,7 +22,10 @@ export const storageService = {
 
   set: async <T>(key: string, value: T): Promise<void> => {
     if (import.meta.env.VITE_NODE_ENV === 'production') {
-      cache.set(key, value)
+      await db.query(
+        'INSERT INTO storage (key, data) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET data = $2',
+        [key, value]
+      )
       return
     }
 
