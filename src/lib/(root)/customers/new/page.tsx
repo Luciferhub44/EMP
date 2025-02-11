@@ -32,7 +32,7 @@ export default function CustomerNewPage() {
         }
       }
 
-      const newCustomer = await customerService.createCustomer(customerData, true)
+      const newCustomer = await customerService.createCustomer(customerData)
       toast({
         title: "Success",
         description: "Customer created successfully",

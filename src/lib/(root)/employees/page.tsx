@@ -97,7 +97,37 @@ export default function EmployeesPage() {
     e.preventDefault()
     setIsAddingEmployee(true)
     try {
-      const employee = await employeeService.createEmployee(newEmployee as Omit<Employee, "id" | "createdAt" | "updatedAt" | "status" | "assignedOrders" | "businessInfo" | "payrollInfo">, newEmployee.password)
+      const employee = await employeeService.createEmployee({
+        name: newEmployee.name,
+        email: newEmployee.email,
+        agentId: newEmployee.agentId,
+        role: newEmployee.role,
+        status: 'active',
+        businessInfo: {
+          companyName: '',
+          registrationNumber: '',
+          taxId: '',
+          businessAddress: {
+            street: '',
+            city: '',
+            state: '',
+            postalCode: '',
+            country: ''
+          }
+        },
+        payrollInfo: {
+          bankName: '',
+          accountNumber: '',
+          routingNumber: '',
+          currency: 'USD',
+          paymentFrequency: 'monthly',
+          baseRate: 0,
+          lastPaymentDate: new Date().toISOString(),
+          paymentHistory: []
+        },
+        assignedOrders: [],
+        password: newEmployee.password
+      }, true)
       setEmployees(prev => [...prev, employee as Employee])
       toast({
         title: "Success",
@@ -151,7 +181,7 @@ export default function EmployeesPage() {
       const newStatus = currentStatus === "active" ? "inactive" : "active"
       const updatedEmployee = await employeeService.updateEmployee(employeeId, {
         status: newStatus
-      })
+      }, true)
       setEmployees(prev => 
         prev.map(emp => emp.id === employeeId ? updatedEmployee : emp)
       )

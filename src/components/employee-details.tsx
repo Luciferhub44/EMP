@@ -55,10 +55,14 @@ export function EmployeeDetails({
     e.preventDefault()
     setIsUpdating(true)
     try {
-      const updatedEmployee = await employeeService.updateEmployee(employee.id, {
-        businessInfo: formData.businessInfo,
-        payrollInfo: formData.payrollInfo
-      })
+      const updatedEmployee = await employeeService.updateEmployee(
+        employee.id, 
+        {
+          businessInfo: formData.businessInfo,
+          payrollInfo: formData.payrollInfo
+        },
+        true
+      )
       onUpdate(updatedEmployee)
       toast({
         title: "Success",

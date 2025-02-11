@@ -11,6 +11,7 @@ export const employees: Employee[] = [
     assignedOrders: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    passwordHash: "$2a$10$dQlRrfR4z8i4XJ1xzQKJPuBzPJqQfkGZHQA7G5mGt5OY5dX5K5mKy", // "admin123"
     businessInfo: {
       companyName: "Admin Corp",
       registrationNumber: "REG123",
@@ -43,6 +44,7 @@ export const employees: Employee[] = [
     assignedOrders: ["ORD002"],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    passwordHash: "$2a$10$xJ1xzQKJPuBzPJqQfkGZHQA7G5mGt5OY5dX5K5mKydQlRrfR4z8i4", // "password123"
     businessInfo: {
       companyName: "Smith LLC",
       registrationNumber: "REG456",

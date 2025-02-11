@@ -60,8 +60,7 @@ export default function CustomerEditPage() {
 
       await customerService.updateCustomer(
         id, 
-        updates,
-        true
+        updates
       )
       toast({
         title: "Success",

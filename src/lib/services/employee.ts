@@ -1,5 +1,6 @@
 import type { Employee, EmployeeCredentials, PaymentHistory, PaymentType } from "@/types/employee"
 import { db } from "@/lib/db"
+import bcrypt from 'bcrypt'
 
 // Store employee credentials separately for security
 const employeeCredentials: Record<string, string> = {
@@ -27,7 +28,7 @@ export const employeeService = {
 
   // Employee management (admin only)
   createEmployee: async (
-    employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>,
+    employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt' | 'passwordHash'> & { password: string },
     isAdmin: boolean
   ) => {
     if (!isAdmin) {
@@ -41,7 +42,8 @@ export const employeeService = {
       id,
       createdAt: now,
       updatedAt: now,
-      assignedOrders: employeeData.assignedOrders || []
+      assignedOrders: employeeData.assignedOrders || [],
+      passwordHash: await bcrypt.hash(employeeData.password, 10)
     }
 
     await db.query(

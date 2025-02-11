@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { useLocalStorage } from "@/hooks/use-local-storage"
+import { useDbStorage } from "@/hooks/use-db-storage"
 
 interface TourStep {
   title: string
@@ -45,7 +45,7 @@ const tourSteps: TourStep[] = [
 ]
 
 export function TourGuide() {
-  const [showTour, setShowTour] = useLocalStorage("show-tour", true)
+  const [showTour, setShowTour] = useDbStorage("show-tour", true)
   const [currentStep, setCurrentStep] = React.useState(0)
 
   const handleNext = () => {

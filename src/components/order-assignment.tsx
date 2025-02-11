@@ -40,14 +40,14 @@ export function OrderAssignment({ orderId, currentAssignee }: OrderAssignmentPro
 
       // If unassigning
       if (employeeId === "unassigned" && currentAssignee) {
-        await employeeService.unassignOrder(orderId, currentAssignee)
+        await employeeService.unassignOrder(orderId, currentAssignee, true)
       } 
       // If assigning to new employee
       else if (employeeId !== "unassigned") {
         if (currentAssignee) {
-          await employeeService.unassignOrder(orderId, currentAssignee)
+          await employeeService.unassignOrder(orderId, currentAssignee, true)
         }
-        await employeeService.assignOrder(orderId, employeeId)
+        await employeeService.assignOrder(orderId, employeeId, true)
       }
 
       await ordersService.updateOrder(orderId, {

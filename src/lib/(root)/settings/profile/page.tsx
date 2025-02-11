@@ -87,12 +87,16 @@ export default function ProfilePage() {
 
     setIsUpdating(true)
     try {
-      const updatedEmployee = await employeeService.updateEmployee(employee.id, {
-        payrollInfo: {
-          ...payrollInfo,
-          lastPaymentDate: payrollInfo.lastPaymentDate || new Date().toISOString()
-        }
-      })
+      const updatedEmployee = await employeeService.updateEmployee(
+        employee.id, 
+        {
+          payrollInfo: {
+            ...payrollInfo,
+            lastPaymentDate: payrollInfo.lastPaymentDate || new Date().toISOString()
+          }
+        },
+        true
+      )
       setEmployee(updatedEmployee)
       toast({
         title: "Success",
