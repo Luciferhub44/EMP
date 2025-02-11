@@ -1,6 +1,14 @@
 import type { Employee } from "@/types/employee"
 import { db } from "@/lib/db"
-import { hash, compare } from "bcrypt"
+
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hash))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
 
 export const authService = {
   login: async (agentId: string, password: string) => {
@@ -14,8 +22,8 @@ export const authService = {
       throw new Error("Invalid credentials")
     }
 
-    const isValid = await compare(password, employee.passwordHash)
-    if (!isValid) {
+    const hashedPassword = await hashPassword(password)
+    if (hashedPassword !== employee.passwordHash) {
       throw new Error("Invalid credentials")
     }
 
@@ -53,7 +61,7 @@ export const authService = {
       throw new Error("Agent ID already exists")
     }
 
-    const passwordHash = await hash(userData.password, 10)
+    const passwordHash = await hashPassword(userData.password)
     const { password, ...employeeData } = userData
 
     const id = `EMP${Date.now()}`
@@ -84,15 +92,15 @@ export const authService = {
     }
 
     const employee = result.rows[0].data
-    const isValid = await compare(oldPassword, employee.passwordHash)
-    if (!isValid) {
+    const hashedOldPassword = await hashPassword(oldPassword)
+    if (hashedOldPassword !== employee.passwordHash) {
       throw new Error("Invalid current password")
     }
 
-    const newPasswordHash = await hash(newPassword, 10)
+    const hashedNewPassword = await hashPassword(newPassword)
     const updatedEmployee = {
       ...employee,
-      passwordHash: newPasswordHash,
+      passwordHash: hashedNewPassword,
       updatedAt: new Date().toISOString()
     }
 

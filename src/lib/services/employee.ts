@@ -1,12 +1,21 @@
 import type { Employee, EmployeeCredentials, PaymentHistory, PaymentType } from "@/types/employee"
 import { db } from "@/lib/db"
-import bcrypt from 'bcrypt'
 
 // Store employee credentials separately for security
 const employeeCredentials: Record<string, string> = {
   [import.meta.env.VITE_ADMIN_ID]: import.meta.env.VITE_ADMIN_PASSWORD,
   [import.meta.env.VITE_AGENT1_ID]: import.meta.env.VITE_AGENT1_PASSWORD,
   [import.meta.env.VITE_AGENT2_ID]: import.meta.env.VITE_AGENT2_PASSWORD
+}
+
+// Instead of bcrypt, use browser's crypto
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hash))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 export const employeeService = {
@@ -43,7 +52,7 @@ export const employeeService = {
       createdAt: now,
       updatedAt: now,
       assignedOrders: employeeData.assignedOrders || [],
-      passwordHash: await bcrypt.hash(employeeData.password, 10)
+      passwordHash: await hashPassword(employeeData.password)
     }
 
     await db.query(
