@@ -48,9 +48,8 @@ databases:
     description: everywhere
   postgresMajorVersion: "16"
   diskSizeGB: 15
-version: "1"
 
-services:
+
 - type: web
   name: pgAdmin-dpg-cujmioaj1k6c73cv6rhg-a
   runtime: docker
@@ -86,9 +85,8 @@ services:
     name: pgadmin
     mountPath: /var/lib/pgadmin
     sizeGB: 1
-version: "1"
 
-services:
+
 - type: web
   name: PgHero-dpg-cujmioaj1k6c73cv6rhg-a
   runtime: image
@@ -105,4 +103,3 @@ services:
   - key: DATABASE_URL
     sync: false
   region: singapore
-version: "1"
