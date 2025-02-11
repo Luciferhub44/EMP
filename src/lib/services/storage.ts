@@ -4,9 +4,6 @@ import type { Customer } from "@/types/customer"
 import type { Product } from "@/types/products"
 import { db } from "@/lib/db"
 
-// In-memory cache for development
-const cache = new Map<string, any>()
-
 export const storageService = {
   // Generic methods
   get: async <T>(key: string): Promise<T | null> => {
