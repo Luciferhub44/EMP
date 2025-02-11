@@ -1,4 +1,4 @@
-import type { FulfillmentDetails, FulfillmentStatus } from "@/types/orders"
+import type { FulfillmentDetails, FulfillmentStatus, Order } from "@/types/orders"
 import { fulfillments } from "@/data/fulfillments"
 import { ordersService } from "./orders"
 import { employeeService } from "./employee"
@@ -12,7 +12,7 @@ export const fulfillmentService = {
 
     try {
       const assignedOrders = await employeeService.getAssignedOrders(userId)
-      return assignedOrders.some(order => order.id === orderId)
+      return assignedOrders.some((order: Order) => order.id === orderId)
     } catch (error) {
       console.error("Failed to check fulfillment access:", error)
       return false
@@ -175,7 +175,7 @@ export const fulfillmentService = {
     try {
       const assignedOrders = await employeeService.getAssignedOrders(userId)
       return assignedOrders
-        .map(order => fulfillments[order.id])
+        .map((order: Order) => fulfillments[order.id])
         .filter(Boolean) // Remove undefined values
     } catch (error) {
       console.error("Failed to get employee fulfillments:", error)

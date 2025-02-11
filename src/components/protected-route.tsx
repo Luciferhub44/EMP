@@ -1,7 +1,8 @@
 import * as React from "react"
-import { Navigate, useLocation } from "react-router-dom"
+import { Navigate, useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "@/contexts/auth-context"
-import { LoadingSpinner } from "@/components/ui/loading-spinner" 
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { Button } from "@/components/ui/button"
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -11,6 +12,7 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
   const { user, loading, error } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
 
   if (loading) {
     return (
