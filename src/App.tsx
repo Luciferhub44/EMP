@@ -28,6 +28,8 @@ import { ThemeProvider } from '@/components/theme-provider'
 import { AuthProvider } from '@/contexts/auth-context'
 import { NotificationProvider } from '@/contexts/notification-context'
 import { SettingsProvider } from '@/contexts/settings-context'
+import { DatabaseProvider } from '@/contexts/database-context'
+import { WebSocketProvider } from '@/contexts/websocket-context'
 import { Toaster } from "@/components/ui/toaster"
 import { ProtectedRoute } from '@/components/protected-route'
 import EmployeesPage from '@/lib/(root)/employees/page'
@@ -37,148 +39,152 @@ import EmployeeDetailsPage from '@/lib/(root)/employees/[id]/page'
 
 export default function App() {
   return (
-    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-      <BrowserRouter>
-        <AuthProvider>
-          <NotificationProvider>
-            <SettingsProvider>
-              <Routes>
-                {/* Auth routes - public */}
-                <Route element={<AuthLayout />}>
-                  <Route path="/sign-in" element={<SignInPage />} />
-                </Route>
+    <DatabaseProvider>
+      <WebSocketProvider>
+        <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+          <BrowserRouter>
+            <AuthProvider>
+              <NotificationProvider>
+                <SettingsProvider>
+                  <Routes>
+                    {/* Auth routes - public */}
+                    <Route element={<AuthLayout />}>
+                      <Route path="/sign-in" element={<SignInPage />} />
+                    </Route>
 
-                {/* Protected routes */}
-                <Route element={<RootLayout />}>
-                  <Route path="/" element={
-                    <ProtectedRoute>
-                      <HomePage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/analytics" element={
-                    <ProtectedRoute>
-                      <AnalyticsPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/customers" element={
-                    <ProtectedRoute>
-                      <CustomersPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/customers/:id" element={
-                    <ProtectedRoute>
-                      <CustomerDetailsPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/products" element={
-                    <ProtectedRoute>
-                      <ProductsPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/products/new" element={
-                    <AdminRoute>
-                      <NewProductPage />
-                    </AdminRoute>
-                  } />
-                  <Route path="/products/:id" element={
-                    <ProtectedRoute>
-                      <ProductDetailsPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/products/:id/inventory" element={
-                    <ProtectedRoute>
-                      <ProductInventoryPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/products/:id/edit" element={
-                    <AdminRoute>
-                      <EditProductPage />
-                    </AdminRoute>
-                  } />
-                  <Route path="/orders" element={
-                    <ProtectedRoute>
-                      <OrdersPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/orders/new" element={
-                    <ProtectedRoute>
-                      <NewOrderPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/orders/:id" element={
-                    <ProtectedRoute>
-                      <OrderDetailsPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/fulfillment" element={
-                    <ProtectedRoute>
-                      <FulfillmentPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/fulfillment/:orderId" element={
-                    <ProtectedRoute>
-                      <FulfillmentDetailsPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/fulfillment/payment/:fulfillmentId" element={
-                    <ProtectedRoute>
-                      <PaymentPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/reports" element={
-                    <ProtectedRoute>
-                      <ReportsPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/messages" element={
-                    <ProtectedRoute>
-                      <MessagesPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/messages/:threadId" element={
-                    <ProtectedRoute>
-                      <ThreadPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/settings" element={
-                    <ProtectedRoute>
-                      <SettingsPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/settings/profile" element={
-                    <ProtectedRoute>
-                      <ProfilePage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/inbox" element={<InboxPage />} />
-                  {/* Admin only routes */}
-                  <Route path="/employees" element={
-                    <ProtectedRoute requireAdmin>
-                      <EmployeesPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/employees/:id" element={
-                    <AdminRoute>
-                      <EmployeeDetailsPage />
-                    </AdminRoute>
-                  } />
-                  <Route path="/customers/new" element={
-                    <AdminRoute>
-                      <CustomerNewPage />
-                    </AdminRoute>
-                  } />
-                  <Route path="/customers/:id/edit" element={
-                    <AdminRoute>
-                      <CustomerEditPage />
-                    </AdminRoute>
-                  } />
-                </Route>
-              </Routes>
-              <Toaster />
-            </SettingsProvider>
-          </NotificationProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </ThemeProvider>
+                    {/* Protected routes */}
+                    <Route element={<RootLayout />}>
+                      <Route path="/" element={
+                        <ProtectedRoute>
+                          <HomePage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/analytics" element={
+                        <ProtectedRoute>
+                          <AnalyticsPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/customers" element={
+                        <ProtectedRoute>
+                          <CustomersPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/customers/:id" element={
+                        <ProtectedRoute>
+                          <CustomerDetailsPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/products" element={
+                        <ProtectedRoute>
+                          <ProductsPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/products/new" element={
+                        <AdminRoute>
+                          <NewProductPage />
+                        </AdminRoute>
+                      } />
+                      <Route path="/products/:id" element={
+                        <ProtectedRoute>
+                          <ProductDetailsPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/products/:id/inventory" element={
+                        <ProtectedRoute>
+                          <ProductInventoryPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/products/:id/edit" element={
+                        <AdminRoute>
+                          <EditProductPage />
+                        </AdminRoute>
+                      } />
+                      <Route path="/orders" element={
+                        <ProtectedRoute>
+                          <OrdersPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/orders/new" element={
+                        <ProtectedRoute>
+                          <NewOrderPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/orders/:id" element={
+                        <ProtectedRoute>
+                          <OrderDetailsPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/fulfillment" element={
+                        <ProtectedRoute>
+                          <FulfillmentPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/fulfillment/:orderId" element={
+                        <ProtectedRoute>
+                          <FulfillmentDetailsPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/fulfillment/payment/:fulfillmentId" element={
+                        <ProtectedRoute>
+                          <PaymentPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/reports" element={
+                        <ProtectedRoute>
+                          <ReportsPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/messages" element={
+                        <ProtectedRoute>
+                          <MessagesPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/messages/:threadId" element={
+                        <ProtectedRoute>
+                          <ThreadPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/settings" element={
+                        <ProtectedRoute>
+                          <SettingsPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/settings/profile" element={
+                        <ProtectedRoute>
+                          <ProfilePage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/inbox" element={<InboxPage />} />
+                      {/* Admin only routes */}
+                      <Route path="/employees" element={
+                        <ProtectedRoute requireAdmin>
+                          <EmployeesPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/employees/:id" element={
+                        <AdminRoute>
+                          <EmployeeDetailsPage />
+                        </AdminRoute>
+                      } />
+                      <Route path="/customers/new" element={
+                        <AdminRoute>
+                          <CustomerNewPage />
+                        </AdminRoute>
+                      } />
+                      <Route path="/customers/:id/edit" element={
+                        <AdminRoute>
+                          <CustomerEditPage />
+                        </AdminRoute>
+                      } />
+                    </Route>
+                  </Routes>
+                  <Toaster />
+                </SettingsProvider>
+              </NotificationProvider>
+            </AuthProvider>
+          </BrowserRouter>
+        </ThemeProvider>
+      </WebSocketProvider>
+    </DatabaseProvider>
   )
 }
