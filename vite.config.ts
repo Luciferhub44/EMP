@@ -53,5 +53,11 @@ export default defineConfig({
       transformMixedEsModules: true
     }
   },
-  define: {}
+  define: {
+    // Polyfill process.env for pg
+    'process.env': {
+      VITE_DATABASE_URL: JSON.stringify(process.env.VITE_DATABASE_URL),
+      NODE_ENV: JSON.stringify(process.env.NODE_ENV)
+    }
+  }
 })

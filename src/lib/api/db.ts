@@ -5,12 +5,19 @@ import { employees } from "@/data/employees"
 import { customers } from "@/data/customers"
 import { productCategories } from "@/data/products"
 
-// Create connection pool
+// Browser-safe environment variable access
+const DATABASE_URL = import.meta.env.VITE_DATABASE_URL
+
+// Configure pool with browser-safe defaults
 export const db = new Pool({
-  connectionString: import.meta.env.VITE_DATABASE_URL,
+  connectionString: DATABASE_URL,
   ssl: {
-    rejectUnauthorized: false // Required for some hosted PostgreSQL services
-  }
+    rejectUnauthorized: false
+  },
+  // Browser-safe defaults
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
 })
 
 // Initialize database with sample data
@@ -73,12 +80,7 @@ export async function initializeDatabase() {
   try {
     const client = await db.connect()
     console.log('Database connected successfully')
-    
-    // Test query
-    const result = await client.query('SELECT NOW()')
-    console.log('Database query successful:', result.rows[0])
-    
-    await initializeSampleData()
+    client.release()
     return true
   } catch (error) {
     console.error('Database connection failed:', error)
