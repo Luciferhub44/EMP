@@ -39,11 +39,19 @@ app.get('/api/db/test', async (req, res) => {
 app.post('/api/db/query', async (req, res) => {
   const { text, params } = req.body;
   try {
-    const result = await pool.query(text, params);
-    res.json(result);
+    const client = await pool.connect();
+    try {
+      const result = await client.query(text, params);
+      res.json(result);
+    } catch (error) {
+      console.error('Query error:', error);
+      res.status(500).json({ error: error.message });
+    } finally {
+      client.release();
+    }
   } catch (error) {
-    console.error('Query error:', error);
-    res.status(500).json({ error: 'Query failed' });
+    console.error('Connection error:', error);
+    res.status(500).json({ error: 'Database connection failed' });
   }
 });
 
