@@ -1,4 +1,3 @@
----
 services:
   - type: web
     name: EMP
@@ -32,59 +31,6 @@ services:
         value: ${VITE_AGENT1_ID}
       - key: VITE_AGENT1_PASSWORD
         value: ${VITE_AGENT1_PASSWORD}
-
-  - type: web
-    name: pgAdmin-dpg-cujmioaj1k6c73cv6rhg-a
-    runtime: docker
-    repo: https://github.com/render-examples/pgadmin
-    plan: starter
-    envVars:
-    - key: servers.json
-      sync: false
-    - key: pgpassfile
-      sync: false
-    - key: PORT
-      sync: false
-    - key: PGADMIN_SERVER_JSON_FILE
-      sync: false
-    - key: PGADMIN_LISTEN_PORT
-      sync: false
-    - key: PGADMIN_DEFAULT_PASSWORD
-      sync: false
-    - key: PGADMIN_DEFAULT_EMAIL
-      sync: false
-    - key: PGADMIN_DATABASE_USER
-      sync: false
-    - key: PGADMIN_DATABASE_NAME
-      sync: false
-    - key: PGADMIN_DATABASE_HOST
-      sync: false
-    - key: GUNICORN_THREADS
-      sync: false
-    region: singapore
-    dockerContext: .
-    dockerfilePath: ./Dockerfile
-    disk:
-      name: pgadmin
-      mountPath: /var/lib/pgadmin
-      sizeGB: 1
-
-- type: web
-  name: PgHero-dpg-cujmioaj1k6c73cv6rhg-a
-  runtime: image
-  image:
-    url: docker.io/ankane/pghero:latest
-  plan: free
-  envVars:
-  - key: WEB_CONCURRENCY
-    sync: false
-  - key: PGHERO_PASSWORD
-    sync: false
-  - key: PGHERO_USERNAME
-    sync: false
-  - key: DATABASE_URL
-    sync: false
-  region: singapore
 
 databases:
   - name: equipment-db
