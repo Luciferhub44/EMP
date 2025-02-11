@@ -8,20 +8,13 @@ services:
       - key: NODE_VERSION
         value: 18.x
       - key: DATABASE_URL
-        fromDatabase:
-          name: equipment-db
-          property: connectionString
+        value: ${VITE_DATABASE_URL}
       - key: VITE_DATABASE_URL
-        fromDatabase:
-          name: equipment-db
-          property: connectionString
+        value: ${VITE_DATABASE_URL}
       - key: SESSION_SECRET
         generateValue: true
       - key: REDIS_URL
-        fromService:
-          name: equipment-cache
-          type: redis
-          property: connectionString
+        value: ${REDIS_URL}
       - key: VITE_STORAGE_URL
         value: https://emp-i6gc.onrender.com/api
       - key: VITE_NODE_ENV
@@ -71,9 +64,7 @@ databases:
       - key: PGADMIN_LISTEN_PORT
         value: "80"
       - key: DATABASE_URL
-        fromDatabase:
-          name: equipment-db
-          property: connectionString
+        value: ${VITE_DATABASE_URL}
 
   - type: web
     name: pghero
@@ -83,9 +74,7 @@ databases:
     plan: starter
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: equipment-db
-          property: connectionString
+        value: ${VITE_DATABASE_URL}
       - key: PGHERO_USERNAME
         sync: false
       - key: PGHERO_PASSWORD
