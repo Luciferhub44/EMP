@@ -26,6 +26,18 @@ services:
         value: https://emp-i6gc.onrender.com/api
       - key: VITE_NODE_ENV
         value: production
+      - key: VITE_PUSHER_APP_KEY
+        sync: false
+      - key: VITE_PUSHER_CLUSTER
+        sync: false
+      - key: VITE_ADMIN_ID
+        sync: false
+      - key: VITE_ADMIN_PASSWORD
+        sync: false
+      - key: VITE_AGENT1_ID
+        sync: false
+      - key: VITE_AGENT1_PASSWORD
+        sync: false
 
   - type: redis
     name: equipment-cache
@@ -36,4 +48,45 @@ databases:
   - name: equipment-db
     databaseName: equipment
     user: equipment_admin
-    plan: starter 
+    plan: starter
+    region: singapore
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: everywhere
+    postgresMajorVersion: "16"
+
+  - type: web
+    name: pgadmin
+    env: docker
+    plan: starter
+    disk:
+      name: pgadmin
+      mountPath: /var/lib/pgadmin
+      sizeGB: 1
+    envVars:
+      - key: PGADMIN_DEFAULT_EMAIL
+        sync: false
+      - key: PGADMIN_DEFAULT_PASSWORD
+        sync: false
+      - key: PGADMIN_LISTEN_PORT
+        value: "80"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: equipment-db
+          property: connectionString
+
+  - type: web
+    name: pghero
+    env: image
+    image:
+      url: docker.io/ankane/pghero:latest
+    plan: starter
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: equipment-db
+          property: connectionString
+      - key: PGHERO_USERNAME
+        sync: false
+      - key: PGHERO_PASSWORD
+        sync: false 
