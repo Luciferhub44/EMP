@@ -1,4 +1,6 @@
-import { Pool } from 'pg';
+import pkg from 'pg';
+const { Pool } = pkg;
+
 import express from 'express';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
