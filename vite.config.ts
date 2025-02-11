@@ -15,6 +15,9 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  optimizeDeps: {
+    exclude: ['pg'] // Exclude pg from optimization
+  },
   server: {
     port: 3000,
     host: true,
@@ -22,8 +25,7 @@ export default defineConfig({
       "/api": {
         target: "https://emp-i6gc.onrender.com/",
         changeOrigin: true,
-        secure: true,
-        ws: true // Enable WebSocket proxy
+        secure: false
       }
     }
   },
@@ -45,13 +47,11 @@ export default defineConfig({
           websocket: ['pusher-js']
         }
       }
+    },
+    commonjsOptions: {
+      include: [/node_modules/],
+      transformMixedEsModules: true
     }
   },
-  define: {
-    // Make env variables available at runtime
-    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
-    'process.env.VITE_DATABASE_URL': JSON.stringify(process.env.VITE_DATABASE_URL),
-    'process.env.VITE_PUSHER_APP_KEY': JSON.stringify(process.env.VITE_PUSHER_APP_KEY),
-    'process.env.VITE_PUSHER_CLUSTER': JSON.stringify(process.env.VITE_PUSHER_CLUSTER)
-  }
+  define: {}
 })
