@@ -9,7 +9,7 @@ const __dirname = dirname(__filename)
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [[react()]],
+  plugins: [react()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -22,7 +22,8 @@ export default defineConfig({
       "/api": {
         target: "https://emp-i6gc.onrender.com/",
         changeOrigin: true,
-        secure: true
+        secure: true,
+        ws: true // Enable WebSocket proxy
       }
     }
   },
@@ -38,9 +39,19 @@ export default defineConfig({
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
-          ui: ['@radix-ui/react-icons', '@radix-ui/react-slot']
+          ui: ['@radix-ui/react-icons', '@radix-ui/react-slot'],
+          charts: ['recharts'],
+          database: ['pg'],
+          websocket: ['pusher-js']
         }
       }
     }
+  },
+  define: {
+    // Make env variables available at runtime
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
+    'process.env.VITE_DATABASE_URL': JSON.stringify(process.env.VITE_DATABASE_URL),
+    'process.env.VITE_PUSHER_APP_KEY': JSON.stringify(process.env.VITE_PUSHER_APP_KEY),
+    'process.env.VITE_PUSHER_CLUSTER': JSON.stringify(process.env.VITE_PUSHER_CLUSTER)
   }
 })

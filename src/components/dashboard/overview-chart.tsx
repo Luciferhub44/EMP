@@ -9,7 +9,7 @@ import {
   ResponsiveContainer,
 } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { orders } from "@/data/orders"
+import { db } from "@/lib/db"
 import { formatCurrency } from "@/lib/utils"
 
 interface ChartData {
@@ -17,36 +17,94 @@ interface ChartData {
   total: number
 }
 
-function getChartData(): ChartData[] {
+async function getChartData(): Promise<ChartData[]> {
   const now = new Date()
   const data: ChartData[] = []
   
-  // Get last 12 months of data
-  for (let i = 11; i >= 0; i--) {
-    const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    const monthName = date.toLocaleString('default', { month: 'short' })
+  try {
+    // Get last 12 months of orders from database
+    const result = await db.query(`
+      SELECT 
+        date_trunc('month', (data->>'createdAt')::timestamp) as month,
+        SUM((data->>'total')::numeric) as total
+      FROM orders
+      WHERE (data->>'createdAt')::timestamp >= $1
+      GROUP BY month
+      ORDER BY month DESC
+      LIMIT 12
+    `, [new Date(now.getFullYear(), now.getMonth() - 11, 1).toISOString()])
     
-    // Filter orders for this month
-    const monthOrders = orders.filter(order => {
-      const orderDate = new Date(order.createdAt)
-      return orderDate.getMonth() === date.getMonth() &&
-             orderDate.getFullYear() === date.getFullYear()
+    // Format the data for the chart
+    result.rows.forEach(row => {
+      const date = new Date(row.month)
+      data.push({
+        name: date.toLocaleString('default', { month: 'short' }),
+        total: Number(row.total)
+      })
     })
     
-    // Calculate total revenue for this month
-    const total = monthOrders.reduce((sum, order) => sum + (order.total as number), 0)
+    // Fill in any missing months with zero
+    const months = 12
+    for (let i = months - 1; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const monthName = date.toLocaleString('default', { month: 'short' })
+      
+      if (!data.find(d => d.name === monthName)) {
+        data.push({
+          name: monthName,
+          total: 0
+        })
+      }
+    }
     
-    data.push({
-      name: monthName,
-      total
+    // Sort by date
+    data.sort((a, b) => {
+      const monthA = new Date(Date.parse(`${a.name} 1, ${now.getFullYear()}`))
+      const monthB = new Date(Date.parse(`${b.name} 1, ${now.getFullYear()}`))
+      return monthA.getTime() - monthB.getTime()
     })
+    
+    return data
+  } catch (error) {
+    console.error('Error fetching chart data:', error)
+    return []
   }
-  
-  return data
 }
 
 export function Overview() {
-  const data = React.useMemo(() => getChartData(), [])
+  const [data, setData] = React.useState<ChartData[]>([])
+  const [loading, setLoading] = React.useState(true)
+
+  React.useEffect(() => {
+    const loadData = async () => {
+      try {
+        const chartData = await getChartData()
+        setData(chartData)
+      } catch (error) {
+        console.error('Error loading chart data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+  }, [])
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Overview</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[350px] flex items-center justify-center">
+            Loading...
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <Card>
       <CardHeader>
