@@ -36,7 +36,7 @@ databases:
   - name: equipment-db
     databaseName: equipment_db
     user: equipment_db_user
-    plan: starter
+    plan: basic-256mb
     region: singapore
     ipAllowList:
       - source: 0.0.0.0/0
