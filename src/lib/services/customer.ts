@@ -1,5 +1,5 @@
 import type { Customer } from "@/types/customer"
-import { customers as mockCustomers } from "@/data/customers"
+import { db } from "@/lib/db"
 import { employeeService } from "./employee"
 import { ordersService } from "./orders"
 
@@ -9,14 +9,16 @@ export const customerService = {
     try {
       // Admins can see all customers
       if (isAdmin) {
-        return mockCustomers
+        const result = await db.query('SELECT data FROM customers')
+        return result.rows.map(row => row.data)
       }
 
       // Employees can only see customers from their assigned orders
       const assignedOrders = await employeeService.getAssignedOrders(userId)
       const customerIds = new Set(assignedOrders.map(order => order.customerId))
       
-      return mockCustomers.filter(customer => customerIds.has(customer.id))
+      const result = await db.query('SELECT data FROM customers WHERE id IN ($1)', [Array.from(customerIds)])
+      return result.rows.map(row => row.data)
     } catch (error) {
       console.error("Failed to get customers:", error)
       return []
@@ -25,8 +27,9 @@ export const customerService = {
 
   // Get single customer with access check
   getCustomer: async (id: string, userId: string = "", isAdmin: boolean = false) => {
-    const customer = mockCustomers.find(c => c.id === id)
-    if (!customer) return null
+    const result = await db.query('SELECT data FROM customers WHERE id = $1', [id])
+    if (!result.rows[0]) throw new Error("Customer not found")
+    const customer = result.rows[0].data
 
     // Admins can access any customer
     if (isAdmin) return customer
@@ -47,42 +50,40 @@ export const customerService = {
   },
 
   // Only admins can create/update customers
-  createCustomer: async (customerData: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>, isAdmin: boolean) => {
-    if (!isAdmin) {
-      throw new Error("Only administrators can create customers")
-    }
-
-    const id = `CM${(mockCustomers.length + 1).toString().padStart(3, '0')}`
+  createCustomer: async (customerData: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const id = `CUS${Date.now()}`
+    const now = new Date().toISOString()
     const newCustomer: Customer = {
-      id,
       ...customerData,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      id,
+      createdAt: now,
+      updatedAt: now
     }
 
-    mockCustomers.push(newCustomer)
+    await db.query(
+      'INSERT INTO customers (id, data) VALUES ($1, $2)',
+      [id, newCustomer]
+    )
+
     return newCustomer
   },
 
-  updateCustomer: async (
-    id: string, 
-    updates: Partial<Customer>,
-    isAdmin: boolean
-  ) => {
-    // Only admins can update customer details
-    if (!isAdmin) {
-      throw new Error("Only administrators can update customer details")
-    }
+  updateCustomer: async (id: string, updates: Partial<Omit<Customer, 'id' | 'createdAt'>>) => {
+    const result = await db.query('SELECT data FROM customers WHERE id = $1', [id])
+    if (!result.rows[0]) throw new Error("Customer not found")
 
-    const customerIndex = mockCustomers.findIndex(c => c.id === id)
-    if (customerIndex === -1) throw new Error("Customer not found")
-
-    mockCustomers[customerIndex] = {
-      ...mockCustomers[customerIndex],
+    const updatedCustomer = {
+      ...result.rows[0].data,
       ...updates,
+      updatedAt: new Date().toISOString()
     }
 
-    return mockCustomers[customerIndex]
+    await db.query(
+      'UPDATE customers SET data = $1 WHERE id = $2',
+      [updatedCustomer, id]
+    )
+
+    return updatedCustomer
   },
 
   getCustomerOrders: async (customerId: string) => {
@@ -117,9 +118,6 @@ export const customerService = {
       throw new Error("Only administrators can delete customers")
     }
     
-    const customerIndex = mockCustomers.findIndex(c => c.id === customerId)
-    if (customerIndex === -1) throw new Error("Customer not found")
-    
-    mockCustomers.splice(customerIndex, 1)
+    await db.query('DELETE FROM customers WHERE id = $1', [customerId])
   }
 } 

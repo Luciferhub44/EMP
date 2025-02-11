@@ -5,31 +5,25 @@ import type {
   FulfillmentStatus,
   TransportQuote 
 } from "@/types/orders"
-import { orders } from "@/data/orders"
-import { employeeService } from "./employee"
-
-// Update mock orders with type assertion
-const mockOrders = orders.map(order => ({
-  ...order,
-  paymentMethod: "credit_card",
-  subtotal: order.total,
-  tax: order.total * 0.1,
-  shippingCost: 0,
-  fulfillmentStatus: "pending",
-  status: order.status as OrderStatus
-})) as Order[]
+import { db } from "@/lib/db"
 
 export const ordersService = {
   getOrders: async (userId: string, isAdmin: boolean) => {
     try {
-      // If admin, return all orders
       if (isAdmin) {
-        return mockOrders
+        const result = await db.query('SELECT data FROM orders')
+        return result.rows.map(row => row.data)
       }
       
       // If employee, return only assigned orders
-      const assignedOrders = await employeeService.getAssignedOrders(userId)
-      return assignedOrders
+      const result = await db.query(`
+        SELECT o.data 
+        FROM orders o
+        JOIN employees e ON e.id = $1 
+        WHERE o.id = ANY(e.data->>'assignedOrders')
+      `, [userId])
+      
+      return result.rows.map(row => row.data)
     } catch (error) {
       console.error("Failed to get orders:", error)
       return []
@@ -50,33 +44,42 @@ export const ordersService = {
   },
 
   getOrder: async (id: string, userId?: string, isAdmin?: boolean) => {
-    const order = mockOrders.find(order => order.id === id)
-    if (!order) return null
+    const result = await db.query('SELECT data FROM orders WHERE id = $1', [id])
+    if (!result.rows[0]) return null
+
+    const order = result.rows[0].data
 
     // If admin or no user check needed, allow access
     if (isAdmin || !userId) return order
 
-    try {
-      // If employee, check if order is assigned to them
-      const assignedOrders = await employeeService.getAssignedOrders(userId)
-      if (!assignedOrders.find(o => o.id === id)) {
-        throw new Error("Access denied")
-      }
-      return order
-    } catch (error) {
+    // Check if order is assigned to employee
+    const employeeResult = await db.query(
+      'SELECT data->\'assignedOrders\' as assigned_orders FROM employees WHERE id = $1',
+      [userId]
+    )
+    
+    if (!employeeResult.rows[0]?.assigned_orders?.includes(id)) {
       throw new Error("Access denied")
     }
+
+    return order
   },
 
   updateOrder: async (id: string, updates: Partial<Order>, userId?: string, isAdmin?: boolean) => {
-    const orderIndex = mockOrders.findIndex(order => order.id === id)
-    if (orderIndex === -1) throw new Error("Order not found")
+    const result = await db.query('SELECT data FROM orders WHERE id = $1', [id])
+    if (!result.rows[0]) throw new Error("Order not found")
     
+    const order = result.rows[0].data
+
     // If not admin and userId provided, verify order is assigned to employee
     if (!isAdmin && userId) {
       try {
-        const assignedOrders = await employeeService.getAssignedOrders(userId)
-        if (!assignedOrders.find(o => o.id === id)) {
+        const employeeResult = await db.query(
+          'SELECT data->\'assignedOrders\' as assigned_orders FROM employees WHERE id = $1',
+          [userId]
+        )
+        
+        if (!employeeResult.rows[0]?.assigned_orders?.includes(id)) {
           throw new Error("Access denied")
         }
       } catch (error) {
@@ -101,13 +104,18 @@ export const ordersService = {
       }
     }
 
-    mockOrders[orderIndex] = {
-      ...mockOrders[orderIndex],
+    const updatedOrder = {
+      ...order,
       ...updates,
       updatedAt: new Date().toISOString()
     } as Order
-    
-    return mockOrders[orderIndex]
+
+    await db.query(
+      'UPDATE orders SET data = $1 WHERE id = $2',
+      [updatedOrder, id]
+    )
+
+    return updatedOrder
   },
 
   getTransportQuotes: async (orderId: string): Promise<TransportQuote[]> => {
@@ -162,7 +170,7 @@ export const ordersService = {
   },
 
   acceptTransportQuote: async (orderId: string, quoteId: string) => {
-    const order = mockOrders.find(o => o.id === orderId)
+    const order = await ordersService.getOrder(orderId)
     if (!order) throw new Error("Order not found")
 
     const quotes = await ordersService.getTransportQuotes(orderId)
@@ -186,7 +194,7 @@ export const ordersService = {
       throw new Error("Only administrators can create orders")
     }
 
-    const orderId = `ORD${(mockOrders.length + 1).toString().padStart(3, '0')}`
+    const orderId = `ORD${(await ordersService.getOrders("", true)).length.toString().padStart(3, '0')}`
     const now = new Date().toISOString()
 
     const newOrder: Order = {
@@ -207,7 +215,11 @@ export const ordersService = {
       paymentMethod: orderData.paymentMethod || "credit_card"
     }
 
-    mockOrders.push(newOrder)
+    await db.query(
+      'INSERT INTO orders (id, data) VALUES ($1, $2)',
+      [orderId, newOrder]
+    )
+
     return newOrder
   },
 
@@ -215,18 +227,31 @@ export const ordersService = {
     orderId: string, 
     status: OrderStatus
   ): Promise<void> => {
-    const order = mockOrders.find(o => o.id === orderId)
+    const order = await ordersService.getOrder(orderId)
     if (!order) throw new Error("Order not found")
 
-    order.status = status as OrderStatus
-    order.updatedAt = new Date().toISOString()
+    const updatedOrder = {
+      ...order,
+      status: status as OrderStatus,
+      updatedAt: new Date().toISOString()
+    } as Order
+
+    await db.query(
+      'UPDATE orders SET data = $1 WHERE id = $2',
+      [updatedOrder, orderId]
+    )
 
     // Update payment status based on order status
     if (status === "cancelled") {
-      order.paymentStatus = "refunded" as PaymentStatus
+      updatedOrder.paymentStatus = "refunded" as PaymentStatus
     } else if (["delivered", "shipped"].includes(status)) {
-      order.paymentStatus = "paid" as PaymentStatus
+      updatedOrder.paymentStatus = "paid" as PaymentStatus
     }
+
+    await db.query(
+      'UPDATE orders SET data = $1 WHERE id = $2',
+      [updatedOrder, orderId]
+    )
   },
 
   deleteOrder: async (orderId: string, isAdmin: boolean): Promise<void> => {
@@ -234,9 +259,7 @@ export const ordersService = {
       throw new Error("Only administrators can delete orders")
     }
     
-    const orderIndex = mockOrders.findIndex(o => o.id === orderId)
-    if (orderIndex === -1) throw new Error("Order not found")
-    
-    mockOrders.splice(orderIndex, 1)
+    const result = await db.query('DELETE FROM orders WHERE id = $1', [orderId])
+    if (result.rowCount === 0) throw new Error("Order not found")
   }
 } 

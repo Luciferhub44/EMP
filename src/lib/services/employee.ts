@@ -1,6 +1,5 @@
 import type { Employee, EmployeeCredentials, PaymentHistory, PaymentType } from "@/types/employee"
-import type { Order } from "@/types/orders"
-import { orders as mockOrders } from "@/data/orders"
+import { db } from "@/lib/db"
 
 // Store employee credentials separately for security
 const employeeCredentials: Record<string, string> = {
@@ -8,76 +7,6 @@ const employeeCredentials: Record<string, string> = {
   [import.meta.env.VITE_AGENT1_ID]: import.meta.env.VITE_AGENT1_PASSWORD,
   [import.meta.env.VITE_AGENT2_ID]: import.meta.env.VITE_AGENT2_PASSWORD
 }
-
-// Update mock employees to match env credentials
-const mockEmployees: Employee[] = [
-  {
-    id: "EMP001",
-    agentId: import.meta.env.VITE_ADMIN_ID,
-    name: "Admin User",
-    email: "admin@emp.com",
-    role: "admin",
-    status: "active",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    assignedOrders: [],
-    businessInfo: {
-      companyName: "EMP",
-      registrationNumber: "1234567890",
-      taxId: "1234567890",
-      businessAddress: {
-        street: "123 Main St",
-        city: "Anytown",
-        state: "CA",
-        postalCode: "12345",
-        country: "USA"
-      }
-    },
-    payrollInfo: {
-      baseRate: 100000,
-      paymentFrequency: "monthly",
-      currency: "USD",
-      lastPaymentDate: new Date().toISOString(),
-      bankName: "Bank of America",
-      accountNumber: "1234567890",
-      routingNumber: "1234567890",
-      paymentHistory: []
-    }
-  },
-  {
-    id: "EMP002",
-    agentId: import.meta.env.VITE_AGENT1_ID,
-    name: "Sales Agent 1",
-    email: "agent1@emp.com",
-    role: "employee",
-    status: "active",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    assignedOrders: [],
-    businessInfo: {
-      companyName: "EMP",
-      registrationNumber: "1234567890",
-      taxId: "1234567890",
-      businessAddress: {
-        street: "123 Main St",
-        city: "Anytown",
-        state: "CA",
-        postalCode: "12345",
-        country: "USA"
-      }
-    },
-    payrollInfo: {
-      baseRate: 50000,
-      paymentFrequency: "biweekly",
-      currency: "USD",
-      lastPaymentDate: new Date().toISOString(),
-      bankName: "Bank of America",
-      accountNumber: "1234567890",
-      routingNumber: "1234567890",
-      paymentHistory: []
-    }
-  }
-]
 
 export const employeeService = {
   // Authentication
@@ -87,33 +16,49 @@ export const employeeService = {
       throw new Error("Invalid credentials")
     }
     
-    const employee = mockEmployees.find(e => e.agentId === credentials.agentId)
-    if (!employee) throw new Error("Employee not found")
+    const result = await db.query(
+      'SELECT data FROM employees WHERE data->\'agentId\' = $1',
+      [credentials.agentId]
+    )
+    if (!result.rows[0]) throw new Error("Employee not found")
     
-    return employee
+    return result.rows[0].data
   },
 
   // Employee management (admin only)
-  createEmployee: async (employee: Omit<Employee, 'id' | 'createdAt' | 'updatedAt' | 'status' | 'assignedOrders' | 'businessInfo' | 'payrollInfo'>, password: string) => {
-    const id = `EMP${(mockEmployees.length + 1).toString().padStart(3, '0')}`
-    const newEmployee = {
-      ...employee,
-      id,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      assignedOrders: [] as string[]
+  createEmployee: async (
+    employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>,
+    isAdmin: boolean
+  ) => {
+    if (!isAdmin) {
+      throw new Error("Only administrators can create employees")
     }
-    
-    mockEmployees.push(newEmployee as Employee)
-    employeeCredentials[employee.agentId] = password
-    
+
+    const id = `EMP${Date.now()}`
+    const now = new Date().toISOString()
+    const newEmployee: Employee = {
+      ...employeeData,
+      id,
+      createdAt: now,
+      updatedAt: now,
+      assignedOrders: employeeData.assignedOrders || []
+    }
+
+    await db.query(
+      'INSERT INTO employees (id, data) VALUES ($1, $2)',
+      [id, newEmployee]
+    )
+
     return newEmployee
   },
 
   resetPassword: async (agentId: string, newPassword: string) => {
     // Check if employee exists first
-    const employee = mockEmployees.find(e => e.agentId === agentId)
-    if (!employee) {
+    const result = await db.query(
+      'SELECT data FROM employees WHERE data->\'agentId\' = $1',
+      [agentId]
+    )
+    if (!result.rows[0]) {
       throw new Error(`Employee not found with Agent ID: ${agentId}`)
     }
 
@@ -121,7 +66,15 @@ export const employeeService = {
     employeeCredentials[agentId] = newPassword
 
     // Update employee's updatedAt timestamp
-    employee.updatedAt = new Date().toISOString()
+    const updatedEmployee = {
+      ...result.rows[0].data,
+      updatedAt: new Date().toISOString()
+    }
+
+    await db.query(
+      'UPDATE employees SET data = $1 WHERE id = $2',
+      [updatedEmployee, result.rows[0].data.id]
+    )
 
     return {
       success: true,
@@ -130,83 +83,107 @@ export const employeeService = {
   },
 
   getEmployees: async () => {
-    return mockEmployees.filter(emp => emp.status === 'active')
+    const result = await db.query('SELECT data FROM employees')
+    return result.rows.map(row => row.data)
   },
 
   getEmployee: async (id: string) => {
-    const employee = mockEmployees.find(emp => emp.id === id)
-    if (!employee) throw new Error(`Employee not found with ID: ${id}`)
-    return employee
+    const result = await db.query('SELECT data FROM employees WHERE id = $1', [id])
+    if (!result.rows[0]) throw new Error("Employee not found")
+    return result.rows[0].data
   },
 
   getEmployeeByAgentId: async (agentId: string) => {
-    const employee = mockEmployees.find(emp => emp.agentId === agentId)
-    if (!employee) throw new Error(`Employee not found with Agent ID: ${agentId}`)
-    return employee
+    const result = await db.query(
+      'SELECT data FROM employees WHERE data->\'agentId\' = $1',
+      [agentId]
+    )
+    if (!result.rows[0]) throw new Error(`Employee not found with Agent ID: ${agentId}`)
+    return result.rows[0].data
   },
 
-  updateEmployee: async (id: string, updates: Partial<Employee>) => {
-    const employeeIndex = mockEmployees.findIndex(e => e.id === id)
-    if (employeeIndex === -1) throw new Error(`Employee not found with ID: ${id}`)
-    
-    mockEmployees[employeeIndex] = {
-      ...mockEmployees[employeeIndex],
+  updateEmployee: async (
+    id: string, 
+    updates: Partial<Omit<Employee, 'id' | 'createdAt'>>,
+    isAdmin: boolean
+  ) => {
+    if (!isAdmin) {
+      throw new Error("Only administrators can update employees")
+    }
+
+    const result = await db.query('SELECT data FROM employees WHERE id = $1', [id])
+    if (!result.rows[0]) throw new Error("Employee not found")
+
+    const updatedEmployee = {
+      ...result.rows[0].data,
       ...updates,
       updatedAt: new Date().toISOString()
     }
 
-    return mockEmployees[employeeIndex]
-  },
-
-  getAssignedOrders: async (employeeId: string): Promise<Order[]> => {
-    if (!employeeId) return []
-    
-    try {
-      const employee = await employeeService.getEmployee(employeeId)
-      return mockOrders
-        .filter(order => employee.assignedOrders.includes(order.id))
-        .map(order => ({
-          ...order,
-          paymentMethod: "credit_card",
-          subtotal: order.total,
-          tax: order.total * 0.1,
-          shippingCost: 0,
-          fulfillmentStatus: "pending"
-        })) as Order[]
-    } catch (error) {
-      console.error("Failed to get assigned orders:", error)
-      return []
-    }
-  },
-
-  assignOrder: async (orderId: string, employeeId: string) => {
-    const employee = mockEmployees.find(e => e.id === employeeId)
-    if (!employee) throw new Error(`Employee not found with ID: ${employeeId}`)
-    
-    // Check if order exists in orders array
-    const orderExists = mockOrders.some(o => o.id === orderId)
-    if (!orderExists) throw new Error(`Order not found with ID: ${orderId}`)
-    
-    // Check if order is already assigned to someone else
-    const currentAssignee = mockEmployees.find(e => 
-      e.assignedOrders.includes(orderId)
+    await db.query(
+      'UPDATE employees SET data = $1 WHERE id = $2',
+      [updatedEmployee, id]
     )
-    if (currentAssignee && currentAssignee.id !== employeeId) {
-      throw new Error("Order is already assigned to another employee")
-    }
-    
-    if (!employee.assignedOrders.includes(orderId)) {
-      employee.assignedOrders.push(orderId)
-      employee.updatedAt = new Date().toISOString()
-    }
+
+    return updatedEmployee
   },
 
-  unassignOrder: async (orderId: string, employeeId: string) => {
-    const employee = mockEmployees.find(e => e.id === employeeId)
-    if (!employee) throw new Error(`Employee not found with ID: ${employeeId}`)
-    
-    employee.assignedOrders = employee.assignedOrders.filter(id => id !== orderId)
-    employee.updatedAt = new Date().toISOString()
+  getAssignedOrders: async (employeeId: string) => {
+    const result = await db.query(
+      'SELECT o.data FROM orders o, employees e WHERE e.id = $1 AND o.id = ANY(e.data->\'assignedOrders\')',
+      [employeeId]
+    )
+    return result.rows.map(row => row.data)
+  },
+
+  assignOrder: async (employeeId: string, orderId: string, isAdmin: boolean) => {
+    if (!isAdmin) {
+      throw new Error("Only administrators can assign orders")
+    }
+
+    const result = await db.query('SELECT data FROM employees WHERE id = $1', [employeeId])
+    if (!result.rows[0]) throw new Error("Employee not found")
+
+    const employee = result.rows[0].data
+    const assignedOrders = [...(employee.assignedOrders || []), orderId]
+
+    const updatedEmployee = {
+      ...employee,
+      assignedOrders,
+      updatedAt: new Date().toISOString()
+    }
+
+    await db.query(
+      'UPDATE employees SET data = $1 WHERE id = $2',
+      [updatedEmployee, employeeId]
+    )
+
+    return updatedEmployee
+  },
+
+  unassignOrder: async (employeeId: string, orderId: string, isAdmin: boolean) => {
+    if (!isAdmin) {
+      throw new Error("Only administrators can unassign orders")
+    }
+
+    const result = await db.query('SELECT data FROM employees WHERE id = $1', [employeeId])
+    if (!result.rows[0]) throw new Error("Employee not found")
+
+    const employee = result.rows[0].data
+    const assignedOrders = (employee.assignedOrders || []).filter((id: string) => id !== orderId)
+
+    const updatedEmployee = {
+      ...employee,
+      assignedOrders,
+      updatedAt: new Date().toISOString()
+    }
+
+    await db.query(
+      'UPDATE employees SET data = $1 WHERE id = $2',
+      [updatedEmployee, employeeId]
+    )
+
+    return updatedEmployee
   },
 
   // Issue a payment to an employee
@@ -225,9 +202,10 @@ export const employeeService = {
       throw new Error("Only administrators can issue payments")
     }
 
-    const employee = mockEmployees.find(e => e.id === employeeId)
-    if (!employee) throw new Error(`Employee not found with ID: ${employeeId}`)
+    const result = await db.query('SELECT data FROM employees WHERE id = $1', [employeeId])
+    if (!result.rows[0]) throw new Error(`Employee not found with ID: ${employeeId}`)
 
+    const employee = result.rows[0].data
     const payment: PaymentHistory = {
       id: `PAY${Date.now()}`,
       employeeId,
@@ -242,23 +220,27 @@ export const employeeService = {
       reference: paymentData.reference
     }
 
-    // Add to employee's payment history
-    if (!employee.payrollInfo.paymentHistory) {
-      employee.payrollInfo.paymentHistory = []
+    // Update employee's payment history
+    const updatedEmployee = {
+      ...employee,
+      payrollInfo: {
+        ...employee.payrollInfo,
+        paymentHistory: [...(employee.payrollInfo.paymentHistory || []), payment],
+        lastPaymentDate: payment.paymentDate
+      }
     }
-    employee.payrollInfo.paymentHistory.push(payment)
 
-    // Update last payment date for salary payments
-    if (paymentData.type === 'salary') {
-      employee.payrollInfo.lastPaymentDate = payment.paymentDate
-    }
+    await db.query(
+      'UPDATE employees SET data = $1 WHERE id = $2',
+      [updatedEmployee, employeeId]
+    )
 
     return payment
   },
 
   // Calculate commission for an employee
   calculateCommission: async (employeeId: string, orderAmount: number): Promise<number> => {
-    const employee = mockEmployees.find(e => e.id === employeeId)
+    const employee = await employeeService.getEmployee(employeeId)
     if (!employee) throw new Error(`Employee not found with ID: ${employeeId}`)
     
     if (!employee.payrollInfo.commissionRate) return 0
@@ -272,15 +254,14 @@ export const employeeService = {
     requesterId: string,
     isAdmin: boolean
   ): Promise<PaymentHistory[]> => {
-    // Only allow admins or the employee themselves to view payment history
     if (!isAdmin && requesterId !== employeeId) {
       throw new Error("Access denied")
     }
 
-    const employee = mockEmployees.find(e => e.id === employeeId)
-    if (!employee) throw new Error(`Employee not found with ID: ${employeeId}`)
+    const result = await db.query('SELECT data FROM employees WHERE id = $1', [employeeId])
+    if (!result.rows[0]) throw new Error(`Employee not found with ID: ${employeeId}`)
 
-    return employee.payrollInfo.paymentHistory || []
+    return result.rows[0].data.payrollInfo.paymentHistory || []
   },
 
   // Get employees due for salary payment
@@ -290,21 +271,19 @@ export const employeeService = {
     }
 
     const now = new Date()
-    return mockEmployees.filter(employee => {
+    const result = await db.query('SELECT data FROM employees')
+    
+    return result.rows.map(row => row.data).filter(employee => {
       const lastPayment = new Date(employee.payrollInfo.lastPaymentDate)
       const daysSinceLastPayment = Math.floor(
         (now.getTime() - lastPayment.getTime()) / (1000 * 60 * 60 * 24)
       )
 
       switch (employee.payrollInfo.paymentFrequency) {
-        case 'weekly':
-          return daysSinceLastPayment >= 7
-        case 'biweekly':
-          return daysSinceLastPayment >= 14
-        case 'monthly':
-          return daysSinceLastPayment >= 30
-        default:
-          return false
+        case 'weekly': return daysSinceLastPayment >= 7
+        case 'biweekly': return daysSinceLastPayment >= 14
+        case 'monthly': return daysSinceLastPayment >= 30
+        default: return false
       }
     })
   },
@@ -314,9 +293,6 @@ export const employeeService = {
       throw new Error("Only administrators can delete employees")
     }
     
-    const employeeIndex = mockEmployees.findIndex(e => e.id === employeeId)
-    if (employeeIndex === -1) throw new Error("Employee not found")
-    
-    mockEmployees.splice(employeeIndex, 1)
+    await db.query('DELETE FROM employees WHERE id = $1', [employeeId])
   }
 } 

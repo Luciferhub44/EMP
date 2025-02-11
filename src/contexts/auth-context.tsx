@@ -1,6 +1,8 @@
 import * as React from "react"
 import { Employee } from "@/types/employee"
-import { employeeService } from "@/lib/services/employee"
+import { authService } from "@/lib/services/auth"
+import { sessionService } from "@/lib/services/session"
+import { auditService } from "@/lib/services/audit"
 import { useNavigate } from "react-router-dom"
 import { toast } from "@/components/ui/use-toast"
 
@@ -21,21 +23,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     const initAuth = async () => {
       try {
-        const savedUser = localStorage.getItem("auth_user")
-        if (savedUser) {
-          const parsedUser = JSON.parse(savedUser) as Employee
-          // Verify the user session is still valid
-          const employee = await employeeService.getEmployee(parsedUser.id)
-          if (employee) {
-            setUser(employee as Employee)
+        const token = localStorage.getItem("auth_token")
+        if (token) {
+          // Verify the session is still valid
+          const session = await sessionService.getSession(token)
+          if (session) {
+            // Get the user data
+            const employee = await authService.getEmployeeById(session.userId)
+            if (employee) {
+              setUser(employee)
+            } else {
+              // Invalid session, clear it
+              localStorage.removeItem("auth_token")
+              await sessionService.deleteSession(token)
+            }
           } else {
-            // Invalid session, clear it
-            localStorage.removeItem("auth_user")
+            // Session expired or invalid, clear it
+            localStorage.removeItem("auth_token")
           }
         }
       } catch (error) {
         console.error("Auth initialization failed:", error)
-        localStorage.removeItem("auth_user")
+        localStorage.removeItem("auth_token")
       } finally {
         setLoading(false)
       }
@@ -46,13 +55,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (agentId: string, password: string) => {
     try {
-      const employee = await employeeService.login({ agentId, password })
-      setUser(employee as Employee)
-      localStorage.setItem("auth_user", JSON.stringify(employee))
+      // Authenticate user
+      const employee = await authService.login(agentId, password)
       
-      // Update last login time
-      const now = new Date().toISOString()
-      await employeeService.updateEmployee(employee.id, { lastLogin: now })
+      // Create a new session
+      const token = crypto.randomUUID()
+      await sessionService.createSession(employee.id, token)
+      
+      // Store token and user data
+      localStorage.setItem("auth_token", token)
+      setUser(employee)
+      
+      // Log the successful login
+      await auditService.log("login", employee.id, {
+        timestamp: new Date().toISOString(),
+        agentId: employee.agentId
+      })
       
       toast({
         title: "Welcome back",
@@ -71,15 +89,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const logout = React.useCallback(() => {
-    setUser(null)
-    localStorage.removeItem("auth_user")
-    toast({
-      title: "Signed out",
-      description: "Successfully signed out of your account",
-    })
-    navigate("/sign-in")
-  }, [navigate])
+  const logout = React.useCallback(async () => {
+    try {
+      const token = localStorage.getItem("auth_token")
+      if (token) {
+        await sessionService.deleteSession(token)
+      }
+      if (user) {
+        await auditService.log("logout", user.id, {
+          timestamp: new Date().toISOString(),
+          agentId: user.agentId
+        })
+      }
+      setUser(null)
+      localStorage.removeItem("auth_token")
+      toast({
+        title: "Signed out",
+        description: "Successfully signed out of your account",
+      })
+      navigate("/sign-in")
+    } catch (error) {
+      console.error("Logout failed:", error)
+    }
+  }, [navigate, user])
 
   const value = React.useMemo(() => ({
     user,

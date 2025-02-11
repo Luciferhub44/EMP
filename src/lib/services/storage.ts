@@ -7,68 +7,104 @@ import { db } from "@/lib/db"
 export const storageService = {
   // Generic methods
   get: async <T>(key: string): Promise<T | null> => {
-    if (import.meta.env.VITE_NODE_ENV === 'production') {
-      const result = await db.query('SELECT data FROM storage WHERE key = $1', [key])
-      return result.rows[0]?.data || null
-    }
-    
-    const response = await fetch(`${import.meta.env.VITE_STORAGE_URL}/api/${key}`)
-    if (!response.ok) return null
-    return response.json()
+    const result = await db.query('SELECT data FROM storage WHERE key = $1', [key])
+    return result.rows[0]?.data || null
   },
 
   set: async <T>(key: string, value: T): Promise<void> => {
-    if (import.meta.env.VITE_NODE_ENV === 'production') {
-      await db.query(
-        'INSERT INTO storage (key, data) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET data = $2',
-        [key, value]
-      )
-      return
-    }
-
-    await fetch(`${import.meta.env.VITE_STORAGE_URL}/api/${key}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(value)
-    })
+    await db.query(
+      'INSERT INTO storage (key, data) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET data = $2',
+      [key, value]
+    )
   },
 
   // Typed methods for each data type
-  getEmployees: async (): Promise<Employee[]> => {
-    return (await storageService.get<Employee[]>('employees')) ?? []
+  getEmployees: async () => {
+    const result = await db.query('SELECT data FROM employees')
+    return result.rows.map(row => row.data)
   },
 
-  getOrders: async (): Promise<Order[]> => {
-    return (await storageService.get<Order[]>('orders')) ?? []
+  getOrders: async () => {
+    const result = await db.query('SELECT data FROM orders')
+    return result.rows.map(row => row.data)
   },
 
-
-  getCustomers: async (): Promise<Customer[]> => {
-    return (await storageService.get<Customer[]>('customers')) ?? []
+  getCustomers: async () => {
+    const result = await db.query('SELECT data FROM customers')
+    return result.rows.map(row => row.data)
   },
 
-
-  getProducts: async (): Promise<Product[]> => {
-    return (await storageService.get<Product[]>('products')) ?? []
+  getProducts: async () => {
+    const result = await db.query('SELECT data FROM products')
+    return result.rows.map(row => row.data)
   },
-
 
   // Update methods
-  updateEmployees: async (employees: Employee[]): Promise<void> => {
-    await storageService.set('employees', employees)
+  updateEmployees: async (employees: Employee[]) => {
+    await db.query('BEGIN')
+    try {
+      await db.query('DELETE FROM employees')
+      for (const employee of employees) {
+        await db.query(
+          'INSERT INTO employees (id, data) VALUES ($1, $2)',
+          [employee.id, employee]
+        )
+      }
+      await db.query('COMMIT')
+    } catch (error) {
+      await db.query('ROLLBACK')
+      throw error
+    }
   },
 
-  updateOrders: async (orders: Order[]): Promise<void> => {
-    await storageService.set('orders', orders)
+  updateOrders: async (orders: Order[]) => {
+    await db.query('BEGIN')
+    try {
+      await db.query('DELETE FROM orders')
+      for (const order of orders) {
+        await db.query(
+          'INSERT INTO orders (id, data, customer_id, status) VALUES ($1, $2, $3, $4)',
+          [order.id, order, order.customerId, order.status]
+        )
+      }
+      await db.query('COMMIT')
+    } catch (error) {
+      await db.query('ROLLBACK')
+      throw error
+    }
   },
 
-  updateCustomers: async (customers: Customer[]): Promise<void> => {
-    await storageService.set('customers', customers)
+  updateCustomers: async (customers: Customer[]) => {
+    await db.query('BEGIN')
+    try {
+      await db.query('DELETE FROM customers')
+      for (const customer of customers) {
+        await db.query(
+          'INSERT INTO customers (id, data) VALUES ($1, $2)',
+          [customer.id, customer]
+        )
+      }
+      await db.query('COMMIT')
+    } catch (error) {
+      await db.query('ROLLBACK')
+      throw error
+    }
   },
 
-  updateProducts: async (products: Product[]): Promise<void> => {
-    await storageService.set('products', products)
+  updateProducts: async (products: Product[]) => {
+    await db.query('BEGIN')
+    try {
+      await db.query('DELETE FROM products')
+      for (const product of products) {
+        await db.query(
+          'INSERT INTO products (id, data, sku, status) VALUES ($1, $2, $3, $4)',
+          [product.id, product, product.sku, product.status]
+        )
+      }
+      await db.query('COMMIT')
+    } catch (error) {
+      await db.query('ROLLBACK')
+      throw error
+    }
   }
 } 

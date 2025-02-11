@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/contexts/auth-context"
+import { toast } from "@/components/ui/use-toast"
 
 export default function SignInPage() {
   const { login } = useAuth()
@@ -20,7 +21,11 @@ export default function SignInPage() {
     try {
       await login(credentials.agentId, credentials.password)
     } catch (error) {
-      // Error is already handled in auth context
+      toast({
+        title: "Authentication Failed",
+        description: error instanceof Error ? error.message : "Please check your credentials and try again",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
@@ -47,6 +52,8 @@ export default function SignInPage() {
                   agentId: e.target.value
                 }))}
                 required
+                disabled={loading}
+                autoComplete="username"
               />
             </div>
             <div className="space-y-2">
@@ -60,6 +67,8 @@ export default function SignInPage() {
                   password: e.target.value
                 }))}
                 required
+                disabled={loading}
+                autoComplete="current-password"
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>

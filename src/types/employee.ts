@@ -75,6 +75,7 @@ export interface Employee {
   createdAt: string
   updatedAt: string
   lastLogin?: string
+  passwordHash: string
 }
 
 export interface EmployeeCredentials {
