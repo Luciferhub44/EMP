@@ -25,41 +25,6 @@ export const productCategories: ProductCategory[] = [
 
 export const products: ProductType[] = [
   {
-    id: "PRD001",
-    category: "Electronics",
-    name: "Smart Watch Pro",
-    model: "SWP-2024",
-    sku: "SWP2024-BLK",
-    description: "Advanced smartwatch with health monitoring features",
-    price: 299.99,
-    status: "active",
-    image: "/images/products/smartwatch.jpg",
-    specifications: {
-      display: "1.4 inch AMOLED",
-      battery: "5 days",
-      waterResistant: "5ATM",
-      connectivity: "Bluetooth 5.0"
-    },
-    inventory: [
-      {
-        productId: "PRD001",
-        warehouseId: "WH001",
-        quantity: 150,
-        minimumStock: 20,
-        lastUpdated: new Date().toISOString()
-      },
-      {
-        productId: "PRD001",
-        warehouseId: "WH002",
-        quantity: 75,
-        minimumStock: 15,
-        lastUpdated: new Date().toISOString()
-      }
-    ],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
     id: "EX-001",
     category: "Excavators",
     name: "Compact Mini Excavator",

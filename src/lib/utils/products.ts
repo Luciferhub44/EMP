@@ -1,100 +1,112 @@
 import { Product } from "@/types/products"
-import { products } from "@/data/products"
+import { db } from "@/lib/db"
 
-// Sync functions for direct updates
-export function updateProductSync(productId: string, updates: Partial<Product>): Product | null {
-  const productIndex = products.findIndex((p) => p.id === productId)
-  if (productIndex === -1) return null
+// Convert sync functions to async
+export async function updateProductSync(productId: string, updates: Partial<Product>): Promise<Product | null> {
+  const { rows: [product] } = await db.query(
+    'SELECT data FROM products WHERE id = $1',
+    [productId]
+  )
+  if (!product) return null
 
   const updatedProduct = {
-    ...products[productIndex],
+    ...product.data,
     ...updates,
+    updatedAt: new Date().toISOString()
   }
 
-  products[productIndex] = updatedProduct
+  await db.query(
+    'UPDATE products SET data = $1 WHERE id = $2',
+    [updatedProduct, productId]
+  )
+
   return updatedProduct
 }
 
-export function updateProductInventorySync(
+export async function updateProductInventorySync(
   productId: string,
   warehouseId: string,
   quantity: number
-): Product | null {
-  const product = products.find((p) => p.id === productId)
-  if (!product) return null
+): Promise<Product | null> {
+  const client = await db.connect()
+  try {
+    await client.query('BEGIN')
 
-  const inventoryIndex = product.inventory.findIndex(
-    (i) => i.warehouseId === warehouseId
-  )
+    const { rows: [product] } = await client.query(
+      'SELECT data FROM products WHERE id = $1',
+      [productId]
+    )
+    if (!product) return null
 
-  if (inventoryIndex === -1) {
-    product.inventory.push({
-      productId,
-      warehouseId,
-      quantity,
-      minimumStock: 0,
-      lastUpdated: new Date().toISOString(),
-    })
-  } else {
-    product.inventory[inventoryIndex] = {
-      ...product.inventory[inventoryIndex],
-      quantity,
-      lastUpdated: new Date().toISOString(),
+    const inventory = product.data.inventory || []
+    const existingIndex = inventory.findIndex((i: any) => i.warehouseId === warehouseId)
+
+    if (existingIndex === -1) {
+      inventory.push({
+        productId,
+        warehouseId,
+        quantity,
+        minimumStock: 0,
+        lastUpdated: new Date().toISOString(),
+      })
+    } else {
+      inventory[existingIndex] = {
+        ...inventory[existingIndex],
+        quantity,
+        lastUpdated: new Date().toISOString(),
+      }
     }
+
+    const updatedProduct = {
+      ...product.data,
+      inventory,
+      updatedAt: new Date().toISOString()
+    }
+
+    await client.query(
+      'UPDATE products SET data = $1 WHERE id = $2',
+      [updatedProduct, productId]
+    )
+
+    await client.query('COMMIT')
+    return updatedProduct
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
   }
+}
+
+// Async functions for API simulation
+export async function updateProduct(id: string, updates: Partial<Product>): Promise<void> {
+  await db.query(
+    'UPDATE products SET data = data || $1::jsonb WHERE id = $2',
+    [updates, id]
+  )
+}
+
+export async function createProduct(newProduct: Omit<Product, "id" | "inventory">): Promise<Product> {
+  const id = `P-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  const product = {
+    id,
+    ...newProduct,
+    inventory: [],
+    status: 'active' as const, // Fix: explicitly type the status
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  }
+
+  await db.query(
+    'INSERT INTO products (id, data) VALUES ($1, $2)',
+    [id, product]
+  )
 
   return product
 }
 
-// Async functions for API simulation
-export async function updateProduct(id: string, updatedProduct: Partial<Product>): Promise<void> {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      try {
-        const result = updateProductSync(id, updatedProduct)
-        if (!result) {
-          throw new Error("Product not found")
-        }
-        resolve()
-      } catch (error) {
-        reject(error)
-      }
-    }, 1000)
-  })
-}
-
-export async function createProduct(newProduct: Omit<Product, "id" | "inventory">): Promise<Product> {
-  return new Promise((resolve, reject) => {
-    try {
-      const product: Product = {
-        id: `P-${Math.random().toString(36).substr(2, 9)}`,
-        ...newProduct,
-        inventory: [],
-        status: 'active',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      }
-      products.push(product)
-      resolve(product)
-    } catch (error) {
-      reject(error)
-    }
-  })
-}
-
 export async function deleteProduct(id: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    try {
-      const index = products.findIndex(p => p.id === id)
-      if (index === -1) {
-        throw new Error("Product not found")
-      }
-      products.splice(index, 1)
-      resolve()
-    } catch (error) {
-      reject(error)
-    }
-  })
+  await db.query('DELETE FROM products WHERE id = $1', [id])
 }
 
 export async function updateProductInventory(
@@ -102,15 +114,33 @@ export async function updateProductInventory(
   warehouseId: string,
   quantity: number
 ): Promise<void> {
-  return new Promise((resolve, reject) => {
-    try {
-      const result = updateProductInventorySync(productId, warehouseId, quantity)
-      if (!result) {
-        throw new Error("Product not found")
-      }
-      resolve()
-    } catch (error) {
-      reject(error)
+  const { rows: [product] } = await db.query(
+    'SELECT data FROM products WHERE id = $1',
+    [productId]
+  )
+  if (!product) throw new Error("Product not found")
+
+  const inventory = product.data.inventory || []
+  const existingIndex = inventory.findIndex((i: any) => i.warehouseId === warehouseId)
+
+  if (existingIndex === -1) {
+    inventory.push({
+      productId,
+      warehouseId,
+      quantity,
+      minimumStock: 0,
+      lastUpdated: new Date().toISOString()
+    })
+  } else {
+    inventory[existingIndex] = {
+      ...inventory[existingIndex],
+      quantity: inventory[existingIndex].quantity + quantity,
+      lastUpdated: new Date().toISOString()
     }
-  })
+  }
+
+  await db.query(
+    'UPDATE products SET data = jsonb_set(data, \'{inventory}\', $1::jsonb) WHERE id = $2',
+    [JSON.stringify(inventory), productId]
+  )
 } 

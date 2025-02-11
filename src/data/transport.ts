@@ -6,28 +6,28 @@ export const vehicleTypes: VehicleType[] = [
     name: "Small Truck",
     maxWeight: 3500,
     maxLength: 4.5,
-    pricePerKm: 2.5
+    pricePerKm: 3.5
   },
   {
     id: "medium-truck",
     name: "Medium Truck",
     maxWeight: 7500,
     maxLength: 6.2,
-    pricePerKm: 3.5
+    pricePerKm: 4.5
   },
   {
     id: "large-truck",
     name: "Large Truck",
     maxWeight: 15000,
-    maxLength: 8.5,
-    pricePerKm: 4.5
+    maxLength: 10.0,
+    pricePerKm: 7.5
   },
   {
     id: "flatbed",
     name: "Flatbed Truck",
     maxWeight: 12000,
-    maxLength: 9.0,
-    pricePerKm: 5.0
+    maxLength: 10.0,
+    pricePerKm: 10.0
   }
 ]
 

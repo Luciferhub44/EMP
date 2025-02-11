@@ -1,5 +1,5 @@
 import { TransportQuote, OrderItem, FulfillmentDetails, FulfillmentStatus } from "@/types/orders"
-import { transportCompanies, vehicleTypes } from "@/data/transport"
+import { db } from "@/lib/db"
 
 interface GenerateQuoteParams {
   orderId: string
@@ -11,30 +11,34 @@ interface GenerateQuoteParams {
 // Store fulfillment details (in a real app, this would be in a database)
 export const fulfillmentStore = new Map<string, FulfillmentDetails>()
 
-export function generateTransportQuote({
+export async function generateTransportQuote({
   orderId,
   companyId,
   distance,
   items
-}: GenerateQuoteParams): TransportQuote {
-  const company = transportCompanies.find(c => c.id === companyId)
+}: GenerateQuoteParams): Promise<TransportQuote> {
+  const { rows: [company] } = await db.query(
+    'SELECT * FROM transport_companies WHERE id = $1',
+    [companyId]
+  )
   if (!company) throw new Error("Company not found")
 
-  // Calculate total weight and find appropriate vehicle
   const totalWeight = items.reduce((sum, item) => sum + (item.quantity * 100), 0)
-  const vehicle = vehicleTypes.find(v => 
-    company.availableVehicles.includes(v.id) && v.maxWeight >= totalWeight
+  
+  const { rows: [vehicle] } = await db.query(
+    'SELECT * FROM vehicle_types WHERE id = ANY($1) AND max_weight >= $2 LIMIT 1',
+    [company.data.availableVehicles, totalWeight]
   )
   if (!vehicle) throw new Error("No suitable vehicle found")
 
-  const totalPrice = company.basePrice + (distance * company.pricePerKm)
+  const totalPrice = company.data.basePrice + (distance * company.data.pricePerKm)
   const estimatedDays = Math.ceil(distance / 500) + 1
 
-  return {
-    id: `quote-${Math.random().toString(36).substr(2, 9)}`,
+  const quote = {
+    id: `quote-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     orderId,
-    provider: company.name,
-    method: vehicle.name,
+    provider: company.data.name,
+    method: vehicle.data.name,
     cost: totalPrice,
     estimatedDays,
     distance,
@@ -45,6 +49,13 @@ export function generateTransportQuote({
       coverage: totalPrice
     }
   }
+
+  await db.query(
+    'INSERT INTO transport_quotes (id, data) VALUES ($1, $2)',
+    [quote.id, quote]
+  )
+
+  return quote
 }
 
 export function calculateDistance(from: string, to: string): number {
@@ -54,22 +65,23 @@ export function calculateDistance(from: string, to: string): number {
 }
 
 export async function handleAcceptQuote(quoteId: string, orderId: string): Promise<string> {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const fulfillmentId = `ful-${Math.random().toString(36).substr(2, 9)}`
-      
-      fulfillmentStore.set(fulfillmentId, {
-        orderId,
-        transportQuote: quoteId,
-        status: 'pending' as FulfillmentStatus,
-        carrier: '',
-        estimatedDelivery: '',
-        actualDelivery: '',
-        notes: '',
-        history: [],
-      })
+  const fulfillmentId = `ful-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  
+  await db.query(
+    'INSERT INTO fulfillments (id, data) VALUES ($1, $2)',
+    [fulfillmentId, {
+      orderId,
+      transportQuote: quoteId,
+      status: 'pending' as FulfillmentStatus,
+      carrier: '',
+      estimatedDelivery: '',
+      actualDelivery: '',
+      notes: '',
+      history: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }]
+  )
 
-      resolve(fulfillmentId)
-    }, 1000)
-  })
+  return fulfillmentId
 } 

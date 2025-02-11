@@ -1,6 +1,7 @@
 import { Product, Warehouse } from "@/types"
-import { products } from "@/data/products"
+import { db } from "@/lib/db"
 import { warehouses } from "@/data/warehouses"
+import { products } from "@/data/products"
 
 interface StockUpdateParams {
   productId: string
@@ -24,20 +25,25 @@ interface InventoryAlert {
 }
 
 // Get total stock for a product across all warehouses
-export function getTotalStock(productId: string): number {
-  const product = products.find(p => p.id === productId)
-  if (!product) return 0
-
-  return product.inventory.reduce((total, inv) => total + inv.quantity, 0)
+export async function getTotalStock(productId: string): Promise<number> {
+  const { rows } = await db.query(
+    `SELECT SUM((inv->>'quantity')::int) as total 
+     FROM products, jsonb_array_elements(data->'inventory') as inv 
+     WHERE id = $1`,
+    [productId]
+  )
+  return rows[0]?.total || 0
 }
 
 // Get stock level for a product in a specific warehouse
-export function getWarehouseStock(productId: string, warehouseId: string): number {
-  const product = products.find(p => p.id === productId)
-  if (!product) return 0
-
-  const inventory = product.inventory.find(inv => inv.warehouseId === warehouseId)
-  return inventory?.quantity || 0
+export async function getWarehouseStock(productId: string, warehouseId: string): Promise<number> {
+  const { rows } = await db.query(
+    `SELECT (inv->>'quantity')::int as quantity 
+     FROM products, jsonb_array_elements(data->'inventory') as inv 
+     WHERE id = $1 AND inv->>'warehouseId' = $2`,
+    [productId, warehouseId]
+  )
+  return rows[0]?.quantity || 0
 }
 
 // Check if product needs restock in any warehouse
@@ -56,35 +62,58 @@ export function getRestockNeededProducts(): Product[] {
 }
 
 // Update stock level for a product in a warehouse
-export function updateStock({ productId, warehouseId, quantity }: StockUpdateParams): void {
-  const product = products.find(p => p.id === productId)
-  if (!product) throw new Error("Product not found")
+export async function updateStock({ productId, warehouseId, quantity }: StockUpdateParams): Promise<void> {
+  const client = await db.connect()
+  try {
+    await client.query('BEGIN')
 
-  const inventory = product.inventory.find(inv => inv.warehouseId === warehouseId)
-  if (!inventory) {
-    // Create new inventory record if it doesn't exist
-    product.inventory.push({
-      productId,
-      warehouseId,
-      quantity,
-      minimumStock: 1,
-      lastUpdated: new Date().toISOString()
-    })
-  } else {
-    // Update existing inventory
-    inventory.quantity = quantity
-    inventory.lastUpdated = new Date().toISOString()
+    const { rows: [product] } = await client.query(
+      'SELECT data FROM products WHERE id = $1 FOR UPDATE',
+      [productId]
+    )
+    if (!product) throw new Error("Product not found")
+
+    const inventory = product.data.inventory || []
+    const existingIndex = inventory.findIndex((i: any) => i.warehouseId === warehouseId)
+
+    if (existingIndex === -1) {
+      inventory.push({
+        productId,
+        warehouseId,
+        quantity,
+        minimumStock: 0,
+        lastUpdated: new Date().toISOString()
+      })
+    } else {
+      inventory[existingIndex] = {
+        ...inventory[existingIndex],
+        quantity: inventory[existingIndex].quantity + quantity,
+        lastUpdated: new Date().toISOString()
+      }
+    }
+
+    await client.query(
+      'UPDATE products SET data = jsonb_set(data, \'{inventory}\', $1::jsonb) WHERE id = $2',
+      [JSON.stringify(inventory), productId]
+    )
+
+    await client.query('COMMIT')
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
   }
 }
 
 // Transfer stock between warehouses
-export function transferStock({
+export async function transferStock({
   productId,
   fromWarehouseId,
   toWarehouseId,
   quantity
-}: TransferStockParams): void {
-  const fromStock = getWarehouseStock(productId, fromWarehouseId)
+}: TransferStockParams): Promise<void> {
+  const fromStock = await getWarehouseStock(productId, fromWarehouseId)
   if (fromStock < quantity) {
     throw new Error("Insufficient stock for transfer")
   }
@@ -95,7 +124,7 @@ export function transferStock({
     quantity: fromStock - quantity
   })
 
-  const toStock = getWarehouseStock(productId, toWarehouseId)
+  const toStock = await getWarehouseStock(productId, toWarehouseId)
   updateStock({
     productId,
     warehouseId: toWarehouseId,

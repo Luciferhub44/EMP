@@ -1,72 +1,72 @@
 import { Order, OrderStatus } from "@/types"
-import { orders } from "@/data/orders"
-import { products } from "@/data/products"
-import { updateProductInventory } from "./products"
+import { db } from "@/lib/db"
+import { updateStock } from "./inventory"
 
 export async function getOrder(orderId: string): Promise<Order | null> {
-  try {
-    const order = orders.find(o => o.id === orderId)
-    if (!order) return null
+  const { rows: [order] } = await db.query(
+    'SELECT data FROM orders WHERE id = $1',
+    [orderId]
+  )
+  if (!order) return null
 
-    // Attach product details to order items
-    return {
-      ...order,
-      items: order.items.map(item => ({
-        ...item,
-        product: products.find(p => p.id === item.productId)
-      }))
-    }
-  } catch (error) {
-    console.error('Error getting order:', error)
-    throw new Error('Failed to get order')
+  // Attach product details
+  const { rows: products } = await db.query(
+    'SELECT data FROM products WHERE id = ANY($1)',
+    [order.data.items.map((item: any) => item.productId)]
+  )
+
+  return {
+    ...order.data,
+    items: order.data.items.map((item: any) => ({
+      ...item,
+      product: products.find(p => p.id === item.productId)?.data
+    }))
   }
 }
 
-export async function updateOrderStatus(
-  orderId: string, 
-  status: OrderStatus
-): Promise<void> {
+export async function updateOrderStatus(orderId: string, status: OrderStatus): Promise<void> {
+  const client = await db.connect()
   try {
-    const order = orders.find(o => o.id === orderId)
-    if (!order) throw new Error("Order not found")
+    await client.query('BEGIN')
 
-    order.status = status
-    order.updatedAt = new Date().toISOString()
+    await client.query(
+      'UPDATE orders SET data = jsonb_set(data, \'{status}\', $1::text::jsonb) WHERE id = $2',
+      [JSON.stringify(status), orderId]
+    )
 
-    // Handle inventory updates based on status
-    if (status === ("confirmed" as OrderStatus)) {
+    if (status === 'confirmed') {
+      const { rows: [order] } = await client.query('SELECT data FROM orders WHERE id = $1', [orderId])
+      
       // Reserve inventory
-      for (const item of order.items) {
-        await updateProductInventory(
-          item.productId,
-          "wh-1",
-          -item.quantity
-        )
-      }
-    } else if (status === ("cancelled" as OrderStatus) && order.status === ("confirmed" as OrderStatus)) {
-      // Return inventory if cancelling a confirmed order
-      for (const item of order.items) {
-        await updateProductInventory(
-          item.productId,
-          "wh-1",
-          item.quantity // Increase inventory
-        )
+      for (const item of order.data.items) {
+        await updateStock({
+          productId: item.productId,
+          warehouseId: "wh-1",
+          quantity: -item.quantity
+        })
       }
     }
+
+    await client.query('COMMIT')
   } catch (error) {
-    console.error('Error updating order status:', error)
-    throw new Error('Failed to update order status')
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
   }
 }
 
 export async function createOrder(
   orderData: Omit<Order, "id" | "createdAt" | "updatedAt" | "status">
 ): Promise<Order> {
+  const client = await db.connect()
   try {
+    await client.query('BEGIN')
+
     const now = new Date().toISOString()
     const order: Order = {
       ...orderData,
-      id: `ORD-${Math.random().toString(36).substr(2, 9)}`,
+      id: `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       status: "pending",
       createdAt: now,
       updatedAt: now,
@@ -77,11 +77,18 @@ export async function createOrder(
     if (!order.items.length) throw new Error("Order must have at least one item")
     if (!order.shippingAddress) throw new Error("Shipping address is required")
 
-    orders.push(order)
+    await client.query(
+      'INSERT INTO orders (id, data, customer_id, status) VALUES ($1, $2, $3, $4)',
+      [order.id, order, order.customerId, order.status]
+    )
+
+    await client.query('COMMIT')
     return order
   } catch (error) {
-    console.error('Error creating order:', error)
-    throw new Error('Failed to create order')
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
   }
 }
 
@@ -89,13 +96,22 @@ export async function updateOrder(
   orderId: string,
   updates: Partial<Order>
 ): Promise<void> {
-  const order = orders.find(o => o.id === orderId)
-  if (!order) throw new Error("Order not found")
+  const client = await db.connect()
+  try {
+    await client.query('BEGIN')
 
-  Object.assign(order, {
-    ...updates,
-    updatedAt: new Date().toISOString()
-  })
+    await client.query(
+      'UPDATE orders SET data = jsonb_set(data, $1, $2) WHERE id = $3',
+      [JSON.stringify(updates), updates, orderId]
+    )
+
+    await client.query('COMMIT')
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
+  }
 }
 
 export function getOrderStatusColor(status: OrderStatus): {

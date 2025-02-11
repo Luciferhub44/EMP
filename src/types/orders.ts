@@ -10,11 +10,11 @@ export interface Address {
 
 export type OrderStatus = 
   | "pending"
+  | "confirmed"
   | "processing"
   | "shipped"
   | "delivered"
   | "cancelled"
-  | "confirmed"
 
 export type PaymentStatus = 
   | "pending"
