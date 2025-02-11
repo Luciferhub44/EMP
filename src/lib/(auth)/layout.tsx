@@ -24,7 +24,7 @@ export default function AuthLayout() {
       <div className="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex dark:border-r">
         <div className="absolute inset-0 bg-zinc-900" />
         <div className="relative z-20 flex items-center text-lg font-medium">
-          <img src="/assets/SANY-logo.svg" alt="Logo" className="h-8 w-8 mr-2" />
+          <img src="/ICON-SY.png" alt="Logo" className="h-8 w-8 mr-2" />
           SANY Equipment Management
         </div>
         <div className="relative z-20 mt-auto">
