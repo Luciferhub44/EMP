@@ -27,6 +27,9 @@ app.use(express.static(path.join(__dirname, '../dist')));
 async function initializeDatabase() {
   const client = await pool.connect();
   try {
+    await client.query('BEGIN');
+
+    // Create tables
     await client.query(`
       CREATE TABLE IF NOT EXISTS employees (
         id TEXT PRIMARY KEY,
@@ -55,8 +58,70 @@ async function initializeDatabase() {
         data JSONB NOT NULL
       );
     `);
-    console.log('Database initialized');
+
+    // Insert test data if tables are empty
+    const testData = {
+      employees: [{
+        id: 'admin1',
+        data: {
+          id: 'admin1',
+          agentId: 'admin',
+          passwordHash: 'admin123',
+          name: 'Admin User',
+          email: 'admin@example.com',
+          role: 'admin',
+          status: 'active',
+          assignedOrders: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      }],
+      customers: [{
+        id: 'CUST-1',
+        data: {
+          id: 'CUST-1',
+          name: 'Test Customer',
+          email: 'customer@example.com',
+          phone: '1234567890',
+          status: 'active',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      }],
+      products: [{
+        id: 'PROD-1',
+        data: {
+          id: 'PROD-1',
+          name: 'Test Product',
+          description: 'A test product',
+          price: 99.99,
+          inventory: [{
+            warehouseId: 'WH-1',
+            quantity: 100,
+            minimumStock: 10
+          }],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      }]
+    };
+
+    // Insert test data if not exists
+    for (const [table, items] of Object.entries(testData)) {
+      for (const item of items) {
+        await client.query(
+          `INSERT INTO ${table} (id, data) 
+           VALUES ($1, $2) 
+           ON CONFLICT (id) DO NOTHING`,
+          [item.id, item.data]
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+    console.log('Database initialized with test data');
   } catch (err) {
+    await client.query('ROLLBACK');
     const error = err as Error;
     console.error('Database initialization failed:', error);
   } finally {
