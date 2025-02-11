@@ -1,3 +1,5 @@
+import { db } from "@/lib/db"
+
 type MessageCallback = (message: any) => void
 type StatusCallback = (status: boolean) => void
 
@@ -11,23 +13,26 @@ class WebSocketService {
 
   constructor(private url: string) {}
 
-  connect() {
+  async connect() {
     try {
       this.ws = new WebSocket(this.url)
 
-      this.ws.onopen = () => {
+      this.ws.onopen = async () => {
         console.log('WebSocket connected')
         this.reconnectAttempts = 0
+        await this.updateConnectionStatus(true)
         this.notifyStatusChange(true)
       }
 
-      this.ws.onmessage = (event) => {
+      this.ws.onmessage = async (event) => {
         const message = JSON.parse(event.data)
+        await this.storeMessage(message)
         this.notifyMessageReceived(message)
       }
 
-      this.ws.onclose = () => {
+      this.ws.onclose = async () => {
         console.log('WebSocket disconnected')
+        await this.updateConnectionStatus(false)
         this.notifyStatusChange(false)
         this.attemptReconnect()
       }
@@ -38,6 +43,20 @@ class WebSocketService {
     } catch (error) {
       console.error('Failed to connect to WebSocket:', error)
     }
+  }
+
+  private async updateConnectionStatus(status: boolean) {
+    await db.query(
+      'INSERT INTO websocket_status (status, timestamp) VALUES ($1, $2)',
+      [status, new Date().toISOString()]
+    )
+  }
+
+  private async storeMessage(message: any) {
+    await db.query(
+      'INSERT INTO websocket_messages (id, data, timestamp) VALUES ($1, $2, $3)',
+      [`msg-${Date.now()}`, message, new Date().toISOString()]
+    )
   }
 
   private attemptReconnect() {
@@ -86,4 +105,6 @@ class WebSocketService {
   }
 }
 
-export const chatWebSocket = new WebSocketService('ws://your-websocket-server-url') 
+export const chatWebSocket = new WebSocketService(
+  `wss://ws-${import.meta.env.VITE_PUSHER_CLUSTER}.pusher.com/app/${import.meta.env.VITE_PUSHER_APP_KEY}`
+) 

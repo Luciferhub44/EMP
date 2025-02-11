@@ -1,5 +1,6 @@
 import { ChatMessage, ChatUser } from "@/types/chat"
 import { chatWebSocket } from "./websocket"
+import { db } from "@/lib/db"
 
 interface SendMessageParams {
   content: string
@@ -20,26 +21,33 @@ class ChatService {
   }
 
   private setupWebSocketListeners() {
-    chatWebSocket.onMessage((message) => {
-      // Handle different message types
+    chatWebSocket.onMessage(async (message) => {
       switch (message.type) {
         case "new_message":
-          this.handleNewMessage(message.data)
+          await this.handleNewMessage(message.data)
           break
         case "user_status":
-          this.handleUserStatus(message.data)
+          await this.handleUserStatus(message.data)
           break
       }
     })
   }
 
-  private handleNewMessage(message: ChatMessage) {
-    // Broadcast to all subscribers
+  private async handleNewMessage(message: ChatMessage) {
+    // Store message in database
+    await db.query(
+      'INSERT INTO chat_messages (id, data) VALUES ($1, $2)',
+      [message.id, message]
+    )
     this.messageCallbacks.forEach(callback => callback(message))
   }
 
-  private handleUserStatus(user: ChatUser) {
-    // Broadcast to all subscribers
+  private async handleUserStatus(user: ChatUser) {
+    // Update user status in database
+    await db.query(
+      'UPDATE chat_users SET data = $1 WHERE id = $2',
+      [user, user.id]
+    )
     this.userStatusCallbacks.forEach(callback => callback(user))
   }
 
@@ -68,6 +76,13 @@ class ChatService {
       message.attachments = await this.uploadFiles(attachments)
     }
 
+    // Store in database first
+    await db.query(
+      'INSERT INTO chat_messages (id, data) VALUES ($1, $2)',
+      [message.id, message]
+    )
+
+    // Then broadcast
     chatWebSocket.sendMessage({
       type: "new_message",
       data: message

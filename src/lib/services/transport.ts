@@ -1,6 +1,7 @@
 import type { TransportQuote, ShippingCalculation, Order } from "@/types/orders"
 import { calculateDistance, calculateShippingCost } from "@/lib/utils/shipping"
 import { ordersService } from "./orders"
+import { db } from "@/lib/db"
 
 const WAREHOUSE_ADDRESS = {
   street: "123 Warehouse St",
@@ -45,15 +46,29 @@ export const transportService = {
 
   getQuotes: async (orderId: string): Promise<TransportQuote[]> => {
     try {
+      // Check if quotes exist in database
+      const existingQuotes = await db.query(
+        'SELECT data FROM transport_quotes WHERE data->\'orderId\' = $1',
+        [orderId]
+      )
+
+      if (existingQuotes.rows.length > 0) {
+        const quotes = existingQuotes.rows.map(row => row.data)
+        // Check if quotes are still valid
+        if (new Date(quotes[0].validUntil) > new Date()) {
+          return quotes
+        }
+      }
+
       const order = await ordersService.getOrder(orderId)
       if (!order) throw new Error("Order not found")
 
       const shipping = transportService.calculateShipping(order as unknown as Order)
       const distance = await calculateDistance(shipping.origin, shipping.destination)
 
-      return [
+      const quotes = [
         {
-          id: "express",
+          id: `quote-${Date.now()}-express`,
           orderId,
           provider: "FastShip",
           method: "Express",
@@ -116,6 +131,16 @@ export const transportService = {
           }
         }
       ]
+
+      // Store quotes in database
+      await Promise.all(quotes.map(quote => 
+        db.query(
+          'INSERT INTO transport_quotes (id, data) VALUES ($1, $2)',
+          [quote.id, quote]
+        )
+      ))
+
+      return quotes
     } catch (error) {
       console.error("Failed to get transport quotes:", error)
       throw error

@@ -13,6 +13,8 @@ interface ImportMetaEnv {
   readonly VITE_AGENT1_PASSWORD: string
   readonly VITE_AGENT2_ID: string
   readonly VITE_AGENT2_PASSWORD: string
+  readonly VITE_PUSHER_APP_KEY: string
+  readonly VITE_PUSHER_CLUSTER: string
 }
 
 interface ImportMeta {

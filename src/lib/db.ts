@@ -57,11 +57,56 @@ export async function initializeDatabase() {
       )
     `)
 
+    // Create chat-related tables
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS chat_messages (
+        id TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS chat_users (
+        id TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
+
+    // Create transport-related tables
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS transport_quotes (
+        id TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
+
+    // Create websocket-related tables
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS websocket_status (
+        id SERIAL PRIMARY KEY,
+        status BOOLEAN NOT NULL,
+        timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS websocket_messages (
+        id TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
+
     // Create indexes for better query performance
     await db.query('CREATE INDEX IF NOT EXISTS idx_orders_customer_id ON orders(customer_id)')
     await db.query('CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)')
     await db.query('CREATE INDEX IF NOT EXISTS idx_products_sku ON products(sku)')
     await db.query('CREATE INDEX IF NOT EXISTS idx_products_status ON products(status)')
+    await db.query('CREATE INDEX IF NOT EXISTS idx_chat_messages_timestamp ON chat_messages(timestamp)')
+    await db.query('CREATE INDEX IF NOT EXISTS idx_transport_quotes_data_orderid ON transport_quotes((data->\'orderId\'))')
 
     console.log('Database initialized successfully')
   } catch (error) {
