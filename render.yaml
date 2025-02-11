@@ -37,19 +37,6 @@ services:
     ipAllowList: []
     plan: starter
 
-databases:
-- name: equipment-db
-  databaseName: equipment_db
-  user: equipment_db_user
-  plan: basic-256mb
-  region: singapore
-  ipAllowList:
-  - source: 0.0.0.0/0
-    description: everywhere
-  postgresMajorVersion: "16"
-  diskSizeGB: 15
-
-
 - type: web
   name: pgAdmin-dpg-cujmioaj1k6c73cv6rhg-a
   runtime: docker
@@ -86,7 +73,6 @@ databases:
     mountPath: /var/lib/pgadmin
     sizeGB: 1
 
-
 - type: web
   name: PgHero-dpg-cujmioaj1k6c73cv6rhg-a
   runtime: image
@@ -103,3 +89,15 @@ databases:
   - key: DATABASE_URL
     sync: false
   region: singapore
+
+databases:
+- name: equipment-db
+  databaseName: equipment_db
+  user: equipment_db_user
+  plan: basic-256mb
+  region: singapore
+  ipAllowList:
+  - source: 0.0.0.0/0
+    description: everywhere
+  postgresMajorVersion: "16"
+  diskSizeGB: 15
