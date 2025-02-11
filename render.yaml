@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: equipment-manager
+    name: EMP
     env: node
     buildCommand: yarn install && yarn build
     startCommand: yarn start
@@ -32,7 +32,7 @@ services:
       - key: VITE_AGENT1_PASSWORD
         value: ${VITE_AGENT1_PASSWORD}
 
-- type: web
+  - type: web
   name: pgAdmin-dpg-cujmioaj1k6c73cv6rhg-a
   runtime: docker
   repo: https://github.com/render-examples/pgadmin
