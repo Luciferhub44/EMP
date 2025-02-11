@@ -1,4 +1,4 @@
-import { db } from "@/lib/db"
+import { db } from "@/lib/api/db"
 
 type MessageCallback = (message: any) => void
 type StatusCallback = (status: boolean) => void

@@ -1,6 +1,6 @@
 import { ChatMessage, ChatUser } from "@/types/chat"
 import { chatWebSocket } from "./websocket"
-import { db } from "@/lib/db"
+import { db } from "@/lib/api/db"
 
 interface SendMessageParams {
   content: string

@@ -1,5 +1,5 @@
 import type { Employee, EmployeeCredentials, PaymentHistory, PaymentType } from "@/types/employee"
-import { db } from "@/lib/db"
+import { db } from "@/lib/api/db"
 
 // Store employee credentials separately for security
 const employeeCredentials: Record<string, string> = {

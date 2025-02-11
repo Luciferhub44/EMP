@@ -1,5 +1,5 @@
 import { Product } from "@/types/products"
-import { db } from "@/lib/db"
+import { db } from "@/lib/api/db"
 
 // Convert sync functions to async
 export async function updateProductSync(productId: string, updates: Partial<Product>): Promise<Product | null> {

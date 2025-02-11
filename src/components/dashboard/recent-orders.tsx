@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { formatDate, formatCurrency } from "@/lib/utils"
 import { ArrowRight } from "lucide-react"
-import { db } from "@/lib/db"
+import { db } from "@/lib/api/db"
 import { Order } from "@/types"
 import * as React from "react"
 

@@ -1,4 +1,4 @@
-import { db } from "@/lib/db"
+import { db } from "@/lib/api/db"
 import type { AuditActionType, AuditLog } from "@/types/audit"
 import { authService } from "@/lib/services/auth"
 

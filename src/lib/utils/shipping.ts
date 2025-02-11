@@ -1,5 +1,5 @@
 import type { Address } from "@/types/orders"
-import { db } from "@/lib/db"
+import { db } from "@/lib/api/db"
 
 interface ShippingCostParams {
   distance: number

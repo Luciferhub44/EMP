@@ -1,5 +1,5 @@
 import { Order, OrderStatus } from "@/types"
-import { db } from "@/lib/db"
+import { db } from "@/lib/api/db"
 //import { updateStock } from "./inventory"
 
 export async function getOrder(orderId: string): Promise<Order | null> {

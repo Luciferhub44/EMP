@@ -9,7 +9,7 @@ import {
   ResponsiveContainer,
 } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { db } from "@/lib/db"
+import { db } from "@/lib/api/db"
 import { formatCurrency } from "@/lib/utils"
 
 interface ChartData {

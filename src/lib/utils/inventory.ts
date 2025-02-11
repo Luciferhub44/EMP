@@ -1,5 +1,5 @@
 import { Product, Warehouse } from "@/types"
-import { db } from "@/lib/db"
+import { db } from "@/lib/api/db"
 import { products } from "@/data/products"
 import { warehouses } from "@/data/warehouses"
 

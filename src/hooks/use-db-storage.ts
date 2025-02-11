@@ -1,5 +1,5 @@
 import * as React from "react"
-import { db } from "@/lib/db"
+import { db } from "@/lib/api/db"
 
 export function useDbStorage<T>(key: string, initialValue: T): [T, (value: T) => void] {
   // State to store our value

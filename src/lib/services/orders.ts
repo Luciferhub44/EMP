@@ -5,7 +5,7 @@ import type {
   FulfillmentStatus,
   TransportQuote 
 } from "@/types/orders"
-import { db } from "@/lib/db"
+import { db } from "@/lib/api/db"
 
 export const ordersService = {
   getOrders: async (userId: string, isAdmin: boolean) => {

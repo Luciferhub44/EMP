@@ -1,5 +1,5 @@
 import type { Employee } from "@/types/employee"
-import { db } from "@/lib/db"
+import { db } from "@/lib/api/db"
 
 async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();

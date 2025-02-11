@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { db } from "@/lib/db"
+import { db } from "@/lib/api/db"
 import { updateProduct } from "@/lib/utils/products"
 import { Product } from "@/types"
 

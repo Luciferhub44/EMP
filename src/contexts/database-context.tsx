@@ -1,5 +1,5 @@
 import { createContext, useContext, ReactNode } from 'react'
-import { db } from '@/lib/db'
+import { db } from '@/lib/api/db'
 
 const DatabaseContext = createContext(db)
 

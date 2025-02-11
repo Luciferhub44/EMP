@@ -1,7 +1,7 @@
 import type { TransportQuote, ShippingCalculation, Order } from "@/types/orders"
 import { calculateDistance, calculateShippingCost } from "@/lib/utils/shipping"
 import { ordersService } from "./orders"
-import { db } from "@/lib/db"
+import { db } from "@/lib/api/db"
 
 const WAREHOUSE_ADDRESS = {
   street: "123 Warehouse St",

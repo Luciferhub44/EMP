@@ -1,4 +1,4 @@
-import { db } from "@/lib/db"
+import { db } from "@/lib/api/db"
 import type { Session } from "@/types/session"
 
 export const sessionService = {

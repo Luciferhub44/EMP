@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { formatCurrency } from "@/lib/utils"
-import { db } from "@/lib/db"
+import { db } from "@/lib/api/db"
 import { Product, ProductStatus } from "@/types/product"
 import { getTotalStock, needsRestocking } from "@/lib/utils/inventory"
 import { Loader2 } from "lucide-react"

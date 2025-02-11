@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { createProduct } from "@/lib/utils/products"
-import { db } from "@/lib/db"
+import { db } from "@/lib/api/db"
 import { ProductCategory } from "@/types"
 import { Loader2 } from "lucide-react"
 

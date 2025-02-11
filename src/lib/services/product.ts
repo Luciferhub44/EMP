@@ -1,5 +1,5 @@
 import type { Product } from "@/types/products"
-import { db } from "@/lib/db"
+import { db } from "@/lib/api/db"
 
 export const productService = {
   getProducts: async () => {

@@ -1,5 +1,5 @@
 import { TransportQuote, OrderItem, FulfillmentDetails, FulfillmentStatus } from "@/types/orders"
-import { db } from "@/lib/db"
+import { db } from "@/lib/api/db"
 
 interface GenerateQuoteParams {
   orderId: string

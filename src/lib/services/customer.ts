@@ -1,5 +1,5 @@
 import type { Customer } from "@/types/customer"
-import { db } from "@/lib/db"
+import { db } from "@/lib/api/db"
 import { employeeService } from "./employee"
 import { ordersService } from "./orders"
 
