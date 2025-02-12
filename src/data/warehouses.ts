@@ -7,18 +7,12 @@ export interface Warehouse {
 }
 
 export const warehouses: Warehouse[] = [
+
   {
-    id: "WH001",
-    name: "Main Warehouse",
-    location: "New York",
+    id: 'WH-1',
+    name: 'Main Warehouse',
+    location: '2792 NW 24th St Yard, Miami, FL 33142, United States',
     capacity: 100000,
-    isActive: true
-  },
-  {
-    id: "WH002",
-    name: "West Coast Warehouse",
-    location: "Los Angeles",
-    capacity: 80000,
     isActive: true
   }
 ] 
