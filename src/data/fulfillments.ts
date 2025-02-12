@@ -32,4 +32,4 @@ export const fulfillments: Record<string, FulfillmentDetails> = {
       }
     ]
   }
-} 
+}

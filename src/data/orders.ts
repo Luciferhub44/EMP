@@ -78,4 +78,4 @@ export const orders: Order[] = Array.from({ length: 55 }, (_, index) => {
     fulfillmentStatus: "pending",
     notes: Math.random() > 0.7 ? "Special handling required" : undefined
   }
-}) 
+})

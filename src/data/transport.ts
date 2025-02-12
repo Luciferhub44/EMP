@@ -74,4 +74,4 @@ export const transportCompanies: TransportCompany[] = [
       email: "info@reliabletransport.com"
     }
   }
-] 
+]

@@ -6,12 +6,12 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 
-const DEFAULT_PORT = 3001;
+const DEFAULT_PORT = process.env.PORT || 3001;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || DEFAULT_PORT;
+const PORT = DEFAULT_PORT;
 
 // Helper function for password hashing
 async function hashPassword(password: string): Promise<string> {
@@ -38,9 +38,7 @@ async function verifyPassword(password: string, hash: string): Promise<boolean> 
 // Configure database pool
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' 
-    ? { rejectUnauthorized: false } 
-    : false,
+  ssl: { rejectUnauthorized: false },
   max: 20, // Maximum number of clients in the pool
   idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
   connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
@@ -522,9 +520,13 @@ async function initializeDatabase() {
       }],
       products: [{
         id: 'PROD-1',
+        sku: 'TEST-001',
+        status: 'active',
         data: {
           id: 'PROD-1',
           name: 'Test Product',
+          sku: 'TEST-001',
+          status: 'active',
           description: 'A test product',
           price: 99.99,
           inventory: [{
@@ -571,12 +573,21 @@ async function initializeDatabase() {
     // Insert test data if not exists
     for (const [table, items] of Object.entries(testData)) {
       for (const item of items) {
-        await client.query(
-          `INSERT INTO ${table} (id, data) 
-           VALUES ($1, $2) 
-           ON CONFLICT (id) DO NOTHING`,
-          [item.id, item.data]
-        );
+        if (table === 'products') {
+          await client.query(
+            `INSERT INTO ${table} (id, sku, status, data) 
+             VALUES ($1, $2, $3, $4) 
+             ON CONFLICT (id) DO NOTHING`,
+            [item.id, item.data.sku, item.data.status, item.data]
+          );
+        } else {
+          await client.query(
+            `INSERT INTO ${table} (id, data) 
+             VALUES ($1, $2) 
+             ON CONFLICT (id) DO NOTHING`,
+            [item.id, item.data]
+          );
+        }
       }
     }
 
@@ -676,7 +687,7 @@ async function startServer() {
     // Start the server
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
-      console.log(`Database connected: ${process.env.NODE_ENV === 'production' ? 'Production' : 'Development'} mode`);
+      console.log(`Database connected successfully`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);

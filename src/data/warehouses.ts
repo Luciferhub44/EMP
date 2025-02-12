@@ -7,7 +7,6 @@ export interface Warehouse {
 }
 
 export const warehouses: Warehouse[] = [
-
   {
     id: 'WH-1',
     name: 'Main Warehouse',
@@ -15,4 +14,4 @@ export const warehouses: Warehouse[] = [
     capacity: 100000,
     isActive: true
   }
-] 
+]

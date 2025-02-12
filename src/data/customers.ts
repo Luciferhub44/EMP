@@ -48,7 +48,6 @@ export const customers: Customer[] = [
       postalCode: "75201"
     }
   },
-  // Add more customers...
   {
     id: generateCustomerId(48),
     name: "Michael Chang",
@@ -77,4 +76,4 @@ export const customers: Customer[] = [
       postalCode: "60601"
     }
   }
-] 
+]

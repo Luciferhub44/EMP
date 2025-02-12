@@ -67,4 +67,4 @@ export const employees: Employee[] = [
       lastPaymentDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString()
     }
   }
-] 
+]
