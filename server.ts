@@ -100,9 +100,10 @@ async function initializeDatabase() {
       -- Create indexes for JSONB fields
       CREATE INDEX IF NOT EXISTS idx_employees_data ON employees USING gin (data);
       CREATE INDEX IF NOT EXISTS idx_employees_agent_id ON employees ((data->>'agentId'));
-      CREATE INDEX IF NOT EXISTS idx_employees_email ON employees ((data->>'email'));
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_employees_email ON employees ((data->>'email'));
       CREATE INDEX IF NOT EXISTS idx_employees_role ON employees ((data->>'role'));
       CREATE INDEX IF NOT EXISTS idx_employees_status ON employees ((data->>'status'));
+      CREATE INDEX IF NOT EXISTS idx_employees_assigned_orders ON employees USING gin ((data->'assignedOrders'));
 
       CREATE TABLE IF NOT EXISTS sessions (
         id TEXT PRIMARY KEY,
@@ -117,22 +118,54 @@ async function initializeDatabase() {
       CREATE TABLE IF NOT EXISTS customers (
         id TEXT PRIMARY KEY,
         data JSONB NOT NULL,
+        search_vector tsvector GENERATED ALWAYS AS (
+          to_tsvector('english',
+            data->>'name' || ' ' ||
+            data->>'email' || ' ' ||
+            data->>'company'
+          )
+        ) STORED,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
       
-      -- Create index on email from JSONB data
+      -- Create indexes for customers
       CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_email 
       ON customers ((data->>'email'));
+      CREATE INDEX IF NOT EXISTS idx_customers_name 
+      ON customers ((data->>'name'));
+      CREATE INDEX IF NOT EXISTS idx_customers_company 
+      ON customers ((data->>'company'));
+      CREATE INDEX IF NOT EXISTS idx_customers_search 
+      ON customers USING gin(search_vector);
       
       CREATE TABLE IF NOT EXISTS products (
         id TEXT PRIMARY KEY,
         sku TEXT UNIQUE NOT NULL,
         status TEXT NOT NULL,
         data JSONB NOT NULL,
+        search_vector tsvector GENERATED ALWAYS AS (
+          to_tsvector('english',
+            data->>'name' || ' ' ||
+            data->>'description' || ' ' ||
+            data->>'category'
+          )
+        ) STORED,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
+
+      -- Create indexes for products
+      CREATE INDEX IF NOT EXISTS idx_products_category 
+      ON products ((data->>'category'));
+      CREATE INDEX IF NOT EXISTS idx_products_name 
+      ON products ((data->>'name'));
+      CREATE INDEX IF NOT EXISTS idx_products_price 
+      ON products ((data->>'price'));
+      CREATE INDEX IF NOT EXISTS idx_products_search 
+      ON products USING gin(search_vector);
+      CREATE INDEX IF NOT EXISTS idx_products_inventory 
+      ON products USING gin((data->'inventory'));
 
       CREATE TABLE IF NOT EXISTS inventory (
         id TEXT PRIMARY KEY,
@@ -148,13 +181,26 @@ async function initializeDatabase() {
       CREATE TABLE IF NOT EXISTS orders (
         id TEXT PRIMARY KEY,
         customer_id TEXT REFERENCES customers(id),
-        status TEXT NOT NULL,
-        payment_status TEXT NOT NULL,
-        total_amount DECIMAL(10,2) NOT NULL,
+        search_vector tsvector GENERATED ALWAYS AS (
+          to_tsvector('english',
+            data->>'id' || ' ' ||
+            data->>'customerName' || ' ' ||
+            data->>'status'
+          )
+        ) STORED,
         data JSONB NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
+
+      -- Create indexes for orders
+      CREATE INDEX IF NOT EXISTS idx_orders_status ON orders ((data->>'status'));
+      CREATE INDEX IF NOT EXISTS idx_orders_payment_status ON orders ((data->>'paymentStatus'));
+      CREATE INDEX IF NOT EXISTS idx_orders_total ON orders ((data->>'total'));
+      CREATE INDEX IF NOT EXISTS idx_orders_customer_name ON orders ((data->>'customerName'));
+      CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders ((data->>'createdAt'));
+      CREATE INDEX IF NOT EXISTS idx_orders_items ON orders USING gin((data->'items'));
+      CREATE INDEX IF NOT EXISTS idx_orders_search ON orders USING gin(search_vector);
 
       CREATE TABLE IF NOT EXISTS order_items (
         id TEXT PRIMARY KEY,
@@ -170,44 +216,63 @@ async function initializeDatabase() {
       CREATE TABLE IF NOT EXISTS fulfillments (
         id TEXT PRIMARY KEY,
         order_id TEXT REFERENCES orders(id) ON DELETE CASCADE,
-        status TEXT NOT NULL,
-        tracking_number TEXT,
-        carrier TEXT,
         data JSONB NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
 
+      -- Create indexes for fulfillments
+      CREATE INDEX IF NOT EXISTS idx_fulfillments_status 
+      ON fulfillments ((data->>'status'));
+      CREATE INDEX IF NOT EXISTS idx_fulfillments_tracking 
+      ON fulfillments ((data->>'trackingNumber'));
+      CREATE INDEX IF NOT EXISTS idx_fulfillments_carrier 
+      ON fulfillments ((data->>'carrier'));
+
       CREATE TABLE IF NOT EXISTS transport_quotes (
         id TEXT PRIMARY KEY,
         order_id TEXT REFERENCES orders(id) ON DELETE CASCADE,
-        provider TEXT NOT NULL,
-        amount DECIMAL(10,2) NOT NULL,
-        expires_at TIMESTAMPTZ NOT NULL,
         data JSONB NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
+
+      -- Create indexes for transport quotes
+      CREATE INDEX IF NOT EXISTS idx_transport_quotes_provider 
+      ON transport_quotes ((data->>'provider'));
+      CREATE INDEX IF NOT EXISTS idx_transport_quotes_amount 
+      ON transport_quotes ((data->>'amount'));
+      CREATE INDEX IF NOT EXISTS idx_transport_quotes_expires 
+      ON transport_quotes ((data->>'expiresAt'));
 
       -- Messaging and Notifications
       CREATE TABLE IF NOT EXISTS messages (
         id TEXT PRIMARY KEY,
         thread_id TEXT NOT NULL,
         sender_id TEXT REFERENCES employees(id),
-        content TEXT NOT NULL,
         data JSONB,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
 
+      -- Create indexes for messages
+      CREATE INDEX IF NOT EXISTS idx_messages_content 
+      ON messages ((data->>'content'));
+      CREATE INDEX IF NOT EXISTS idx_messages_read 
+      ON messages ((data->>'read'));
+
       CREATE TABLE IF NOT EXISTS notifications (
         id TEXT PRIMARY KEY,
         user_id TEXT REFERENCES employees(id) ON DELETE CASCADE,
-        type TEXT NOT NULL,
-        title TEXT NOT NULL,
-        message TEXT NOT NULL,
-        read BOOLEAN DEFAULT FALSE,
         data JSONB,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
+
+      -- Create indexes for notifications
+      CREATE INDEX IF NOT EXISTS idx_notifications_type 
+      ON notifications ((data->>'type'));
+      CREATE INDEX IF NOT EXISTS idx_notifications_read 
+      ON notifications ((data->>'read'));
+      CREATE INDEX IF NOT EXISTS idx_notifications_created 
+      ON notifications ((data->>'createdAt'));
 
       -- Audit and Logging
       CREATE TABLE IF NOT EXISTS audit_logs (
@@ -238,32 +303,27 @@ async function initializeDatabase() {
       -- Create indexes
       CREATE INDEX IF NOT EXISTS idx_employees_data ON employees USING gin (data);
       CREATE INDEX IF NOT EXISTS idx_employees_agent_id ON employees ((data->>'agentId'));
-      CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
-      CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
-
       CREATE INDEX IF NOT EXISTS idx_customers_data ON customers USING gin (data);
       CREATE INDEX IF NOT EXISTS idx_products_data ON products USING gin (data);
       CREATE INDEX IF NOT EXISTS idx_orders_data ON orders USING gin (data);
 
+      -- Create indexes
+      CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
+      CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
       CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id);
-      CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
-      CREATE INDEX IF NOT EXISTS idx_orders_payment ON orders(payment_status);
       CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at);
 
       CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
       CREATE INDEX IF NOT EXISTS idx_order_items_product ON order_items(product_id);
 
       CREATE INDEX IF NOT EXISTS idx_fulfillments_order ON fulfillments(order_id);
-      CREATE INDEX IF NOT EXISTS idx_fulfillments_status ON fulfillments(status);
 
       CREATE INDEX IF NOT EXISTS idx_transport_quotes_order ON transport_quotes(order_id);
-      CREATE INDEX IF NOT EXISTS idx_transport_quotes_expires ON transport_quotes(expires_at);
 
       CREATE INDEX IF NOT EXISTS idx_messages_thread ON messages(thread_id);
       CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
 
       CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
-      CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read);
 
       CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);
       CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
@@ -455,7 +515,6 @@ async function initializeDatabase() {
       orders: [{
         id: 'ORD-1',
         customer_id: 'CUST-1',
-        status: 'pending',
         data: {
           id: 'ORD-1',
           customerId: 'CUST-1',
@@ -465,6 +524,8 @@ async function initializeDatabase() {
             price: 99.99
           }],
           status: 'pending',
+          paymentStatus: 'pending',
+          total: 99.99,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         }
