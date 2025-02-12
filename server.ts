@@ -62,33 +62,6 @@ async function initializeDatabase() {
     await client.query('BEGIN');
 
     await client.query(`
-      -- Drop existing indexes first to avoid conflicts
-      DROP INDEX IF EXISTS idx_employees_agent_id;
-      DROP INDEX IF EXISTS idx_employees_data;
-      DROP INDEX IF EXISTS idx_sessions_token;
-      DROP INDEX IF EXISTS idx_sessions_user;
-      DROP INDEX IF EXISTS idx_customers_email;
-      DROP INDEX IF EXISTS idx_customers_data;
-      DROP INDEX IF EXISTS idx_products_data;
-      DROP INDEX IF EXISTS idx_orders_data;
-      DROP INDEX IF EXISTS idx_orders_customer;
-      DROP INDEX IF EXISTS idx_orders_status;
-      DROP INDEX IF EXISTS idx_orders_payment;
-      DROP INDEX IF EXISTS idx_orders_created;
-      DROP INDEX IF EXISTS idx_order_items_order;
-      DROP INDEX IF EXISTS idx_order_items_product;
-      DROP INDEX IF EXISTS idx_fulfillments_order;
-      DROP INDEX IF EXISTS idx_fulfillments_status;
-      DROP INDEX IF EXISTS idx_transport_quotes_order;
-      DROP INDEX IF EXISTS idx_transport_quotes_expires;
-      DROP INDEX IF EXISTS idx_messages_thread;
-      DROP INDEX IF EXISTS idx_messages_sender;
-      DROP INDEX IF EXISTS idx_notifications_user;
-      DROP INDEX IF EXISTS idx_notifications_read;
-      DROP INDEX IF EXISTS idx_audit_logs_user;
-      DROP INDEX IF EXISTS idx_audit_logs_action;
-      DROP INDEX IF EXISTS idx_audit_logs_entity;
-
       -- Auth and Users
       CREATE TABLE IF NOT EXISTS employees (
         id TEXT PRIMARY KEY,
@@ -97,7 +70,7 @@ async function initializeDatabase() {
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
 
-      -- Create indexes for JSONB fields
+      -- Create indexes for employees
       CREATE INDEX IF NOT EXISTS idx_employees_data ON employees USING gin (data);
       CREATE INDEX IF NOT EXISTS idx_employees_agent_id ON employees ((data->>'agentId'));
       CREATE UNIQUE INDEX IF NOT EXISTS idx_employees_email ON employees ((data->>'email'));
@@ -114,6 +87,10 @@ async function initializeDatabase() {
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
 
+      -- Create indexes for sessions
+      CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
+      CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+
       -- Core Business Tables
       CREATE TABLE IF NOT EXISTS customers (
         id TEXT PRIMARY KEY,
@@ -121,14 +98,12 @@ async function initializeDatabase() {
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
-      
-      -- Create indexes for customers
-      CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_email 
-      ON customers ((data->>'email'));
-      CREATE INDEX IF NOT EXISTS idx_customers_name 
-      ON customers ((data->>'name'));
-      CREATE INDEX IF NOT EXISTS idx_customers_company 
-      ON customers ((data->>'company'));
+
+      -- Create indexes for customers after table creation
+      CREATE INDEX IF NOT EXISTS idx_customers_data ON customers USING gin (data);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_email ON customers ((data->>'email'));
+      CREATE INDEX IF NOT EXISTS idx_customers_name ON customers ((data->>'name'));
+      CREATE INDEX IF NOT EXISTS idx_customers_company ON customers ((data->>'company'));
       
       CREATE TABLE IF NOT EXISTS products (
         id TEXT PRIMARY KEY,
@@ -139,15 +114,12 @@ async function initializeDatabase() {
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
 
-      -- Create indexes for products
-      CREATE INDEX IF NOT EXISTS idx_products_category 
-      ON products ((data->>'category'));
-      CREATE INDEX IF NOT EXISTS idx_products_name 
-      ON products ((data->>'name'));
-      CREATE INDEX IF NOT EXISTS idx_products_price 
-      ON products ((data->>'price'));
-      CREATE INDEX IF NOT EXISTS idx_products_inventory 
-      ON products USING gin((data->'inventory'));
+      -- Create indexes for products after table creation
+      CREATE INDEX IF NOT EXISTS idx_products_data ON products USING gin (data);
+      CREATE INDEX IF NOT EXISTS idx_products_category ON products ((data->>'category'));
+      CREATE INDEX IF NOT EXISTS idx_products_name ON products ((data->>'name'));
+      CREATE INDEX IF NOT EXISTS idx_products_price ON products ((data->>'price'));
+      CREATE INDEX IF NOT EXISTS idx_products_inventory ON products USING gin((data->'inventory'));
 
       CREATE TABLE IF NOT EXISTS inventory (
         id TEXT PRIMARY KEY,
@@ -167,8 +139,11 @@ async function initializeDatabase() {
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
-
-      -- Create indexes for orders
+      
+      -- Create indexes for orders after table creation
+      CREATE INDEX IF NOT EXISTS idx_orders_data ON orders USING gin (data);
+      CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id);
+      CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at);
       CREATE INDEX IF NOT EXISTS idx_orders_status ON orders ((data->>'status'));
       CREATE INDEX IF NOT EXISTS idx_orders_payment_status ON orders ((data->>'paymentStatus'));
       CREATE INDEX IF NOT EXISTS idx_orders_total ON orders ((data->>'total'));
@@ -186,6 +161,10 @@ async function initializeDatabase() {
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
 
+      -- Create indexes for order items
+      CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
+      CREATE INDEX IF NOT EXISTS idx_order_items_product ON order_items(product_id);
+
       -- Fulfillment and Shipping
       CREATE TABLE IF NOT EXISTS fulfillments (
         id TEXT PRIMARY KEY,
@@ -194,14 +173,12 @@ async function initializeDatabase() {
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
-
-      -- Create indexes for fulfillments
-      CREATE INDEX IF NOT EXISTS idx_fulfillments_status 
-      ON fulfillments ((data->>'status'));
-      CREATE INDEX IF NOT EXISTS idx_fulfillments_tracking 
-      ON fulfillments ((data->>'trackingNumber'));
-      CREATE INDEX IF NOT EXISTS idx_fulfillments_carrier 
-      ON fulfillments ((data->>'carrier'));
+      
+      -- Create indexes for fulfillments after table creation
+      CREATE INDEX IF NOT EXISTS idx_fulfillments_order ON fulfillments(order_id);
+      CREATE INDEX IF NOT EXISTS idx_fulfillments_status ON fulfillments ((data->>'status'));
+      CREATE INDEX IF NOT EXISTS idx_fulfillments_tracking ON fulfillments ((data->>'trackingNumber'));
+      CREATE INDEX IF NOT EXISTS idx_fulfillments_carrier ON fulfillments ((data->>'carrier'));
 
       CREATE TABLE IF NOT EXISTS transport_quotes (
         id TEXT PRIMARY KEY,
@@ -210,13 +187,11 @@ async function initializeDatabase() {
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
 
-      -- Create indexes for transport quotes
-      CREATE INDEX IF NOT EXISTS idx_transport_quotes_provider 
-      ON transport_quotes ((data->>'provider'));
-      CREATE INDEX IF NOT EXISTS idx_transport_quotes_amount 
-      ON transport_quotes ((data->>'amount'));
-      CREATE INDEX IF NOT EXISTS idx_transport_quotes_expires 
-      ON transport_quotes ((data->>'expiresAt'));
+      -- Create indexes for transport quotes after table creation
+      CREATE INDEX IF NOT EXISTS idx_transport_quotes_order ON transport_quotes(order_id);
+      CREATE INDEX IF NOT EXISTS idx_transport_quotes_provider ON transport_quotes ((data->>'provider'));
+      CREATE INDEX IF NOT EXISTS idx_transport_quotes_amount ON transport_quotes ((data->>'amount'));
+      CREATE INDEX IF NOT EXISTS idx_transport_quotes_expires ON transport_quotes ((data->>'expiresAt'));
 
       -- Messaging and Notifications
       CREATE TABLE IF NOT EXISTS messages (
@@ -227,11 +202,11 @@ async function initializeDatabase() {
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
 
-      -- Create indexes for messages
-      CREATE INDEX IF NOT EXISTS idx_messages_content 
-      ON messages ((data->>'content'));
-      CREATE INDEX IF NOT EXISTS idx_messages_read 
-      ON messages ((data->>'read'));
+      -- Create indexes for messages after table creation
+      CREATE INDEX IF NOT EXISTS idx_messages_thread ON messages(thread_id);
+      CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
+      CREATE INDEX IF NOT EXISTS idx_messages_content ON messages ((data->>'content'));
+      CREATE INDEX IF NOT EXISTS idx_messages_read ON messages ((data->>'read'));
 
       CREATE TABLE IF NOT EXISTS notifications (
         id TEXT PRIMARY KEY,
@@ -240,13 +215,11 @@ async function initializeDatabase() {
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
 
-      -- Create indexes for notifications
-      CREATE INDEX IF NOT EXISTS idx_notifications_type 
-      ON notifications ((data->>'type'));
-      CREATE INDEX IF NOT EXISTS idx_notifications_read 
-      ON notifications ((data->>'read'));
-      CREATE INDEX IF NOT EXISTS idx_notifications_created 
-      ON notifications ((data->>'createdAt'));
+      -- Create indexes for notifications after table creation
+      CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
+      CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications ((data->>'type'));
+      CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications ((data->>'read'));
+      CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications ((data->>'createdAt'));
 
       -- Audit and Logging
       CREATE TABLE IF NOT EXISTS audit_logs (
@@ -258,6 +231,11 @@ async function initializeDatabase() {
         changes JSONB,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
+
+      -- Create indexes for audit logs after table creation
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_entity ON audit_logs(entity_type, entity_id);
 
       -- Settings and Configuration
       CREATE TABLE IF NOT EXISTS settings (
@@ -274,35 +252,6 @@ async function initializeDatabase() {
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
       
-      -- Create indexes
-      CREATE INDEX IF NOT EXISTS idx_employees_data ON employees USING gin (data);
-      CREATE INDEX IF NOT EXISTS idx_employees_agent_id ON employees ((data->>'agentId'));
-      CREATE INDEX IF NOT EXISTS idx_customers_data ON customers USING gin (data);
-      CREATE INDEX IF NOT EXISTS idx_products_data ON products USING gin (data);
-      CREATE INDEX IF NOT EXISTS idx_orders_data ON orders USING gin (data);
-
-      -- Create indexes
-      CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
-      CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
-      CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id);
-      CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at);
-
-      CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
-      CREATE INDEX IF NOT EXISTS idx_order_items_product ON order_items(product_id);
-
-      CREATE INDEX IF NOT EXISTS idx_fulfillments_order ON fulfillments(order_id);
-
-      CREATE INDEX IF NOT EXISTS idx_transport_quotes_order ON transport_quotes(order_id);
-
-      CREATE INDEX IF NOT EXISTS idx_messages_thread ON messages(thread_id);
-      CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
-
-      CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
-
-      CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);
-      CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
-      CREATE INDEX IF NOT EXISTS idx_audit_logs_entity ON audit_logs(entity_type, entity_id);
-
       -- Create triggers for updated_at timestamps
       CREATE OR REPLACE FUNCTION update_updated_at_column()
       RETURNS TRIGGER AS $$
