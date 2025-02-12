@@ -1,35 +1,45 @@
 import type { Employee } from "@/types/employee"
 import { db } from "@/lib/api/db"
-
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hash = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(hash))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
-}
+import { hashPassword } from '@/lib/api/password'
 
 export const authService = {
   login: async (agentId: string, password: string) => {
-    const result = await db.query(
-      'SELECT data FROM employees WHERE data->\'agentId\' = $1',
-      [agentId]
-    )
-    
-    const employee = result.rows[0]?.data
-    if (!employee) {
+    try {
+      // First verify the agent ID exists
+      const { rows: [employeeRow] } = await db.query(
+        'SELECT data FROM employees WHERE data->>\'agentId\' = $1',
+        [agentId]
+      )
+
+      if (!employeeRow) {
+        throw new Error("Invalid credentials")
+      }
+
+      const employee = employeeRow.data
+
+      // Verify password using the server's verifyPassword function
+      const response = await fetch('/api/auth/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          password,
+          hash: employee.passwordHash
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error("Invalid credentials")
+      }
+
+      // Don't send password hash to client
+      const { passwordHash, ...safeEmployee } = employee
+      return safeEmployee
+    } catch (error) {
+      console.error('Login failed:', error)
       throw new Error("Invalid credentials")
     }
-
-    const hashedPassword = await hashPassword(password)
-    if (hashedPassword !== employee.passwordHash) {
-      throw new Error("Invalid credentials")
-    }
-
-    // Don't send password hash to client
-    const { passwordHash, ...safeEmployee } = employee
-    return safeEmployee
   },
 
   getEmployeeById: async (id: string) => {

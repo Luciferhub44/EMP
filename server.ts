@@ -61,28 +61,67 @@ async function initializeDatabase() {
   try {
     await client.query('BEGIN');
 
-    // First create all base tables without foreign keys
     await client.query(`
+      -- First create all base tables without foreign keys or indexes
       CREATE TABLE IF NOT EXISTS employees (
         id TEXT PRIMARY KEY,
         data JSONB NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
-
+      
+      CREATE TABLE IF NOT EXISTS sessions (
+        id TEXT PRIMARY KEY,
+        user_id TEXT,
+        token TEXT UNIQUE NOT NULL,
+        expires_at TIMESTAMPTZ NOT NULL,
+        data JSONB,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+      
       CREATE TABLE IF NOT EXISTS customers (
         id TEXT PRIMARY KEY,
         data JSONB NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
+      
+      CREATE TABLE IF NOT EXISTS products (
+        id TEXT PRIMARY KEY,
+        sku TEXT UNIQUE NOT NULL,
+        status TEXT NOT NULL,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
 
+      CREATE TABLE IF NOT EXISTS inventory (
+        id TEXT PRIMARY KEY,
+        product_id TEXT,
+        warehouse_id TEXT NOT NULL,
+        quantity INTEGER NOT NULL DEFAULT 0,
+        min_quantity INTEGER NOT NULL DEFAULT 0,
+        data JSONB,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+      
       CREATE TABLE IF NOT EXISTS orders (
         id TEXT PRIMARY KEY,
         customer_id TEXT,
         data JSONB NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS order_items (
+        id TEXT PRIMARY KEY,
+        order_id TEXT,
+        product_id TEXT,
+        quantity INTEGER NOT NULL,
+        price DECIMAL(10,2) NOT NULL,
+        data JSONB,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
 
       CREATE TABLE IF NOT EXISTS fulfillments (
@@ -93,26 +132,378 @@ async function initializeDatabase() {
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
 
-      -- Create indexes
-      CREATE INDEX IF NOT EXISTS idx_employees_data ON employees USING gin (data);
-      CREATE INDEX IF NOT EXISTS idx_employees_agent_id ON employees ((data->>'agentId'));
-      CREATE INDEX IF NOT EXISTS idx_employees_email ON employees ((data->>'email'));
-      CREATE INDEX IF NOT EXISTS idx_employees_role ON employees ((data->>'role'));
-      CREATE INDEX IF NOT EXISTS idx_employees_status ON employees ((data->>'status'));
+      CREATE TABLE IF NOT EXISTS transport_quotes (
+        id TEXT PRIMARY KEY,
+        order_id TEXT,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
 
-      -- Add foreign key constraints
+      CREATE TABLE IF NOT EXISTS messages (
+        id TEXT PRIMARY KEY,
+        thread_id TEXT NOT NULL,
+        sender_id TEXT,
+        data JSONB,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS notifications (
+        id TEXT PRIMARY KEY,
+        user_id TEXT,
+        data JSONB,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id TEXT PRIMARY KEY,
+        user_id TEXT,
+        action TEXT NOT NULL,
+        entity_type TEXT NOT NULL,
+        entity_id TEXT NOT NULL,
+        changes JSONB,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value JSONB NOT NULL,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS storage (
+        key TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Now add foreign key constraints
+      ALTER TABLE sessions
+        ADD CONSTRAINT fk_sessions_user
+        FOREIGN KEY (user_id) REFERENCES employees(id) ON DELETE CASCADE;
+
       ALTER TABLE orders
         ADD CONSTRAINT fk_orders_customer
-        FOREIGN KEY (customer_id) 
-        REFERENCES customers(id);
+        FOREIGN KEY (customer_id) REFERENCES customers(id);
+
+      ALTER TABLE order_items
+        ADD CONSTRAINT fk_order_items_order
+        FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+        ADD CONSTRAINT fk_order_items_product
+        FOREIGN KEY (product_id) REFERENCES products(id);
+
+      ALTER TABLE inventory
+        ADD CONSTRAINT fk_inventory_product
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE;
 
       ALTER TABLE fulfillments
         ADD CONSTRAINT fk_fulfillments_order
-        FOREIGN KEY (order_id) 
-        REFERENCES orders(id);
+        FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE;
+
+      ALTER TABLE transport_quotes
+        ADD CONSTRAINT fk_transport_quotes_order
+        FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE;
+
+      ALTER TABLE messages
+        ADD CONSTRAINT fk_messages_sender
+        FOREIGN KEY (sender_id) REFERENCES employees(id);
+
+      ALTER TABLE notifications
+        ADD CONSTRAINT fk_notifications_user
+        FOREIGN KEY (user_id) REFERENCES employees(id) ON DELETE CASCADE;
+
+      ALTER TABLE audit_logs
+        ADD CONSTRAINT fk_audit_logs_user
+        FOREIGN KEY (user_id) REFERENCES employees(id);
+
+      -- Now create indexes after all tables and constraints are in place
+      CREATE INDEX IF NOT EXISTS idx_employees_data ON employees USING gin (data);
+      CREATE INDEX IF NOT EXISTS idx_employees_agent_id ON employees ((data->>'agentId'));
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_employees_email ON employees ((data->>'email'));
+      CREATE INDEX IF NOT EXISTS idx_employees_role ON employees ((data->>'role'));
+      CREATE INDEX IF NOT EXISTS idx_employees_status ON employees ((data->>'status'));
+      CREATE INDEX IF NOT EXISTS idx_employees_assigned_orders ON employees USING gin ((data->'assignedOrders'));
+
+      CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
+      CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+
+      CREATE INDEX IF NOT EXISTS idx_customers_data ON customers USING gin (data);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_email ON customers ((data->>'email'));
+      CREATE INDEX IF NOT EXISTS idx_customers_name ON customers ((data->>'name'));
+      CREATE INDEX IF NOT EXISTS idx_customers_company ON customers ((data->>'company'));
+
+      CREATE INDEX IF NOT EXISTS idx_products_data ON products USING gin (data);
+      CREATE INDEX IF NOT EXISTS idx_products_category ON products ((data->>'category'));
+      CREATE INDEX IF NOT EXISTS idx_products_name ON products ((data->>'name'));
+      CREATE INDEX IF NOT EXISTS idx_products_price ON products ((data->>'price'));
+      CREATE INDEX IF NOT EXISTS idx_products_inventory ON products USING gin((data->'inventory'));
+
+      CREATE INDEX IF NOT EXISTS idx_orders_data ON orders USING gin (data);
+      CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id);
+      CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at);
+      CREATE INDEX IF NOT EXISTS idx_orders_status ON orders ((data->>'status'));
+      CREATE INDEX IF NOT EXISTS idx_orders_payment_status ON orders ((data->>'paymentStatus'));
+      CREATE INDEX IF NOT EXISTS idx_orders_total ON orders ((data->>'total'));
+      CREATE INDEX IF NOT EXISTS idx_orders_customer_name ON orders ((data->>'customerName'));
+      CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders ((data->>'createdAt'));
+      CREATE INDEX IF NOT EXISTS idx_orders_items ON orders USING gin((data->'items'));
+
+      CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
+      CREATE INDEX IF NOT EXISTS idx_order_items_product ON order_items(product_id);
+
+      CREATE INDEX IF NOT EXISTS idx_fulfillments_order ON fulfillments(order_id);
+      CREATE INDEX IF NOT EXISTS idx_fulfillments_status ON fulfillments ((data->>'status'));
+      CREATE INDEX IF NOT EXISTS idx_fulfillments_tracking ON fulfillments ((data->>'trackingNumber'));
+      CREATE INDEX IF NOT EXISTS idx_fulfillments_carrier ON fulfillments ((data->>'carrier'));
+
+      CREATE INDEX IF NOT EXISTS idx_transport_quotes_order ON transport_quotes(order_id);
+      CREATE INDEX IF NOT EXISTS idx_transport_quotes_provider ON transport_quotes ((data->>'provider'));
+      CREATE INDEX IF NOT EXISTS idx_transport_quotes_amount ON transport_quotes ((data->>'amount'));
+      CREATE INDEX IF NOT EXISTS idx_transport_quotes_expires ON transport_quotes ((data->>'expiresAt'));
+
+      CREATE INDEX IF NOT EXISTS idx_messages_thread ON messages(thread_id);
+      CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
+      CREATE INDEX IF NOT EXISTS idx_messages_content ON messages ((data->>'content'));
+      CREATE INDEX IF NOT EXISTS idx_messages_read ON messages ((data->>'read'));
+
+      CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
+      CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications ((data->>'type'));
+      CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications ((data->>'read'));
+      CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications ((data->>'createdAt'));
+
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_entity ON audit_logs(entity_type, entity_id);
+
+      -- Create triggers for updated_at timestamps
+      CREATE OR REPLACE FUNCTION update_updated_at_column()
+      RETURNS TRIGGER AS $$
+      BEGIN
+          NEW.updated_at = CURRENT_TIMESTAMP;
+          RETURN NEW;
+      END;
+      $$ language 'plpgsql';
+
+      CREATE TRIGGER update_employees_updated_at
+          BEFORE UPDATE ON employees
+          FOR EACH ROW
+          EXECUTE FUNCTION update_updated_at_column();
+
+      CREATE TRIGGER update_customers_updated_at
+          BEFORE UPDATE ON customers
+          FOR EACH ROW
+          EXECUTE FUNCTION update_updated_at_column();
+
+      CREATE TRIGGER update_products_updated_at
+          BEFORE UPDATE ON products
+          FOR EACH ROW
+          EXECUTE FUNCTION update_updated_at_column();
+
+      CREATE TRIGGER update_inventory_updated_at
+          BEFORE UPDATE ON inventory
+          FOR EACH ROW
+          EXECUTE FUNCTION update_updated_at_column();
+
+      CREATE TRIGGER update_orders_updated_at
+          BEFORE UPDATE ON orders
+          FOR EACH ROW
+          EXECUTE FUNCTION update_updated_at_column();
+
+      CREATE TRIGGER update_fulfillments_updated_at
+          BEFORE UPDATE ON fulfillments
+          FOR EACH ROW
+          EXECUTE FUNCTION update_updated_at_column();
+
+      -- Create audit logging function
+      CREATE OR REPLACE FUNCTION log_audit_event(
+        p_user_id TEXT,
+        p_action TEXT,
+        p_entity_type TEXT,
+        p_entity_id TEXT,
+        p_changes JSONB
+      )
+      RETURNS void AS $$
+      BEGIN
+        INSERT INTO audit_logs (
+          id, user_id, action, entity_type, entity_id, changes
+        ) VALUES (
+          'audit_' || gen_random_uuid()::text,
+          p_user_id,
+          p_action,
+          p_entity_type,
+          p_entity_id,
+          p_changes
+        );
+      END;
+      $$ LANGUAGE plpgsql;
+
+      -- Create inventory update function with checks
+      CREATE OR REPLACE FUNCTION update_inventory(
+        p_product_id TEXT,
+        p_warehouse_id TEXT,
+        p_quantity INTEGER
+      )
+      RETURNS INTEGER AS $$
+      DECLARE
+        v_current_quantity INTEGER;
+        v_min_quantity INTEGER;
+      BEGIN
+        SELECT quantity, min_quantity 
+        INTO v_current_quantity, v_min_quantity
+        FROM inventory
+        WHERE product_id = p_product_id AND warehouse_id = p_warehouse_id;
+
+        IF v_current_quantity IS NULL THEN
+          INSERT INTO inventory (
+            id, product_id, warehouse_id, quantity, min_quantity
+          ) VALUES (
+            'inv_' || gen_random_uuid()::text,
+            p_product_id,
+            p_warehouse_id,
+            p_quantity,
+            0
+          );
+          RETURN p_quantity;
+        END IF;
+
+        UPDATE inventory
+        SET quantity = v_current_quantity + p_quantity
+        WHERE product_id = p_product_id AND warehouse_id = p_warehouse_id;
+
+        IF v_current_quantity + p_quantity <= v_min_quantity THEN
+          INSERT INTO notifications (
+            id, type, title, message, data
+          ) VALUES (
+            'not_' || gen_random_uuid()::text,
+            'inventory',
+            'Low Stock Alert',
+            'Product ' || p_product_id || ' is below minimum stock level',
+            jsonb_build_object(
+              'product_id', p_product_id,
+              'warehouse_id', p_warehouse_id,
+              'current_quantity', v_current_quantity + p_quantity,
+              'min_quantity', v_min_quantity
+            )
+          );
+        END IF;
+
+        RETURN v_current_quantity + p_quantity;
+      END;
+      $$ LANGUAGE plpgsql;
+
+      -- Insert test data
+      
     `);
 
-    // Rest of the initialization code...
+    // Insert test data
+    const testData = {
+      employees: [{
+        id: 'admin1',
+        data: {
+          id: 'admin1',
+          agentId: 'admin',
+          passwordHash: 'admin123',
+          name: 'Admin User',
+          email: 'admin@example.com',
+          role: 'admin',
+          status: 'active',
+          assignedOrders: [],
+          businessInfo: {
+            companyName: 'EMP',
+            registrationNumber: '12345',
+            taxId: '67890',
+            businessAddress: {
+              street: '123 Main St',
+              city: 'Example City',
+              state: 'EX',
+              postalCode: '12345',
+              country: 'US'
+            }
+          },
+          payrollInfo: {
+            bankName: 'Example Bank',
+            accountNumber: '123456789',
+            routingNumber: '987654321',
+            paymentFrequency: 'monthly',
+            baseRate: 5000,
+            currency: 'USD',
+            lastPaymentDate: new Date().toISOString()
+          },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      }],
+      customers: [{
+        id: 'CUST-1',
+        data: {
+          id: 'CUST-1',
+          name: 'Test Customer',
+          email: 'customer@example.com',
+          phone: '1234567890',
+          status: 'active',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      }],
+      products: [{
+        id: 'PROD-1',
+        data: {
+          id: 'PROD-1',
+          name: 'Test Product',
+          description: 'A test product',
+          price: 99.99,
+          inventory: [{
+            warehouseId: 'WH-1',
+            quantity: 100,
+            minimumStock: 10
+          }],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      }],
+      orders: [{
+        id: 'ORD-1',
+        customer_id: 'CUST-1',
+        data: {
+          id: 'ORD-1',
+          customerId: 'CUST-1',
+          items: [{
+            productId: 'PROD-1',
+            quantity: 1,
+            price: 99.99
+          }],
+          status: 'pending',
+          paymentStatus: 'pending',
+          total: 99.99,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      }],
+      transport_quotes: [{
+        id: 'TQ-1',
+        data: {
+          id: 'TQ-1',
+          orderId: 'ORD-1',
+          provider: 'Test Shipping',
+          price: 10.00,
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      }]
+    };
+
+    // Insert test data if not exists
+    for (const [table, items] of Object.entries(testData)) {
+      for (const item of items) {
+        await client.query(
+          `INSERT INTO ${table} (id, data) 
+           VALUES ($1, $2) 
+           ON CONFLICT (id) DO NOTHING`,
+          [item.id, item.data]
+        );
+      }
+    }
 
     await client.query('COMMIT');
     console.log('Database initialized with test data');
@@ -156,51 +547,36 @@ app.post('/api/db/query', async (req, res) => {
   console.log('Received query:', { text, params });
 
   try {
-    // Validate query
-    if (!text) {
-      throw new Error('Query text is required');
-    }
-
-    // Log query details
-    console.log('Executing query:', {
-      text: text,
-      params: params,
-      timestamp: new Date().toISOString()
-    });
-
     const result = await executeQuery(text, params);
-    
-    // Log success
-    console.log('Query success:', {
-      rows: result.rows.length,
-      command: result.command,
-      timestamp: new Date().toISOString()
-    });
-
+    console.log('Query success:', result.rows.length, 'rows');
     res.json(result);
   } catch (err) {
     const error = err as Error;
-    
-    // Detailed error logging
-    console.error('Query error:', {
+    console.error('Query error details:', {
       message: error.message,
       stack: error.stack,
       query: text,
-      params: params,
-      timestamp: new Date().toISOString()
+      params: params
     });
+    res.status(500).json({ error: error.message });
+  }
+});
 
-    // Send appropriate error response
-    res.status(500).json({
-      error: 'Database query failed',
-      details: error.message,
-      timestamp: new Date().toISOString()
-    });
+// Add password verification endpoint
+app.post('/api/auth/verify', async (req, res) => {
+  const { password, hash } = req.body;
+  
+  try {
+    const isValid = await verifyPassword(password, hash);
+    res.json({ valid: isValid });
+  } catch (error) {
+    console.error('Password verification failed:', error);
+    res.status(500).json({ error: 'Password verification failed' });
   }
 });
 
 // Add this route to check employee data
-app.get('/api/debug/employees', async (_req, res) => {
+app.get('/api/debug/employees', async (req, res) => {
   try {
     const result = await executeQuery('SELECT * FROM employees');
     console.log('Current employees:', result.rows);
@@ -208,21 +584,6 @@ app.get('/api/debug/employees', async (_req, res) => {
   } catch (error) {
     console.error('Failed to fetch employees:', error);
     res.status(500).json({ error: 'Failed to fetch employees' });
-  }
-});
-
-// Add order creation endpoint
-app.post('/api/orders', async (req, res) => {
-  try {
-    const { order } = req.body;
-    const result = await executeQuery(
-      'INSERT INTO orders (id, customer_id, data) VALUES ($1, $2, $3) RETURNING *',
-      [order.id, order.customer_id, order]
-    );
-    res.json(result.rows[0]);
-  } catch (error) {
-    console.error('Failed to create order:', error);
-    res.status(500).json({ error: 'Failed to create order' });
   }
 });
 
