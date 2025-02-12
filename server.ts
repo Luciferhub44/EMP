@@ -97,10 +97,12 @@ async function initializeDatabase() {
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
 
-      -- Create index on the JSONB data field
+      -- Create indexes for JSONB fields
       CREATE INDEX IF NOT EXISTS idx_employees_data ON employees USING gin (data);
-      -- Create index on the agentId inside JSONB
       CREATE INDEX IF NOT EXISTS idx_employees_agent_id ON employees ((data->>'agentId'));
+      CREATE INDEX IF NOT EXISTS idx_employees_email ON employees ((data->>'email'));
+      CREATE INDEX IF NOT EXISTS idx_employees_role ON employees ((data->>'role'));
+      CREATE INDEX IF NOT EXISTS idx_employees_status ON employees ((data->>'status'));
 
       CREATE TABLE IF NOT EXISTS sessions (
         id TEXT PRIMARY KEY,
