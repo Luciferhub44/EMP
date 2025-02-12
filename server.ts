@@ -61,15 +61,15 @@ async function initializeDatabase() {
   try {
     await client.query('BEGIN');
 
+    // Create base tables
     await client.query(`
-      -- First create all base tables without foreign keys or indexes
       CREATE TABLE IF NOT EXISTS employees (
         id TEXT PRIMARY KEY,
         data JSONB NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
-      
+
       CREATE TABLE IF NOT EXISTS sessions (
         id TEXT PRIMARY KEY,
         user_id TEXT,
@@ -109,6 +109,7 @@ async function initializeDatabase() {
       CREATE TABLE IF NOT EXISTS orders (
         id TEXT PRIMARY KEY,
         customer_id TEXT,
+        order_id TEXT,
         data JSONB NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
