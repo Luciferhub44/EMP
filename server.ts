@@ -156,23 +156,51 @@ app.post('/api/db/query', async (req, res) => {
   console.log('Received query:', { text, params });
 
   try {
+    // Validate query
+    if (!text) {
+      throw new Error('Query text is required');
+    }
+
+    // Log query details
+    console.log('Executing query:', {
+      text: text,
+      params: params,
+      timestamp: new Date().toISOString()
+    });
+
     const result = await executeQuery(text, params);
-    console.log('Query success:', result.rows.length, 'rows');
+    
+    // Log success
+    console.log('Query success:', {
+      rows: result.rows.length,
+      command: result.command,
+      timestamp: new Date().toISOString()
+    });
+
     res.json(result);
   } catch (err) {
     const error = err as Error;
-    console.error('Query error details:', {
+    
+    // Detailed error logging
+    console.error('Query error:', {
       message: error.message,
       stack: error.stack,
       query: text,
-      params: params
+      params: params,
+      timestamp: new Date().toISOString()
     });
-    res.status(500).json({ error: error.message });
+
+    // Send appropriate error response
+    res.status(500).json({
+      error: 'Database query failed',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
   }
 });
 
 // Add this route to check employee data
-app.get('/api/debug/employees', async (req, res) => {
+app.get('/api/debug/employees', async (_req, res) => {
   try {
     const result = await executeQuery('SELECT * FROM employees');
     console.log('Current employees:', result.rows);
@@ -180,6 +208,21 @@ app.get('/api/debug/employees', async (req, res) => {
   } catch (error) {
     console.error('Failed to fetch employees:', error);
     res.status(500).json({ error: 'Failed to fetch employees' });
+  }
+});
+
+// Add order creation endpoint
+app.post('/api/orders', async (req, res) => {
+  try {
+    const { order } = req.body;
+    const result = await executeQuery(
+      'INSERT INTO orders (id, customer_id, data) VALUES ($1, $2, $3) RETURNING *',
+      [order.id, order.customer_id, order]
+    );
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Failed to create order:', error);
+    res.status(500).json({ error: 'Failed to create order' });
   }
 });
 
