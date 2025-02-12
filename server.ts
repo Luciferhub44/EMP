@@ -573,7 +573,7 @@ async function initializeDatabase() {
     // Insert test data if not exists
     for (const [table, items] of Object.entries(testData)) {
       for (const item of items) {
-        if (table === 'products') {
+        if (table === 'products' && 'sku' in item.data) {
           await client.query(
             `INSERT INTO ${table} (id, sku, status, data) 
              VALUES ($1, $2, $3, $4) 
