@@ -116,8 +116,8 @@ async function initializeDatabase() {
 
       CREATE TABLE IF NOT EXISTS order_items (
         id TEXT PRIMARY KEY,
-        order_id TEXT,
-        product_id TEXT,
+        order_id TEXT NOT NULL,
+        product_id TEXT NOT NULL,
         quantity INTEGER NOT NULL,
         price DECIMAL(10,2) NOT NULL,
         data JSONB,
@@ -126,7 +126,7 @@ async function initializeDatabase() {
 
       CREATE TABLE IF NOT EXISTS fulfillments (
         id TEXT PRIMARY KEY,
-        order_id TEXT,
+        order_id TEXT NOT NULL,
         data JSONB NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
@@ -134,7 +134,7 @@ async function initializeDatabase() {
 
       CREATE TABLE IF NOT EXISTS transport_quotes (
         id TEXT PRIMARY KEY,
-        order_id TEXT,
+        order_id TEXT NOT NULL,
         data JSONB NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
@@ -142,21 +142,21 @@ async function initializeDatabase() {
       CREATE TABLE IF NOT EXISTS messages (
         id TEXT PRIMARY KEY,
         thread_id TEXT NOT NULL,
-        sender_id TEXT,
+        sender_id TEXT NOT NULL,
         data JSONB,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
 
       CREATE TABLE IF NOT EXISTS notifications (
         id TEXT PRIMARY KEY,
-        user_id TEXT,
+        user_id TEXT NOT NULL,
         data JSONB,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
 
       CREATE TABLE IF NOT EXISTS audit_logs (
         id TEXT PRIMARY KEY,
-        user_id TEXT,
+        user_id TEXT NOT NULL,
         action TEXT NOT NULL,
         entity_type TEXT NOT NULL,
         entity_id TEXT NOT NULL,
