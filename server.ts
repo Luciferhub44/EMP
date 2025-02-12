@@ -221,6 +221,18 @@ app.post('/api/db/query', async (req, res) => {
   }
 });
 
+// Add this route to check employee data
+app.get('/api/debug/employees', async (req, res) => {
+  try {
+    const result = await executeQuery('SELECT * FROM employees');
+    console.log('Current employees:', result.rows);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Failed to fetch employees:', error);
+    res.status(500).json({ error: 'Failed to fetch employees' });
+  }
+});
+
 // Handle client-side routing
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../dist/index.html'));

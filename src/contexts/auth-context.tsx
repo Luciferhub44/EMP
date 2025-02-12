@@ -50,19 +50,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true)
       setError(null)
 
-      // Query the database for the employee
+      // Log the attempt
+      console.log('Login attempt:', { agentId })
+
       const { rows } = await db.query(
         `SELECT data FROM employees 
-         WHERE data->>'agentId' = $1 
-         AND data->>'passwordHash' = $2`,
-        [agentId, password]
+         WHERE data->>'agentId' = $1`,
+        [agentId]
       )
 
+      console.log('Found employee:', rows[0]?.data)
+
       if (rows.length === 0) {
-        throw new Error("Invalid credentials")
+        throw new Error("Employee not found")
       }
 
       const employee = rows[0].data
+      if (employee.passwordHash !== password) {
+        throw new Error("Invalid password")
+      }
+
       setUser(employee)
       localStorage.setItem("auth_token", "session-" + employee.id)
       
