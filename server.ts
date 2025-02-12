@@ -178,43 +178,97 @@ async function initializeDatabase() {
       );
 
       -- Now add foreign key constraints
-      ALTER TABLE sessions
-        ADD CONSTRAINT fk_sessions_user
-        FOREIGN KEY (user_id) REFERENCES employees(id) ON DELETE CASCADE;
+      DO $$ 
+      BEGIN
+        -- Sessions FK
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'fk_sessions_user'
+        ) THEN
+          ALTER TABLE sessions
+            ADD CONSTRAINT fk_sessions_user
+            FOREIGN KEY (user_id) REFERENCES employees(id) ON DELETE CASCADE;
+        END IF;
 
-      ALTER TABLE orders
-        ADD CONSTRAINT fk_orders_customer
-        FOREIGN KEY (customer_id) REFERENCES customers(id);
+        -- Orders FK
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'fk_orders_customer'
+        ) THEN
+          ALTER TABLE orders
+            ADD CONSTRAINT fk_orders_customer
+            FOREIGN KEY (customer_id) REFERENCES customers(id);
+        END IF;
 
-      ALTER TABLE order_items
-        ADD CONSTRAINT fk_order_items_order
-        FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
-        ADD CONSTRAINT fk_order_items_product
-        FOREIGN KEY (product_id) REFERENCES products(id);
+        -- Order Items FKs
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'fk_order_items_order'
+        ) THEN
+          ALTER TABLE order_items
+            ADD CONSTRAINT fk_order_items_order
+            FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE;
+        END IF;
 
-      ALTER TABLE inventory
-        ADD CONSTRAINT fk_inventory_product
-        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE;
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'fk_order_items_product'
+        ) THEN
+          ALTER TABLE order_items
+            ADD CONSTRAINT fk_order_items_product
+            FOREIGN KEY (product_id) REFERENCES products(id);
+        END IF;
 
-      ALTER TABLE fulfillments
-        ADD CONSTRAINT fk_fulfillments_order
-        FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE;
+        -- Inventory FK
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'fk_inventory_product'
+        ) THEN
+          ALTER TABLE inventory
+            ADD CONSTRAINT fk_inventory_product
+            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE;
+        END IF;
 
-      ALTER TABLE transport_quotes
-        ADD CONSTRAINT fk_transport_quotes_order
-        FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE;
+        -- Fulfillments FK
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'fk_fulfillments_order'
+        ) THEN
+          ALTER TABLE fulfillments
+            ADD CONSTRAINT fk_fulfillments_order
+            FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE;
+        END IF;
 
-      ALTER TABLE messages
-        ADD CONSTRAINT fk_messages_sender
-        FOREIGN KEY (sender_id) REFERENCES employees(id);
+        -- Transport Quotes FK
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'fk_transport_quotes_order'
+        ) THEN
+          ALTER TABLE transport_quotes
+            ADD CONSTRAINT fk_transport_quotes_order
+            FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE;
+        END IF;
 
-      ALTER TABLE notifications
-        ADD CONSTRAINT fk_notifications_user
-        FOREIGN KEY (user_id) REFERENCES employees(id) ON DELETE CASCADE;
+        -- Messages FK
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'fk_messages_sender'
+        ) THEN
+          ALTER TABLE messages
+            ADD CONSTRAINT fk_messages_sender
+            FOREIGN KEY (sender_id) REFERENCES employees(id);
+        END IF;
 
-      ALTER TABLE audit_logs
-        ADD CONSTRAINT fk_audit_logs_user
-        FOREIGN KEY (user_id) REFERENCES employees(id);
+        -- Notifications FK
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'fk_notifications_user'
+        ) THEN
+          ALTER TABLE notifications
+            ADD CONSTRAINT fk_notifications_user
+            FOREIGN KEY (user_id) REFERENCES employees(id) ON DELETE CASCADE;
+        END IF;
+
+        -- Audit Logs FK
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'fk_audit_logs_user'
+        ) THEN
+          ALTER TABLE audit_logs
+            ADD CONSTRAINT fk_audit_logs_user
+            FOREIGN KEY (user_id) REFERENCES employees(id);
+        END IF;
+      END $$;
 
       -- Now create indexes after all tables and constraints are in place
       CREATE INDEX IF NOT EXISTS idx_employees_data ON employees USING gin (data);
