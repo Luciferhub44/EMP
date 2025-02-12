@@ -62,17 +62,27 @@ async function initializeDatabase() {
   try {
     await client.query('BEGIN');
 
-    // Drop existing tables if needed
+    // Drop all tables in correct order to avoid constraint errors
     await client.query(`
+      DROP TABLE IF EXISTS audit_logs CASCADE;
+      DROP TABLE IF EXISTS notifications CASCADE;
+      DROP TABLE IF EXISTS messages CASCADE;
       DROP TABLE IF EXISTS transport_quotes CASCADE;
+      DROP TABLE IF EXISTS order_items CASCADE;
       DROP TABLE IF EXISTS fulfillments CASCADE;
       DROP TABLE IF EXISTS orders CASCADE;
+      DROP TABLE IF EXISTS inventory CASCADE;
+      DROP TABLE IF EXISTS products CASCADE;
       DROP TABLE IF EXISTS customers CASCADE;
+      DROP TABLE IF EXISTS sessions CASCADE;
       DROP TABLE IF EXISTS employees CASCADE;
+      DROP TABLE IF EXISTS settings CASCADE;
+      DROP TABLE IF EXISTS storage CASCADE;
     `);
 
     // Create tables
     await client.query(`
+      -- First create base tables without foreign keys
       CREATE TABLE IF NOT EXISTS employees (
         id TEXT PRIMARY KEY,
         data JSONB NOT NULL,
@@ -80,22 +90,13 @@ async function initializeDatabase() {
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
 
-      CREATE TABLE IF NOT EXISTS sessions (
-        id TEXT PRIMARY KEY,
-        user_id TEXT,
-        token TEXT UNIQUE NOT NULL,
-        expires_at TIMESTAMPTZ NOT NULL,
-        data JSONB,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      );
-      
       CREATE TABLE IF NOT EXISTS customers (
         id TEXT PRIMARY KEY,
         data JSONB NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
-      
+
       CREATE TABLE IF NOT EXISTS products (
         id TEXT PRIMARY KEY,
         sku TEXT UNIQUE NOT NULL,
@@ -105,9 +106,19 @@ async function initializeDatabase() {
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
 
+      -- Then create tables with foreign keys
+      CREATE TABLE IF NOT EXISTS sessions (
+        id TEXT PRIMARY KEY,
+        user_id TEXT REFERENCES employees(id) ON DELETE CASCADE,
+        token TEXT UNIQUE NOT NULL,
+        expires_at TIMESTAMPTZ NOT NULL,
+        data JSONB,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
       CREATE TABLE IF NOT EXISTS inventory (
         id TEXT PRIMARY KEY,
-        product_id TEXT,
+        product_id TEXT REFERENCES products(id) ON DELETE CASCADE,
         warehouse_id TEXT NOT NULL,
         quantity INTEGER NOT NULL DEFAULT 0,
         min_quantity INTEGER NOT NULL DEFAULT 0,
@@ -118,7 +129,7 @@ async function initializeDatabase() {
       
       CREATE TABLE IF NOT EXISTS orders (
         id TEXT PRIMARY KEY,
-        customer_id TEXT,
+        customer_id TEXT REFERENCES customers(id),
         data JSONB NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
@@ -126,8 +137,8 @@ async function initializeDatabase() {
 
       CREATE TABLE IF NOT EXISTS order_items (
         id TEXT PRIMARY KEY,
-        order_id TEXT NOT NULL,
-        product_id TEXT NOT NULL,
+        order_id TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+        product_id TEXT NOT NULL REFERENCES products(id),
         quantity INTEGER NOT NULL,
         price DECIMAL(10,2) NOT NULL,
         data JSONB,
@@ -136,7 +147,7 @@ async function initializeDatabase() {
 
       CREATE TABLE IF NOT EXISTS fulfillments (
         id TEXT PRIMARY KEY,
-        order_id TEXT NOT NULL,
+        order_id TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
         data JSONB NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
@@ -151,22 +162,22 @@ async function initializeDatabase() {
 
       CREATE TABLE IF NOT EXISTS messages (
         id TEXT PRIMARY KEY,
-        thread_id TEXT NOT NULL,
-        sender_id TEXT NOT NULL,
+        thread_id TEXT NOT NULL REFERENCES employees(id),
+        sender_id TEXT NOT NULL REFERENCES employees(id),
         data JSONB,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
 
       CREATE TABLE IF NOT EXISTS notifications (
         id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
+        user_id TEXT NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
         data JSONB,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
 
       CREATE TABLE IF NOT EXISTS audit_logs (
         id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
+        user_id TEXT NOT NULL REFERENCES employees(id),
         action TEXT NOT NULL,
         entity_type TEXT NOT NULL,
         entity_id TEXT NOT NULL,
