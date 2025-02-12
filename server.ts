@@ -36,6 +36,9 @@ app.use(express.static(path.join(__dirname, '../dist')));
 async function initializeDatabase() {
   const client = await pool.connect();
   try {
+    await client.query('BEGIN');
+
+    // Create tables with indexes
     await client.query(`
       -- Create tables if they don't exist
       CREATE TABLE IF NOT EXISTS employees (
@@ -71,32 +74,100 @@ async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_orders_data ON orders USING gin (data);
       CREATE INDEX IF NOT EXISTS idx_customers_data ON customers USING gin (data);
       CREATE INDEX IF NOT EXISTS idx_transport_quotes_data ON transport_quotes USING gin (data);
-      
-      -- Create additional tables for other features
-      CREATE TABLE IF NOT EXISTS storage (
-        key TEXT PRIMARY KEY,
-        data JSONB NOT NULL
-      );
-      
-      CREATE TABLE IF NOT EXISTS websocket_messages (
-        id TEXT PRIMARY KEY,
-        data JSONB NOT NULL,
-        timestamp TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      );
-      
-      CREATE TABLE IF NOT EXISTS websocket_status (
-        id SERIAL PRIMARY KEY,
-        status BOOLEAN NOT NULL,
-        timestamp TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      );
-      
-      CREATE TABLE IF NOT EXISTS shipping_routes (
-        id TEXT PRIMARY KEY,
-        data JSONB NOT NULL
-      );
     `);
-    console.log('Database initialized');
+
+    // Insert test data
+    const testData = {
+      employees: [{
+        id: 'admin1',
+        data: {
+          id: 'admin1',
+          agentId: 'admin',
+          passwordHash: 'admin123',
+          name: 'Admin User',
+          email: 'admin@example.com',
+          role: 'admin',
+          status: 'active',
+          assignedOrders: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      }],
+      customers: [{
+        id: 'CUST-1',
+        data: {
+          id: 'CUST-1',
+          name: 'Test Customer',
+          email: 'customer@example.com',
+          phone: '1234567890',
+          status: 'active',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      }],
+      products: [{
+        id: 'PROD-1',
+        data: {
+          id: 'PROD-1',
+          name: 'Test Product',
+          description: 'A test product',
+          price: 99.99,
+          inventory: [{
+            warehouseId: 'WH-1',
+            quantity: 100,
+            minimumStock: 10
+          }],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      }],
+      orders: [{
+        id: 'ORD-1',
+        customer_id: 'CUST-1',
+        status: 'pending',
+        data: {
+          id: 'ORD-1',
+          customerId: 'CUST-1',
+          items: [{
+            productId: 'PROD-1',
+            quantity: 1,
+            price: 99.99
+          }],
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      }],
+      transport_quotes: [{
+        id: 'TQ-1',
+        data: {
+          id: 'TQ-1',
+          orderId: 'ORD-1',
+          provider: 'Test Shipping',
+          price: 10.00,
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      }]
+    };
+
+    // Insert test data if not exists
+    for (const [table, items] of Object.entries(testData)) {
+      for (const item of items) {
+        await client.query(
+          `INSERT INTO ${table} (id, data) 
+           VALUES ($1, $2) 
+           ON CONFLICT (id) DO NOTHING`,
+          [item.id, item.data]
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+    console.log('Database initialized with test data');
   } catch (err) {
+    await client.query('ROLLBACK');
     const error = err as Error;
     console.error('Database initialization failed:', error);
     process.exit(1);
