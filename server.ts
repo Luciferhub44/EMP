@@ -6,11 +6,12 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 
+const DEFAULT_PORT = 3001;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || DEFAULT_PORT;
 
 // Helper function for password hashing
 async function hashPassword(password: string): Promise<string> {
@@ -61,7 +62,16 @@ async function initializeDatabase() {
   try {
     await client.query('BEGIN');
 
-    // Create base tables
+    // Drop existing tables if needed
+    await client.query(`
+      DROP TABLE IF EXISTS transport_quotes CASCADE;
+      DROP TABLE IF EXISTS fulfillments CASCADE;
+      DROP TABLE IF EXISTS orders CASCADE;
+      DROP TABLE IF EXISTS customers CASCADE;
+      DROP TABLE IF EXISTS employees CASCADE;
+    `);
+
+    // Create tables
     await client.query(`
       CREATE TABLE IF NOT EXISTS employees (
         id TEXT PRIMARY KEY,
@@ -109,7 +119,6 @@ async function initializeDatabase() {
       CREATE TABLE IF NOT EXISTS orders (
         id TEXT PRIMARY KEY,
         customer_id TEXT,
-        order_id TEXT,
         data JSONB NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
@@ -135,7 +144,7 @@ async function initializeDatabase() {
 
       CREATE TABLE IF NOT EXISTS transport_quotes (
         id TEXT PRIMARY KEY,
-        order_id TEXT NOT NULL,
+        order_id TEXT REFERENCES orders(id) ON DELETE CASCADE,
         data JSONB NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
