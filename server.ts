@@ -62,48 +62,29 @@ async function initializeDatabase() {
     await client.query('BEGIN');
 
     await client.query(`
-      -- Auth and Users
+      -- First create all base tables without foreign keys or indexes
       CREATE TABLE IF NOT EXISTS employees (
         id TEXT PRIMARY KEY,
         data JSONB NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
-
-      -- Create indexes for employees
-      CREATE INDEX IF NOT EXISTS idx_employees_data ON employees USING gin (data);
-      CREATE INDEX IF NOT EXISTS idx_employees_agent_id ON employees ((data->>'agentId'));
-      CREATE UNIQUE INDEX IF NOT EXISTS idx_employees_email ON employees ((data->>'email'));
-      CREATE INDEX IF NOT EXISTS idx_employees_role ON employees ((data->>'role'));
-      CREATE INDEX IF NOT EXISTS idx_employees_status ON employees ((data->>'status'));
-      CREATE INDEX IF NOT EXISTS idx_employees_assigned_orders ON employees USING gin ((data->'assignedOrders'));
-
+      
       CREATE TABLE IF NOT EXISTS sessions (
         id TEXT PRIMARY KEY,
-        user_id TEXT REFERENCES employees(id) ON DELETE CASCADE,
+        user_id TEXT,
         token TEXT UNIQUE NOT NULL,
         expires_at TIMESTAMPTZ NOT NULL,
         data JSONB,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
-
-      -- Create indexes for sessions
-      CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
-      CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
-
-      -- Core Business Tables
+      
       CREATE TABLE IF NOT EXISTS customers (
         id TEXT PRIMARY KEY,
         data JSONB NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
-
-      -- Create indexes for customers after table creation
-      CREATE INDEX IF NOT EXISTS idx_customers_data ON customers USING gin (data);
-      CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_email ON customers ((data->>'email'));
-      CREATE INDEX IF NOT EXISTS idx_customers_name ON customers ((data->>'name'));
-      CREATE INDEX IF NOT EXISTS idx_customers_company ON customers ((data->>'company'));
       
       CREATE TABLE IF NOT EXISTS products (
         id TEXT PRIMARY KEY,
@@ -114,16 +95,9 @@ async function initializeDatabase() {
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
 
-      -- Create indexes for products after table creation
-      CREATE INDEX IF NOT EXISTS idx_products_data ON products USING gin (data);
-      CREATE INDEX IF NOT EXISTS idx_products_category ON products ((data->>'category'));
-      CREATE INDEX IF NOT EXISTS idx_products_name ON products ((data->>'name'));
-      CREATE INDEX IF NOT EXISTS idx_products_price ON products ((data->>'price'));
-      CREATE INDEX IF NOT EXISTS idx_products_inventory ON products USING gin((data->'inventory'));
-
       CREATE TABLE IF NOT EXISTS inventory (
         id TEXT PRIMARY KEY,
-        product_id TEXT REFERENCES products(id) ON DELETE CASCADE,
+        product_id TEXT,
         warehouse_id TEXT NOT NULL,
         quantity INTEGER NOT NULL DEFAULT 0,
         min_quantity INTEGER NOT NULL DEFAULT 0,
@@ -134,13 +108,136 @@ async function initializeDatabase() {
       
       CREATE TABLE IF NOT EXISTS orders (
         id TEXT PRIMARY KEY,
-        customer_id TEXT REFERENCES customers(id),
+        customer_id TEXT,
         data JSONB NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
-      
-      -- Create indexes for orders after table creation
+
+      CREATE TABLE IF NOT EXISTS order_items (
+        id TEXT PRIMARY KEY,
+        order_id TEXT,
+        product_id TEXT,
+        quantity INTEGER NOT NULL,
+        price DECIMAL(10,2) NOT NULL,
+        data JSONB,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS fulfillments (
+        id TEXT PRIMARY KEY,
+        order_id TEXT,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS transport_quotes (
+        id TEXT PRIMARY KEY,
+        order_id TEXT,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS messages (
+        id TEXT PRIMARY KEY,
+        thread_id TEXT NOT NULL,
+        sender_id TEXT,
+        data JSONB,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS notifications (
+        id TEXT PRIMARY KEY,
+        user_id TEXT,
+        data JSONB,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id TEXT PRIMARY KEY,
+        user_id TEXT,
+        action TEXT NOT NULL,
+        entity_type TEXT NOT NULL,
+        entity_id TEXT NOT NULL,
+        changes JSONB,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value JSONB NOT NULL,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS storage (
+        key TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Now add foreign key constraints
+      ALTER TABLE sessions
+        ADD CONSTRAINT fk_sessions_user
+        FOREIGN KEY (user_id) REFERENCES employees(id) ON DELETE CASCADE;
+
+      ALTER TABLE orders
+        ADD CONSTRAINT fk_orders_customer
+        FOREIGN KEY (customer_id) REFERENCES customers(id);
+
+      ALTER TABLE order_items
+        ADD CONSTRAINT fk_order_items_order
+        FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+        ADD CONSTRAINT fk_order_items_product
+        FOREIGN KEY (product_id) REFERENCES products(id);
+
+      ALTER TABLE inventory
+        ADD CONSTRAINT fk_inventory_product
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE;
+
+      ALTER TABLE fulfillments
+        ADD CONSTRAINT fk_fulfillments_order
+        FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE;
+
+      ALTER TABLE transport_quotes
+        ADD CONSTRAINT fk_transport_quotes_order
+        FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE;
+
+      ALTER TABLE messages
+        ADD CONSTRAINT fk_messages_sender
+        FOREIGN KEY (sender_id) REFERENCES employees(id);
+
+      ALTER TABLE notifications
+        ADD CONSTRAINT fk_notifications_user
+        FOREIGN KEY (user_id) REFERENCES employees(id) ON DELETE CASCADE;
+
+      ALTER TABLE audit_logs
+        ADD CONSTRAINT fk_audit_logs_user
+        FOREIGN KEY (user_id) REFERENCES employees(id);
+
+      -- Now create indexes after all tables and constraints are in place
+      CREATE INDEX IF NOT EXISTS idx_employees_data ON employees USING gin (data);
+      CREATE INDEX IF NOT EXISTS idx_employees_agent_id ON employees ((data->>'agentId'));
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_employees_email ON employees ((data->>'email'));
+      CREATE INDEX IF NOT EXISTS idx_employees_role ON employees ((data->>'role'));
+      CREATE INDEX IF NOT EXISTS idx_employees_status ON employees ((data->>'status'));
+      CREATE INDEX IF NOT EXISTS idx_employees_assigned_orders ON employees USING gin ((data->'assignedOrders'));
+
+      CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
+      CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+
+      CREATE INDEX IF NOT EXISTS idx_customers_data ON customers USING gin (data);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_email ON customers ((data->>'email'));
+      CREATE INDEX IF NOT EXISTS idx_customers_name ON customers ((data->>'name'));
+      CREATE INDEX IF NOT EXISTS idx_customers_company ON customers ((data->>'company'));
+
+      CREATE INDEX IF NOT EXISTS idx_products_data ON products USING gin (data);
+      CREATE INDEX IF NOT EXISTS idx_products_category ON products ((data->>'category'));
+      CREATE INDEX IF NOT EXISTS idx_products_name ON products ((data->>'name'));
+      CREATE INDEX IF NOT EXISTS idx_products_price ON products ((data->>'price'));
+      CREATE INDEX IF NOT EXISTS idx_products_inventory ON products USING gin((data->'inventory'));
+
       CREATE INDEX IF NOT EXISTS idx_orders_data ON orders USING gin (data);
       CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id);
       CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at);
@@ -151,107 +248,33 @@ async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders ((data->>'createdAt'));
       CREATE INDEX IF NOT EXISTS idx_orders_items ON orders USING gin((data->'items'));
 
-      CREATE TABLE IF NOT EXISTS order_items (
-        id TEXT PRIMARY KEY,
-        order_id TEXT REFERENCES orders(id) ON DELETE CASCADE,
-        product_id TEXT REFERENCES products(id),
-        quantity INTEGER NOT NULL,
-        price DECIMAL(10,2) NOT NULL,
-        data JSONB,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      );
-
-      -- Create indexes for order items
       CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
       CREATE INDEX IF NOT EXISTS idx_order_items_product ON order_items(product_id);
 
-      -- Fulfillment and Shipping
-      CREATE TABLE IF NOT EXISTS fulfillments (
-        id TEXT PRIMARY KEY,
-        order_id TEXT REFERENCES orders(id) ON DELETE CASCADE,
-        data JSONB NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      );
-      
-      -- Create indexes for fulfillments after table creation
       CREATE INDEX IF NOT EXISTS idx_fulfillments_order ON fulfillments(order_id);
       CREATE INDEX IF NOT EXISTS idx_fulfillments_status ON fulfillments ((data->>'status'));
       CREATE INDEX IF NOT EXISTS idx_fulfillments_tracking ON fulfillments ((data->>'trackingNumber'));
       CREATE INDEX IF NOT EXISTS idx_fulfillments_carrier ON fulfillments ((data->>'carrier'));
 
-      CREATE TABLE IF NOT EXISTS transport_quotes (
-        id TEXT PRIMARY KEY,
-        order_id TEXT REFERENCES orders(id) ON DELETE CASCADE,
-        data JSONB NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      );
-
-      -- Create indexes for transport quotes after table creation
       CREATE INDEX IF NOT EXISTS idx_transport_quotes_order ON transport_quotes(order_id);
       CREATE INDEX IF NOT EXISTS idx_transport_quotes_provider ON transport_quotes ((data->>'provider'));
       CREATE INDEX IF NOT EXISTS idx_transport_quotes_amount ON transport_quotes ((data->>'amount'));
       CREATE INDEX IF NOT EXISTS idx_transport_quotes_expires ON transport_quotes ((data->>'expiresAt'));
 
-      -- Messaging and Notifications
-      CREATE TABLE IF NOT EXISTS messages (
-        id TEXT PRIMARY KEY,
-        thread_id TEXT NOT NULL,
-        sender_id TEXT REFERENCES employees(id),
-        data JSONB,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      );
-
-      -- Create indexes for messages after table creation
       CREATE INDEX IF NOT EXISTS idx_messages_thread ON messages(thread_id);
       CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
       CREATE INDEX IF NOT EXISTS idx_messages_content ON messages ((data->>'content'));
       CREATE INDEX IF NOT EXISTS idx_messages_read ON messages ((data->>'read'));
 
-      CREATE TABLE IF NOT EXISTS notifications (
-        id TEXT PRIMARY KEY,
-        user_id TEXT REFERENCES employees(id) ON DELETE CASCADE,
-        data JSONB,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      );
-
-      -- Create indexes for notifications after table creation
       CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
       CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications ((data->>'type'));
       CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications ((data->>'read'));
       CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications ((data->>'createdAt'));
 
-      -- Audit and Logging
-      CREATE TABLE IF NOT EXISTS audit_logs (
-        id TEXT PRIMARY KEY,
-        user_id TEXT REFERENCES employees(id),
-        action TEXT NOT NULL,
-        entity_type TEXT NOT NULL,
-        entity_id TEXT NOT NULL,
-        changes JSONB,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      );
-
-      -- Create indexes for audit logs after table creation
       CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);
       CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
       CREATE INDEX IF NOT EXISTS idx_audit_logs_entity ON audit_logs(entity_type, entity_id);
 
-      -- Settings and Configuration
-      CREATE TABLE IF NOT EXISTS settings (
-        key TEXT PRIMARY KEY,
-        value JSONB NOT NULL,
-        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      );
-
-      -- Storage and Files
-      CREATE TABLE IF NOT EXISTS storage (
-        key TEXT PRIMARY KEY,
-        data JSONB NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      );
-      
       -- Create triggers for updated_at timestamps
       CREATE OR REPLACE FUNCTION update_updated_at_column()
       RETURNS TRIGGER AS $$
