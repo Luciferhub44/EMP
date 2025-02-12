@@ -118,31 +118,9 @@ async function initializeDatabase() {
       CREATE TABLE IF NOT EXISTS customers (
         id TEXT PRIMARY KEY,
         data JSONB NOT NULL,
-        search_vector tsvector,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
-      
-      -- Add search vector update function for customers
-      CREATE OR REPLACE FUNCTION customers_update_search_vector()
-      RETURNS trigger AS $$
-      BEGIN
-        NEW.search_vector :=
-          to_tsvector('english',
-            coalesce(NEW.data->>'name', '') || ' ' ||
-            coalesce(NEW.data->>'email', '') || ' ' ||
-            coalesce(NEW.data->>'company', '')
-          );
-        RETURN NEW;
-      END
-      $$ LANGUAGE plpgsql;
-
-      -- Add trigger for customers search vector
-      DROP TRIGGER IF EXISTS customers_vector_update ON customers;
-      CREATE TRIGGER customers_vector_update
-        BEFORE INSERT OR UPDATE ON customers
-        FOR EACH ROW
-        EXECUTE FUNCTION customers_update_search_vector();
       
       -- Create indexes for customers
       CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_email 
@@ -151,39 +129,15 @@ async function initializeDatabase() {
       ON customers ((data->>'name'));
       CREATE INDEX IF NOT EXISTS idx_customers_company 
       ON customers ((data->>'company'));
-      CREATE INDEX IF NOT EXISTS idx_customers_search 
-      ON customers USING gin(search_vector);
       
       CREATE TABLE IF NOT EXISTS products (
         id TEXT PRIMARY KEY,
         sku TEXT UNIQUE NOT NULL,
         status TEXT NOT NULL,
         data JSONB NOT NULL,
-        search_vector tsvector,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
-
-      -- Add search vector update function for products
-      CREATE OR REPLACE FUNCTION products_update_search_vector()
-      RETURNS trigger AS $$
-      BEGIN
-        NEW.search_vector :=
-          to_tsvector('english',
-            coalesce(NEW.data->>'name', '') || ' ' ||
-            coalesce(NEW.data->>'description', '') || ' ' ||
-            coalesce(NEW.data->>'category', '')
-          );
-        RETURN NEW;
-      END
-      $$ LANGUAGE plpgsql;
-
-      -- Add trigger for products search vector
-      DROP TRIGGER IF EXISTS products_vector_update ON products;
-      CREATE TRIGGER products_vector_update
-        BEFORE INSERT OR UPDATE ON products
-        FOR EACH ROW
-        EXECUTE FUNCTION products_update_search_vector();
 
       -- Create indexes for products
       CREATE INDEX IF NOT EXISTS idx_products_category 
@@ -192,8 +146,6 @@ async function initializeDatabase() {
       ON products ((data->>'name'));
       CREATE INDEX IF NOT EXISTS idx_products_price 
       ON products ((data->>'price'));
-      CREATE INDEX IF NOT EXISTS idx_products_search 
-      ON products USING gin(search_vector);
       CREATE INDEX IF NOT EXISTS idx_products_inventory 
       ON products USING gin((data->'inventory'));
 
@@ -211,32 +163,10 @@ async function initializeDatabase() {
       CREATE TABLE IF NOT EXISTS orders (
         id TEXT PRIMARY KEY,
         customer_id TEXT REFERENCES customers(id),
-        search_vector tsvector,
         data JSONB NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
-
-      -- Add search vector update function for orders
-      CREATE OR REPLACE FUNCTION orders_update_search_vector()
-      RETURNS trigger AS $$
-      BEGIN
-        NEW.search_vector :=
-          to_tsvector('english',
-            coalesce(NEW.data->>'id', '') || ' ' ||
-            coalesce(NEW.data->>'customerName', '') || ' ' ||
-            coalesce(NEW.data->>'status', '')
-          );
-        RETURN NEW;
-      END
-      $$ LANGUAGE plpgsql;
-
-      -- Add trigger for orders search vector
-      DROP TRIGGER IF EXISTS orders_vector_update ON orders;
-      CREATE TRIGGER orders_vector_update
-        BEFORE INSERT OR UPDATE ON orders
-        FOR EACH ROW
-        EXECUTE FUNCTION orders_update_search_vector();
 
       -- Create indexes for orders
       CREATE INDEX IF NOT EXISTS idx_orders_status ON orders ((data->>'status'));
@@ -245,7 +175,6 @@ async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_orders_customer_name ON orders ((data->>'customerName'));
       CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders ((data->>'createdAt'));
       CREATE INDEX IF NOT EXISTS idx_orders_items ON orders USING gin((data->'items'));
-      CREATE INDEX IF NOT EXISTS idx_orders_search ON orders USING gin(search_vector);
 
       CREATE TABLE IF NOT EXISTS order_items (
         id TEXT PRIMARY KEY,
@@ -490,10 +419,8 @@ async function initializeDatabase() {
       END;
       $$ LANGUAGE plpgsql;
 
-      -- Update existing records with search vectors
-      UPDATE customers SET data = data;
-      UPDATE products SET data = data;
-      UPDATE orders SET data = data;
+      -- Insert test data
+      
     `);
 
     // Insert test data
