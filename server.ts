@@ -116,11 +116,14 @@ async function initializeDatabase() {
       -- Core Business Tables
       CREATE TABLE IF NOT EXISTS customers (
         id TEXT PRIMARY KEY,
-        email TEXT UNIQUE NOT NULL,
         data JSONB NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
+      
+      -- Create index on email from JSONB data
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_email 
+      ON customers ((data->>'email'));
       
       CREATE TABLE IF NOT EXISTS products (
         id TEXT PRIMARY KEY,
@@ -238,10 +241,9 @@ async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
       CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 
-      CREATE INDEX IF NOT EXISTS idx_customers_email ON customers(email);
+      CREATE INDEX IF NOT EXISTS idx_customers_data ON customers USING gin (data);
       CREATE INDEX IF NOT EXISTS idx_products_data ON products USING gin (data);
       CREATE INDEX IF NOT EXISTS idx_orders_data ON orders USING gin (data);
-      CREATE INDEX IF NOT EXISTS idx_customers_data ON customers USING gin (data);
 
       CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id);
       CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
@@ -482,13 +484,15 @@ async function initializeDatabase() {
     };
 
     // Insert test data if not exists
-    for (const item of testData.employees) {
-      await client.query(
-        `INSERT INTO employees (id, data) 
-         VALUES ($1, $2) 
-         ON CONFLICT (id) DO NOTHING`,
-        [item.id, item.data]
-      );
+    for (const [table, items] of Object.entries(testData)) {
+      for (const item of items) {
+        await client.query(
+          `INSERT INTO ${table} (id, data) 
+           VALUES ($1, $2) 
+           ON CONFLICT (id) DO NOTHING`,
+          [item.id, item.data]
+        );
+      }
     }
 
     await client.query('COMMIT');
