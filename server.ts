@@ -92,12 +92,15 @@ async function initializeDatabase() {
       -- Auth and Users
       CREATE TABLE IF NOT EXISTS employees (
         id TEXT PRIMARY KEY,
-        agent_id TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
         data JSONB NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
+
+      -- Create index on the JSONB data field
+      CREATE INDEX IF NOT EXISTS idx_employees_data ON employees USING gin (data);
+      -- Create index on the agentId inside JSONB
+      CREATE INDEX IF NOT EXISTS idx_employees_agent_id ON employees ((data->>'agentId'));
 
       CREATE TABLE IF NOT EXISTS sessions (
         id TEXT PRIMARY KEY,
@@ -229,7 +232,7 @@ async function initializeDatabase() {
       
       -- Create indexes
       CREATE INDEX IF NOT EXISTS idx_employees_data ON employees USING gin (data);
-      CREATE INDEX IF NOT EXISTS idx_employees_agent_id ON employees(agent_id);
+      CREATE INDEX IF NOT EXISTS idx_employees_agent_id ON employees ((data->>'agentId'));
       CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
       CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 
