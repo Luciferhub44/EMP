@@ -4,12 +4,35 @@ const { Pool } = pkg;
 import express from 'express';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+import crypto from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Helper function for password hashing
+async function hashPassword(password: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const salt = crypto.randomBytes(16).toString('hex');
+    crypto.pbkdf2(password, salt, 1000, 64, 'sha512', (err, derivedKey) => {
+      if (err) reject(err);
+      resolve(salt + ':' + derivedKey.toString('hex'));
+    });
+  });
+}
+
+// Helper function for password verification
+async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    const [salt, key] = hash.split(':');
+    crypto.pbkdf2(password, salt, 1000, 64, 'sha512', (err, derivedKey) => {
+      if (err) reject(err);
+      resolve(key === derivedKey.toString('hex'));
+    });
+  });
+}
 
 // Configure database pool
 const pool = new Pool({
@@ -38,42 +61,295 @@ async function initializeDatabase() {
   try {
     await client.query('BEGIN');
 
-    // Create tables with indexes
     await client.query(`
-      -- Create tables if they don't exist
+      -- Auth and Users
       CREATE TABLE IF NOT EXISTS employees (
         id TEXT PRIMARY KEY,
-        data JSONB NOT NULL
+        agent_id TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS sessions (
+        id TEXT PRIMARY KEY,
+        user_id TEXT REFERENCES employees(id) ON DELETE CASCADE,
+        token TEXT UNIQUE NOT NULL,
+        expires_at TIMESTAMPTZ NOT NULL,
+        data JSONB,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Core Business Tables
+      CREATE TABLE IF NOT EXISTS customers (
+        id TEXT PRIMARY KEY,
+        email TEXT UNIQUE NOT NULL,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
       
       CREATE TABLE IF NOT EXISTS products (
         id TEXT PRIMARY KEY,
-        data JSONB NOT NULL
+        sku TEXT UNIQUE NOT NULL,
+        status TEXT NOT NULL,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS inventory (
+        id TEXT PRIMARY KEY,
+        product_id TEXT REFERENCES products(id) ON DELETE CASCADE,
+        warehouse_id TEXT NOT NULL,
+        quantity INTEGER NOT NULL DEFAULT 0,
+        min_quantity INTEGER NOT NULL DEFAULT 0,
+        data JSONB,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
       
       CREATE TABLE IF NOT EXISTS orders (
         id TEXT PRIMARY KEY,
-        customer_id TEXT,
-        status TEXT,
-        data JSONB NOT NULL
+        customer_id TEXT REFERENCES customers(id),
+        status TEXT NOT NULL,
+        payment_status TEXT NOT NULL,
+        total_amount DECIMAL(10,2) NOT NULL,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
 
-      CREATE TABLE IF NOT EXISTS customers (
+      CREATE TABLE IF NOT EXISTS order_items (
         id TEXT PRIMARY KEY,
-        data JSONB NOT NULL
+        order_id TEXT REFERENCES orders(id) ON DELETE CASCADE,
+        product_id TEXT REFERENCES products(id),
+        quantity INTEGER NOT NULL,
+        price DECIMAL(10,2) NOT NULL,
+        data JSONB,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Fulfillment and Shipping
+      CREATE TABLE IF NOT EXISTS fulfillments (
+        id TEXT PRIMARY KEY,
+        order_id TEXT REFERENCES orders(id) ON DELETE CASCADE,
+        status TEXT NOT NULL,
+        tracking_number TEXT,
+        carrier TEXT,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
 
       CREATE TABLE IF NOT EXISTS transport_quotes (
         id TEXT PRIMARY KEY,
-        data JSONB NOT NULL
+        order_id TEXT REFERENCES orders(id) ON DELETE CASCADE,
+        provider TEXT NOT NULL,
+        amount DECIMAL(10,2) NOT NULL,
+        expires_at TIMESTAMPTZ NOT NULL,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Messaging and Notifications
+      CREATE TABLE IF NOT EXISTS messages (
+        id TEXT PRIMARY KEY,
+        thread_id TEXT NOT NULL,
+        sender_id TEXT REFERENCES employees(id),
+        content TEXT NOT NULL,
+        data JSONB,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS notifications (
+        id TEXT PRIMARY KEY,
+        user_id TEXT REFERENCES employees(id) ON DELETE CASCADE,
+        type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        message TEXT NOT NULL,
+        read BOOLEAN DEFAULT FALSE,
+        data JSONB,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Audit and Logging
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id TEXT PRIMARY KEY,
+        user_id TEXT REFERENCES employees(id),
+        action TEXT NOT NULL,
+        entity_type TEXT NOT NULL,
+        entity_id TEXT NOT NULL,
+        changes JSONB,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Settings and Configuration
+      CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value JSONB NOT NULL,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Storage and Files
+      CREATE TABLE IF NOT EXISTS storage (
+        key TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
       
-      -- Create indexes for better query performance
+      -- Create indexes
       CREATE INDEX IF NOT EXISTS idx_employees_data ON employees USING gin (data);
+      CREATE INDEX IF NOT EXISTS idx_employees_agent_id ON employees(agent_id);
+      CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
+      CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+
+      CREATE INDEX IF NOT EXISTS idx_customers_email ON customers(email);
       CREATE INDEX IF NOT EXISTS idx_products_data ON products USING gin (data);
       CREATE INDEX IF NOT EXISTS idx_orders_data ON orders USING gin (data);
       CREATE INDEX IF NOT EXISTS idx_customers_data ON customers USING gin (data);
-      CREATE INDEX IF NOT EXISTS idx_transport_quotes_data ON transport_quotes USING gin (data);
+
+      CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id);
+      CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+      CREATE INDEX IF NOT EXISTS idx_orders_payment ON orders(payment_status);
+      CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at);
+
+      CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
+      CREATE INDEX IF NOT EXISTS idx_order_items_product ON order_items(product_id);
+
+      CREATE INDEX IF NOT EXISTS idx_fulfillments_order ON fulfillments(order_id);
+      CREATE INDEX IF NOT EXISTS idx_fulfillments_status ON fulfillments(status);
+
+      CREATE INDEX IF NOT EXISTS idx_transport_quotes_order ON transport_quotes(order_id);
+      CREATE INDEX IF NOT EXISTS idx_transport_quotes_expires ON transport_quotes(expires_at);
+
+      CREATE INDEX IF NOT EXISTS idx_messages_thread ON messages(thread_id);
+      CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
+
+      CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
+      CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read);
+
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_entity ON audit_logs(entity_type, entity_id);
+
+      -- Create triggers for updated_at timestamps
+      CREATE OR REPLACE FUNCTION update_updated_at_column()
+      RETURNS TRIGGER AS $$
+      BEGIN
+          NEW.updated_at = CURRENT_TIMESTAMP;
+          RETURN NEW;
+      END;
+      $$ language 'plpgsql';
+
+      CREATE TRIGGER update_employees_updated_at
+          BEFORE UPDATE ON employees
+          FOR EACH ROW
+          EXECUTE FUNCTION update_updated_at_column();
+
+      CREATE TRIGGER update_customers_updated_at
+          BEFORE UPDATE ON customers
+          FOR EACH ROW
+          EXECUTE FUNCTION update_updated_at_column();
+
+      CREATE TRIGGER update_products_updated_at
+          BEFORE UPDATE ON products
+          FOR EACH ROW
+          EXECUTE FUNCTION update_updated_at_column();
+
+      CREATE TRIGGER update_inventory_updated_at
+          BEFORE UPDATE ON inventory
+          FOR EACH ROW
+          EXECUTE FUNCTION update_updated_at_column();
+
+      CREATE TRIGGER update_orders_updated_at
+          BEFORE UPDATE ON orders
+          FOR EACH ROW
+          EXECUTE FUNCTION update_updated_at_column();
+
+      CREATE TRIGGER update_fulfillments_updated_at
+          BEFORE UPDATE ON fulfillments
+          FOR EACH ROW
+          EXECUTE FUNCTION update_updated_at_column();
+
+      -- Create audit logging function
+      CREATE OR REPLACE FUNCTION log_audit_event(
+        p_user_id TEXT,
+        p_action TEXT,
+        p_entity_type TEXT,
+        p_entity_id TEXT,
+        p_changes JSONB
+      )
+      RETURNS void AS $$
+      BEGIN
+        INSERT INTO audit_logs (
+          id, user_id, action, entity_type, entity_id, changes
+        ) VALUES (
+          'audit_' || gen_random_uuid()::text,
+          p_user_id,
+          p_action,
+          p_entity_type,
+          p_entity_id,
+          p_changes
+        );
+      END;
+      $$ LANGUAGE plpgsql;
+
+      -- Create inventory update function with checks
+      CREATE OR REPLACE FUNCTION update_inventory(
+        p_product_id TEXT,
+        p_warehouse_id TEXT,
+        p_quantity INTEGER
+      )
+      RETURNS INTEGER AS $$
+      DECLARE
+        v_current_quantity INTEGER;
+        v_min_quantity INTEGER;
+      BEGIN
+        SELECT quantity, min_quantity 
+        INTO v_current_quantity, v_min_quantity
+        FROM inventory
+        WHERE product_id = p_product_id AND warehouse_id = p_warehouse_id;
+
+        IF v_current_quantity IS NULL THEN
+          INSERT INTO inventory (
+            id, product_id, warehouse_id, quantity, min_quantity
+          ) VALUES (
+            'inv_' || gen_random_uuid()::text,
+            p_product_id,
+            p_warehouse_id,
+            p_quantity,
+            0
+          );
+          RETURN p_quantity;
+        END IF;
+
+        UPDATE inventory
+        SET quantity = v_current_quantity + p_quantity
+        WHERE product_id = p_product_id AND warehouse_id = p_warehouse_id;
+
+        IF v_current_quantity + p_quantity <= v_min_quantity THEN
+          INSERT INTO notifications (
+            id, type, title, message, data
+          ) VALUES (
+            'not_' || gen_random_uuid()::text,
+            'inventory',
+            'Low Stock Alert',
+            'Product ' || p_product_id || ' is below minimum stock level',
+            jsonb_build_object(
+              'product_id', p_product_id,
+              'warehouse_id', p_warehouse_id,
+              'current_quantity', v_current_quantity + p_quantity,
+              'min_quantity', v_min_quantity
+            )
+          );
+        END IF;
+
+        RETURN v_current_quantity + p_quantity;
+      END;
+      $$ LANGUAGE plpgsql;
     `);
 
     // Insert test data
