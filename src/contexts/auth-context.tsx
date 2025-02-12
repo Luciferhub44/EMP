@@ -1,5 +1,6 @@
 import * as React from "react"
 import type { Employee } from "@/types/employee"
+import { db } from "@/lib/api/db"
 
 interface AuthContextType {
   user: Employee | null
@@ -49,48 +50,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true)
       setError(null)
 
-      // For demo, use hardcoded credentials
-      if (agentId === "admin" && password === "admin123") {
-        const adminUser: Employee = {
-          id: "admin1",
-          agentId: "admin",
-          passwordHash: "admin123",
-          name: "Admin User",
-          email: "admin@example.com",
-          role: "admin",
-          status: "active",
-          assignedOrders: [],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          businessInfo: {
-            companyName: "Admin Corp",
-            registrationNumber: "REG123",
-            taxId: "TAX123",
-            businessAddress: {
-              street: "123 Admin St",
-              city: "Admin City",
-              state: "AS",
-              postalCode: "12345",
-              country: "USA"
-            }
-          },
-          payrollInfo: {
-            bankName: "Admin Bank",
-            accountNumber: "1234567890",
-            routingNumber: "987654321",
-            paymentFrequency: "monthly",
-            baseRate: 5000,
-            currency: "USD",
-            lastPaymentDate: new Date().toISOString()
-          }
-        }
-        
-        setUser(adminUser)
-        localStorage.setItem("auth_token", "demo-token")
-        return
+      // Query the database for the employee
+      const { rows } = await db.query(
+        `SELECT data FROM employees 
+         WHERE data->>'agentId' = $1 
+         AND data->>'passwordHash' = $2`,
+        [agentId, password]
+      )
+
+      if (rows.length === 0) {
+        throw new Error("Invalid credentials")
       }
 
-      throw new Error("Invalid credentials")
+      const employee = rows[0].data
+      setUser(employee)
+      localStorage.setItem("auth_token", "session-" + employee.id)
+      
     } catch (error) {
       console.error("Login failed:", error)
       setError(error instanceof Error ? error.message : "Login failed")
