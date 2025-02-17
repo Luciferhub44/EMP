@@ -14,26 +14,27 @@ export interface ProductInventory {
 
 export interface Product {
   id: string
-  category: string
   name: string
   model: string
   sku: string
+  category: string
+  subCategory?: string
   price: number
   status: string
-  image: string
+  image?: string
   specifications: {
-    weight?: number
-    power?: number
-    digDepth?: number
-    maxReach?: number
+    [key: string]: string | number | undefined
+  } & {
+    weight?: string | number
+    power?: string | number
+    digDepth?: string | number
+    maxReach?: string | number
     engineType?: string
     operatingWeight?: string
     bucketCapacity?: string
-    liftingCapacity?: string
-    maxHeight?: string
-    boomLength?: string
+    capacity?: string
+    dimensions?: string
     drumDiameter?: string
-    [key: string]: string | number | undefined
   }
   inventory: Array<{
     warehouseId: string

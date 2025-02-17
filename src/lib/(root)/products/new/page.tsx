@@ -64,7 +64,8 @@ export default function NewProductPage() {
         price: parseFloat(formData.price),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        status: "active"
+        status: "active",
+        image: ""
       })
       alert("Product created successfully!")
       navigate(`/products/${product.id}`)
