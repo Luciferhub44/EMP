@@ -22,20 +22,7 @@ export interface Product {
   price: number
   status: string
   image?: string
-  specifications: {
-    [key: string]: string | number | undefined
-  } & {
-    weight?: string | number
-    power?: string | number
-    digDepth?: string | number
-    maxReach?: string | number
-    engineType?: string
-    operatingWeight?: string
-    bucketCapacity?: string
-    capacity?: string
-    dimensions?: string
-    drumDiameter?: string
-  }
+  specifications: Record<string, string | number>
   inventory: Array<{
     warehouseId: string
     quantity: number
