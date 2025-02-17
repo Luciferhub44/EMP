@@ -20,6 +20,11 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = DEFAULT_PORT;
 
+// Add these near the top of the file
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'hq@sanyglobal.org';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'sany444global';
+const ADMIN_ID = 'ADMIN001';
+
 // Helper function for password hashing
 async function hashPassword(password: string): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -143,6 +148,40 @@ async function initializeDatabase() {
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // Create default admin user
+    console.log('Creating default admin user...');
+    const adminPasswordHash = await hashPassword(ADMIN_PASSWORD);
+    const adminUser = {
+      id: ADMIN_ID,
+      agentId: 'ADMIN001',
+      name: 'System Administrator',
+      email: ADMIN_EMAIL,
+      role: 'admin',
+      status: 'active',
+      assignedOrders: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      passwordHash: adminPasswordHash,
+      businessInfo: {
+        companyName: 'System Admin',
+        registrationNumber: 'SYSADMIN001',
+        taxId: 'ADMIN001',
+        businessAddress: {
+          street: '123 Admin Street',
+          city: 'Admin City',
+          state: 'AS',
+          postalCode: '12345',
+          country: 'USA'
+        }
+      }
+    };
+
+    await client.query(
+      `INSERT INTO employees (id, email, role, data) VALUES ($1, $2, $3, $4)`,
+      [adminUser.id, adminUser.email, adminUser.role, adminUser]
+    );
+    console.log('Default admin user created');
 
     // Insert data in correct order
     console.log('Inserting warehouses...');
@@ -313,6 +352,73 @@ app.get('/api/debug/employees', async (req, res) => {
   } catch (error) {
     console.error('Failed to fetch employees:', error);
     res.status(500).json({ error: 'Failed to fetch employees' });
+  }
+});
+
+// Add a new endpoint for admin login
+app.post('/api/auth/login', async (req, res) => {
+  const { email, password } = req.body;
+  
+  try {
+    const result = await executeQuery(
+      'SELECT data FROM employees WHERE email = $1',
+      [email]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const employee = result.rows[0].data;
+    const isValid = await verifyPassword(password, employee.passwordHash);
+
+    if (!isValid) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Remove sensitive data before sending
+    const { passwordHash, ...safeEmployee } = employee;
+    res.json({ user: safeEmployee });
+  } catch (error) {
+    console.error('Login failed:', error);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// Add employee creation endpoint (requires admin)
+app.post('/api/employees', async (req, res) => {
+  const { email, password, role, name, businessInfo } = req.body;
+  
+  try {
+    // TODO: Add admin authentication check here
+    
+    const id = `EMP${Date.now()}`;
+    const passwordHash = await hashPassword(password);
+    
+    const newEmployee = {
+      id,
+      agentId: `AGT${Date.now()}`,
+      name,
+      email,
+      role,
+      status: 'active',
+      assignedOrders: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      passwordHash,
+      businessInfo
+    };
+
+    await executeQuery(
+      `INSERT INTO employees (id, email, role, data) VALUES ($1, $2, $3, $4)`,
+      [newEmployee.id, newEmployee.email, newEmployee.role, newEmployee]
+    );
+
+    const { passwordHash: _, ...safeEmployee } = newEmployee;
+    res.status(201).json(safeEmployee);
+  } catch (error) {
+    console.error('Failed to create employee:', error);
+    res.status(500).json({ error: 'Failed to create employee' });
   }
 });
 
