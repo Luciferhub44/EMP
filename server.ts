@@ -471,18 +471,18 @@ async function initializeDatabase() {
     // Insert test data
     const testData = {
       employees: [{
-        id: 'admin1',
+        id: 'ORACLEX',
         data: {
-          id: 'admin1',
-          agentId: 'admin',
-          passwordHash: 'admin123',
-          name: 'Admin User',
-          email: 'admin@example.com',
+          id: 'ORACLEX',
+          agentId: 'ORACLEX',
+          passwordHash: 'SANY44X',
+          name: 'Oraclex',
+          email: 'oraclex@sanyglobal.org',
           role: 'admin',
           status: 'active',
           assignedOrders: [],
           businessInfo: {
-            companyName: 'EMP',
+            companyName: 'SANY',
             registrationNumber: '12345',
             taxId: '67890',
             businessAddress: {
@@ -494,7 +494,7 @@ async function initializeDatabase() {
             }
           },
           payrollInfo: {
-            bankName: 'Example Bank',
+            bankName: 'SANY',
             accountNumber: '123456789',
             routingNumber: '987654321',
             paymentFrequency: 'monthly',
@@ -506,38 +506,184 @@ async function initializeDatabase() {
           updatedAt: new Date().toISOString()
         }
       }],
-      customers: [{
-        id: 'CUST-1',
-        data: {
+      customers: [
+        {
           id: 'CUST-1',
-          name: 'Test Customer',
-          email: 'customer@example.com',
-          phone: '1234567890',
-          status: 'active',
+          name: "Robert Anderson",
+          email: "r.anderson@constructioncorp.com",
+          company: "Anderson Construction Corp",
+          phone: "(555) 123-4567",
+          address: {
+            street: "789 Industrial Parkway",
+            city: "Houston",
+            state: "TX",
+            country: "USA",
+            postalCode: "77001"
+          }
+        },
+        {
+          id: 'CUST-2',
+          name: "Sarah Martinez",
+          email: "smartinez@buildpro.com",
+          company: "BuildPro Solutions",
+          phone: "(555) 234-5678",
+          address: {
+            street: "456 Commerce Drive",
+            city: "Phoenix",
+            state: "AZ",
+            country: "USA",
+            postalCode: "85001"
+          }
+        },
+        {
+          id: 'CUST-3',
+          name: "David Wilson",
+          email: "dwilson@wilsonbuilders.com",
+          company: "Wilson Builders & Associates",
+          phone: "(555) 345-6789",
+          address: {
+            street: "234 Construction Way",
+            city: "Dallas",
+            state: "TX",
+            country: "USA",
+            postalCode: "75201"
+          }
+        },
+        {
+          id: 'CUST-4',
+          name: "Michael Chang",
+          email: "mchang@pacificbuilders.com",
+          company: "Pacific Builders Inc",
+          phone: "(555) 987-6543",
+          address: {
+            street: "123 Harbor Boulevard",
+            city: "San Francisco",
+            state: "CA",
+            country: "USA",
+            postalCode: "94111"
+          }
+        },
+        {
+          id: 'CUST-5',
+          name: "Emily Johnson",
+          email: "ejohnson@midwestconstruction.com",
+          company: "Midwest Construction Group",
+          phone: "(555) 876-5432",
+          address: {
+            street: "567 Prairie Road",
+            city: "Chicago",
+            state: "IL",
+            country: "USA",
+            postalCode: "60601"
+          }
+        }
+      ],
+      products: [
+        {
+          id: "EX-001",
+          category: "Excavators",
+          name: "Compact Mini Excavator",
+          model: "ME-2000",
+          sku: "ME2000-001",
+          price: 15000,
+          status: "active",
+          image: "/images/products/mini-excavator.jpg",
+          specifications: {
+            weight: 2000,
+            power: 15,
+            digDepth: 2.5,
+            maxReach: 4.2,
+            engineType: "Diesel",
+            operatingWeight: "2000 kg",
+            bucketCapacity: "0.08 m³"
+          },
+          inventory: [
+            {
+              productId: "EX-001",
+              warehouseId: "wh-1",
+              quantity: 5,
+              minimumStock: 2,
+              lastUpdated: new Date().toISOString()
+            },
+            {
+              productId: "EX-001",
+              warehouseId: "wh-2",
+              quantity: 3,
+              minimumStock: 1,
+              lastUpdated: new Date().toISOString()
+            }
+          ],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        {
+          id: "CR-001",
+          category: "Cranes",
+          name: "Heavy Duty Tower Crane",
+          model: "TC-5000",
+          sku: "TC5000-001",
+          price: 180000,
+          status: "active",
+          image: "/images/products/tower-crane.jpg",
+          specifications: {
+            liftingCapacity: 5000,
+            maxHeight: 80,
+            boomLength: 60,
+            engineType: "Electric",
+            maxLoad: "5000 kg",
+            towerHeight: "80 m",
+            jibLength: "60 m"
+          },
+          inventory: [
+            {
+              productId: "CR-001",
+              warehouseId: "wh-2",
+              quantity: 2,
+              minimumStock: 1,
+              lastUpdated: new Date().toISOString()
+            }
+          ],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        {
+          id: "CM-001",
+          category: "Concrete Equipment",
+          name: "Professional Concrete Mixer",
+          model: "PCM-3000",
+          sku: "PCM3000-001",
+          price: 8500,
+          status: "active",
+          image: "/images/products/concrete-mixer.jpg",
+          specifications: {
+            capacity: 3,
+            power: 7.5,
+            drumSpeed: 24,
+            engineType: "Electric",
+            mixingCapacity: "3 m³",
+            drumDiameter: "1.8 m",
+            weight: "1200 kg"
+          },
+          inventory: [
+            {
+              productId: "CM-001",
+              warehouseId: "wh-1",
+              quantity: 8,
+              minimumStock: 3,
+              lastUpdated: new Date().toISOString()
+            },
+            {
+              productId: "CM-001",
+              warehouseId: "wh-3",
+              quantity: 4,
+              minimumStock: 2,
+              lastUpdated: new Date().toISOString()
+            }
+          ],
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         }
-      }],
-      products: [{
-        id: 'PROD-1',
-        sku: 'TEST-001',
-        status: 'active',
-        data: {
-          id: 'PROD-1',
-          name: 'Test Product',
-          sku: 'TEST-001',
-          status: 'active',
-          description: 'A test product',
-          price: 99.99,
-          inventory: [{
-            warehouseId: 'WH-1',
-            quantity: 100,
-            minimumStock: 10
-          }],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-      }],
+      ],
       orders: [{
         id: 'ORD-1',
         customer_id: 'CUST-1',
@@ -567,25 +713,80 @@ async function initializeDatabase() {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         }
+      }],
+        transport_companies: [
+          {
+            id: "trans-1",
+            name: "FastTrack Logistics",
+            rating: 4.8,
+            availableVehicles: ["small-truck", "medium-truck", "large-truck"],
+            basePrice: 500,
+            pricePerKm: 2.8,
+            serviceAreas: ["New York", "Los Angeles", "Chicago"],
+            insuranceCoverage: 100000,
+            contactInfo: {
+              phone: "1-800-555-0123",
+              email: "contact@fasttrack.com"
+            }
+          },
+          {
+            id: "trans-2",
+            name: "Heavy Haulers Co.",
+            rating: 4.6,
+            availableVehicles: ["medium-truck", "large-truck", "flatbed"],
+            basePrice: 750,
+            pricePerKm: 3.2,
+            serviceAreas: ["Los Angeles", "San Francisco", "Seattle"],
+            insuranceCoverage: 150000,
+            contactInfo: {
+              phone: "1-800-555-0124",
+              email: "support@heavyhaulers.com"
+            }
+          },
+          {
+            id: "trans-3",
+            name: "Reliable Transport",
+            rating: 4.9,
+            availableVehicles: ["small-truck", "medium-truck", "flatbed"],
+            basePrice: 450,
+            pricePerKm: 2.5,
+            serviceAreas: ["Chicago", "Detroit", "Cleveland"],
+            insuranceCoverage: 120000,
+            contactInfo: {
+              phone: "1-800-555-0125",
+              email: "info@reliabletransport.com"
+            }
+          }
+        ],
+      transport_orders: [{
+        id: 'TO-1',
+        data: {
+          id: 'TO-1',
+          orderId: 'ORD-1',
+          provider: 'FastTrack Logistics',
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
       }]
     };
 
     // Insert test data if not exists
     for (const [table, items] of Object.entries(testData)) {
       for (const item of items) {
-        if (table === 'products' && 'sku' in item.data) {
+        if (table === 'products' && 'sku' in item) {
           await client.query(
             `INSERT INTO ${table} (id, sku, status, data) 
              VALUES ($1, $2, $3, $4) 
              ON CONFLICT (id) DO NOTHING`,
-            [item.id, item.data.sku, item.data.status, item.data]
+            [item.id, item.sku, item.status, item]
           );
         } else {
           await client.query(
             `INSERT INTO ${table} (id, data) 
              VALUES ($1, $2) 
              ON CONFLICT (id) DO NOTHING`,
-            [item.id, item.data]
+            [item.id, item]
           );
         }
       }
