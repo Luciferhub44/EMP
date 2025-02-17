@@ -163,10 +163,22 @@ async function initializeDatabase() {
 
     console.log('Inserting employees...');
     for (const employee of employees) {
-      await client.query(
-        `INSERT INTO employees (id, email, role, data) VALUES ($1, $2, $3, $4)`,
-        [employee.id, employee.email, employee.role, employee]
-      );
+      try {
+        console.log('Attempting to insert employee:', {
+          id: employee.id,
+          email: employee.email,
+          role: employee.role,
+          data: employee
+        });
+        await client.query(
+          `INSERT INTO employees (id, email, role, data) VALUES ($1, $2, $3, $4)`,
+          [employee.id, employee.email, employee.role, employee]
+        );
+        console.log('Successfully inserted employee:', employee.id);
+      } catch (error) {
+        console.error('Failed to insert employee:', employee.id, error);
+        throw error;
+      }
     }
 
     console.log('Inserting customers...');
