@@ -5,14 +5,13 @@ import express from 'express';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
-import { warehouses } from "@src/data/warehouses.json"
-import { products } from "@src/data/products.json"
-import { employees } from "@src/data/employees.json"
-import { customers } from "@src/data/customers.json"
-import { fulfillments } from "@src/data/fulfillments.json"
-import { orders } from "@src/data/orders.json"
-import { orderItems } from "@src/data/orderItems.json"
-import { transportCompanies, transportOrders, } from "@src/data/transport.json"
+import { warehouses } from "./src/data/warehouses"
+import { products } from "./src/data/products"
+import { employees } from "./src/data/employees"
+import { customers } from "./src/data/customers"
+import { fulfillments } from "./src/data/fulfillments"
+import { orders } from "./src/data/orders"
+import { transportCompanies, transportOrders, } from "./src/data/transport"
 
 const DEFAULT_PORT = process.env.PORT || 3001;
 const __filename = fileURLToPath(import.meta.url);
@@ -505,7 +504,6 @@ async function initializeDatabase() {
       customers,
       fulfillments,
       orders,
-      order_items: orderItems,
       transport_companies: transportCompanies,
       transport_orders: transportOrders
     };
@@ -513,7 +511,7 @@ async function initializeDatabase() {
     // Add console logging for debugging
     for (const [table, items] of Object.entries(testData)) {
       console.log(`Inserting test data for ${table}:`, items);
-      for (const item of items) {
+      for (const item of (items as any[])) {
         try {
           const result = await client.query(
             `INSERT INTO ${table} (id, data) 
@@ -558,8 +556,11 @@ async function executeQuery(queryText, params) {
 // API routes
 app.get('/api/db/test', async (req, res) => {
   try {
-    const result = await executeQuery('SELECT NOW()', []);
-    res.json({ success: true, timestamp: result.rows[0].now });
+    interface TimeResult {
+      current_time: Date;
+    }
+    const result = await executeQuery('SELECT NOW() as current_time', []);
+    res.json({ success: true, timestamp: (result.rows[0] as unknown as TimeResult).current_time });
   } catch (error) {
     console.error('Database test failed:', error);
     res.status(500).json({ error: 'Database connection failed' });
@@ -602,7 +603,7 @@ app.post('/api/auth/verify', async (req, res) => {
 // Add this route to check employee data
 app.get('/api/debug/employees', async (req, res) => {
   try {
-    const result = await executeQuery('SELECT * FROM employees');
+    const result = await executeQuery('SELECT * FROM employees', []);
     console.log('Current employees:', result.rows);
     res.json(result.rows);
   } catch (error) {

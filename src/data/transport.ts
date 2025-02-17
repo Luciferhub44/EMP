@@ -73,3 +73,16 @@ export const transportCompanies = [
     }
   }
 ]
+
+export const transportOrders = [
+  {
+    id: "TO-001",
+    orderId: "ORD000001",
+    companyId: "trans-1",
+    status: "pending",
+    pickupDate: new Date().toISOString(),
+    deliveryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    cost: 1500,
+    vehicleType: "large-truck"
+  }
+]
