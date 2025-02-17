@@ -1,26 +1,18 @@
 import { Product } from "@/types/products"
-import { db } from "@/lib/api/db"
 
 // Convert sync functions to async
 export async function updateProductSync(productId: string, updates: Partial<Product>): Promise<Product | null> {
-  const { rows: [product] } = await db.query(
-    'SELECT data FROM products WHERE id = $1',
-    [productId]
-  )
-  if (!product) return null
+  const response = await fetch(`/api/products/${productId}/sync`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+    },
+    body: JSON.stringify(updates)
+  })
 
-  const updatedProduct = {
-    ...product.data,
-    ...updates,
-    updatedAt: new Date().toISOString()
-  }
-
-  await db.query(
-    'UPDATE products SET data = $1 WHERE id = $2',
-    [updatedProduct, productId]
-  )
-
-  return updatedProduct
+  if (!response.ok) return null
+  return response.json()
 }
 
 export async function updateProductInventorySync(
@@ -28,85 +20,66 @@ export async function updateProductInventorySync(
   warehouseId: string,
   quantity: number
 ): Promise<Product | null> {
-  const client = await db.connect()
-  try {
-    await client.query('BEGIN')
+  const response = await fetch(`/api/products/${productId}/inventory/sync`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+    },
+    body: JSON.stringify({
+      warehouseId,
+      quantity
+    })
+  })
 
-    const { rows: [product] } = await client.query(
-      'SELECT data FROM products WHERE id = $1',
-      [productId]
-    )
-    if (!product) return null
-
-    const inventory = product.data.inventory || []
-    const existingIndex = inventory.findIndex((i: any) => i.warehouseId === warehouseId)
-
-    if (existingIndex === -1) {
-      inventory.push({
-        productId,
-        warehouseId,
-        quantity,
-        minimumStock: 0,
-        lastUpdated: new Date().toISOString(),
-      })
-    } else {
-      inventory[existingIndex] = {
-        ...inventory[existingIndex],
-        quantity,
-        lastUpdated: new Date().toISOString(),
-      }
-    }
-
-    const updatedProduct = {
-      ...product.data,
-      inventory,
-      updatedAt: new Date().toISOString()
-    }
-
-    await client.query(
-      'UPDATE products SET data = $1 WHERE id = $2',
-      [updatedProduct, productId]
-    )
-
-    await client.query('COMMIT')
-    return updatedProduct
-  } catch (error) {
-    await client.query('ROLLBACK')
-    throw error
-  } finally {
-    client.release()
-  }
+  if (!response.ok) return null
+  return response.json()
 }
 
 // Async functions for API simulation
 export async function updateProduct(id: string, updates: Partial<Product>): Promise<void> {
-  await db.query(
-    'UPDATE products SET data = data || $1::jsonb WHERE id = $2',
-    [updates, id]
-  )
+  const response = await fetch(`/api/products/${id}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+    },
+    body: JSON.stringify(updates)
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to update product')
+  }
 }
 
 export async function createProduct(newProduct: Omit<Product, "id" | "inventory">): Promise<Product> {
-  const id = `P-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-  const product = {
-    id,
-    ...newProduct,
-    inventory: [],
-    status: 'active' as const, // Fix: explicitly type the status
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+  const response = await fetch('/api/products', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+    },
+    body: JSON.stringify(newProduct)
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to create product')
   }
 
-  await db.query(
-    'INSERT INTO products (id, data) VALUES ($1, $2)',
-    [id, product]
-  )
-
-  return product
+  return response.json()
 }
 
 export async function deleteProduct(id: string): Promise<void> {
-  await db.query('DELETE FROM products WHERE id = $1', [id])
+  const response = await fetch(`/api/products/${id}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+    }
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to delete product')
+  }
 }
 
 export async function updateProductInventory(
@@ -114,33 +87,19 @@ export async function updateProductInventory(
   warehouseId: string,
   quantity: number
 ): Promise<void> {
-  const { rows: [product] } = await db.query(
-    'SELECT data FROM products WHERE id = $1',
-    [productId]
-  )
-  if (!product) throw new Error("Product not found")
-
-  const inventory = product.data.inventory || []
-  const existingIndex = inventory.findIndex((i: any) => i.warehouseId === warehouseId)
-
-  if (existingIndex === -1) {
-    inventory.push({
-      productId,
+  const response = await fetch(`/api/products/${productId}/inventory`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+    },
+    body: JSON.stringify({
       warehouseId,
-      quantity,
-      minimumStock: 0,
-      lastUpdated: new Date().toISOString()
+      quantity
     })
-  } else {
-    inventory[existingIndex] = {
-      ...inventory[existingIndex],
-      quantity: inventory[existingIndex].quantity + quantity,
-      lastUpdated: new Date().toISOString()
-    }
-  }
+  })
 
-  await db.query(
-    'UPDATE products SET data = jsonb_set(data, \'{inventory}\', $1::jsonb) WHERE id = $2',
-    [JSON.stringify(inventory), productId]
-  )
+  if (!response.ok) {
+    throw new Error('Failed to update product inventory')
+  }
 } 

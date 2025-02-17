@@ -1,5 +1,4 @@
-import { TransportQuote, OrderItem, FulfillmentDetails, FulfillmentStatus } from "@/types/orders"
-import { db } from "@/lib/api/db"
+import { TransportQuote, OrderItem, FulfillmentDetails } from "@/types/orders"
 
 interface GenerateQuoteParams {
   orderId: string
@@ -17,45 +16,25 @@ export async function generateTransportQuote({
   distance,
   items
 }: GenerateQuoteParams): Promise<TransportQuote> {
-  const { rows: [company] } = await db.query(
-    'SELECT * FROM transport_companies WHERE id = $1',
-    [companyId]
-  )
-  if (!company) throw new Error("Company not found")
+  const response = await fetch('/api/transport/quotes', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+    },
+    body: JSON.stringify({
+      orderId,
+      companyId,
+      distance,
+      items
+    })
+  })
 
-  const totalWeight = items.reduce((sum, item) => sum + (item.quantity * 100), 0)
-  
-  const { rows: [vehicle] } = await db.query(
-    'SELECT * FROM vehicle_types WHERE id = ANY($1) AND max_weight >= $2 LIMIT 1',
-    [company.data.availableVehicles, totalWeight]
-  )
-  if (!vehicle) throw new Error("No suitable vehicle found")
-
-  const totalPrice = company.data.basePrice + (distance * company.data.pricePerKm)
-  const estimatedDays = Math.ceil(distance / 500) + 1
-
-  const quote = {
-    id: `quote-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    orderId,
-    provider: company.data.name,
-    method: vehicle.data.name,
-    cost: totalPrice,
-    estimatedDays,
-    distance,
-    validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-    weightBased: true,
-    insurance: {
-      included: true,
-      coverage: totalPrice
-    }
+  if (!response.ok) {
+    throw new Error('Failed to generate transport quote')
   }
 
-  await db.query(
-    'INSERT INTO transport_quotes (id, data) VALUES ($1, $2)',
-    [quote.id, quote]
-  )
-
-  return quote
+  return response.json()
 }
 
 export function calculateDistance(from: string, to: string): number {
@@ -65,23 +44,22 @@ export function calculateDistance(from: string, to: string): number {
 }
 
 export async function handleAcceptQuote(quoteId: string, orderId: string): Promise<string> {
-  const fulfillmentId = `ful-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-  
-  await db.query(
-    'INSERT INTO fulfillments (id, data) VALUES ($1, $2)',
-    [fulfillmentId, {
-      orderId,
-      transportQuote: quoteId,
-      status: 'pending' as FulfillmentStatus,
-      carrier: '',
-      estimatedDelivery: '',
-      actualDelivery: '',
-      notes: '',
-      history: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    }]
-  )
+  const response = await fetch('/api/fulfillments', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+    },
+    body: JSON.stringify({
+      quoteId,
+      orderId
+    })
+  })
 
+  if (!response.ok) {
+    throw new Error('Failed to accept quote')
+  }
+
+  const { fulfillmentId } = await response.json()
   return fulfillmentId
 } 

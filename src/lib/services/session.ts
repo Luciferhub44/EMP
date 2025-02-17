@@ -1,63 +1,68 @@
-import { db } from "@/lib/api/db"
 import type { Session } from "@/types/session"
 
 export const sessionService = {
   createSession: async (userId: string, token: string): Promise<Session> => {
-    const session: Session = {
-      id: `SES${Date.now()}`,
-      userId,
-      token,
-      createdAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
+    const response = await fetch('/api/sessions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+      },
+      body: JSON.stringify({
+        userId,
+        token
+      })
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to create session')
     }
 
-    await db.query(
-      'INSERT INTO storage (key, data) VALUES ($1, $2)',
-      [`session:${token}`, session]
-    )
-
-    return session
+    return response.json()
   },
 
   getSession: async (token: string): Promise<Session | null> => {
-    const result = await db.query(
-      'SELECT data FROM storage WHERE key = $1',
-      [`session:${token}`]
-    )
+    try {
+      const response = await fetch(`/api/sessions/${token}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        }
+      })
 
-    const session = result.rows[0]?.data
-    if (!session) return null
+      if (!response.ok) {
+        return null
+      }
 
-    // Check if session is expired
-    if (new Date(session.expiresAt) < new Date()) {
-      await sessionService.deleteSession(token)
+      return response.json()
+    } catch (error) {
+      console.error('Failed to get session:', error)
       return null
     }
-
-    return session
   },
 
   deleteSession: async (token: string): Promise<void> => {
-    await db.query(
-      'DELETE FROM storage WHERE key = $1',
-      [`session:${token}`]
-    )
+    const response = await fetch(`/api/sessions/${token}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+      }
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to delete session')
+    }
   },
 
   deleteAllUserSessions: async (userId: string): Promise<void> => {
-    const result = await db.query(
-      'SELECT key, data FROM storage WHERE key LIKE \'session:%\''
-    )
+    const response = await fetch(`/api/sessions/user/${userId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+      }
+    })
 
-    const sessionKeys = result.rows
-      .filter((row: { data: any }) => row.data.userId === userId)
-      .map((row: { key: string }) => row.key)
-
-    if (sessionKeys.length > 0) {
-      await db.query(
-        'DELETE FROM storage WHERE key = ANY($1)',
-        [sessionKeys]
-      )
+    if (!response.ok) {
+      throw new Error('Failed to delete user sessions')
     }
   }
 } 

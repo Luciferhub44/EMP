@@ -1,5 +1,3 @@
-import { db } from "@/lib/api/db"
-
 type MessageCallback = (message: any) => void
 type StatusCallback = (status: boolean) => void
 
@@ -46,17 +44,40 @@ class WebSocketService {
   }
 
   private async updateConnectionStatus(status: boolean) {
-    await db.query(
-      'INSERT INTO websocket_status (status, timestamp) VALUES ($1, $2)',
-      [status, new Date().toISOString()]
-    )
+    try {
+      await fetch('/api/websocket/status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify({
+          status,
+          timestamp: new Date().toISOString()
+        })
+      })
+    } catch (error) {
+      console.error('Failed to update connection status:', error)
+    }
   }
 
   private async storeMessage(message: any) {
-    await db.query(
-      'INSERT INTO websocket_messages (id, data, timestamp) VALUES ($1, $2, $3)',
-      [`msg-${Date.now()}`, message, new Date().toISOString()]
-    )
+    try {
+      await fetch('/api/websocket/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify({
+          id: `msg-${Date.now()}`,
+          data: message,
+          timestamp: new Date().toISOString()
+        })
+      })
+    } catch (error) {
+      console.error('Failed to store message:', error)
+    }
   }
 
   private attemptReconnect() {

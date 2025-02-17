@@ -1,6 +1,5 @@
 import { ChatMessage, ChatUser } from "@/types/chat"
 import { chatWebSocket } from "./websocket"
-import { db } from "@/lib/api/db"
 
 interface SendMessageParams {
   content: string
@@ -8,16 +7,33 @@ interface SendMessageParams {
 }
 
 class ChatService {
-  private currentUser: ChatUser = {
-    id: "user1", // This would come from auth
-    name: "John Admin",
-    role: "admin",
-    isOnline: true
-  }
+  private currentUser: ChatUser | null = null
 
   constructor() {
     chatWebSocket.connect()
     this.setupWebSocketListeners()
+    this.initializeCurrentUser()
+  }
+
+  private async initializeCurrentUser() {
+    try {
+      const response = await fetch('/api/auth/me', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        }
+      })
+      if (response.ok) {
+        const userData = await response.json()
+        this.currentUser = {
+          id: userData.id,
+          name: userData.name,
+          role: userData.role,
+          isOnline: true
+        }
+      }
+    } catch (error) {
+      console.error('Failed to initialize chat user:', error)
+    }
   }
 
   private setupWebSocketListeners() {
@@ -34,21 +50,35 @@ class ChatService {
   }
 
   private async handleNewMessage(message: ChatMessage) {
-    // Store message in database
-    await db.query(
-      'INSERT INTO chat_messages (id, data) VALUES ($1, $2)',
-      [message.id, message]
-    )
-    this.messageCallbacks.forEach(callback => callback(message))
+    try {
+      await fetch('/api/chat/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify(message)
+      })
+      this.messageCallbacks.forEach(callback => callback(message))
+    } catch (error) {
+      console.error('Failed to handle new message:', error)
+    }
   }
 
   private async handleUserStatus(user: ChatUser) {
-    // Update user status in database
-    await db.query(
-      'UPDATE chat_users SET data = $1 WHERE id = $2',
-      [user, user.id]
-    )
-    this.userStatusCallbacks.forEach(callback => callback(user))
+    try {
+      await fetch(`/api/chat/users/${user.id}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify({ isOnline: user.isOnline })
+      })
+      this.userStatusCallbacks.forEach(callback => callback(user))
+    } catch (error) {
+      console.error('Failed to update user status:', error)
+    }
   }
 
   private messageCallbacks: ((message: ChatMessage) => void)[] = []
@@ -63,6 +93,10 @@ class ChatService {
   }
 
   async sendMessage({ content, attachments }: SendMessageParams): Promise<ChatMessage> {
+    if (!this.currentUser) {
+      throw new Error('User not initialized')
+    }
+
     const message: ChatMessage = {
       id: `msg-${Date.now()}`,
       userId: this.currentUser.id,
@@ -76,13 +110,17 @@ class ChatService {
       message.attachments = await this.uploadFiles(attachments)
     }
 
-    // Store in database first
-    await db.query(
-      'INSERT INTO chat_messages (id, data) VALUES ($1, $2)',
-      [message.id, message]
-    )
+    // Send to server
+    await fetch('/api/chat/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+      },
+      body: JSON.stringify(message)
+    })
 
-    // Then broadcast
+    // Broadcast via WebSocket
     chatWebSocket.sendMessage({
       type: "new_message",
       data: message
@@ -92,18 +130,25 @@ class ChatService {
   }
 
   private async uploadFiles(files: File[]): Promise<ChatMessage["attachments"]> {
-    // In a real app, this would upload to your server/cloud storage
-    return Promise.all(
-      files.map(async (file) => ({
-        id: `att-${Date.now()}-${file.name}`,
-        name: file.name,
-        url: URL.createObjectURL(file),
-        type: file.type
-      }))
-    )
+    const formData = new FormData()
+    files.forEach(file => formData.append('files', file))
+
+    const response = await fetch('/api/chat/upload', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+      },
+      body: formData
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to upload files')
+    }
+
+    return response.json()
   }
 
-  getCurrentUser(): ChatUser {
+  getCurrentUser(): ChatUser | null {
     return this.currentUser
   }
 }

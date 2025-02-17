@@ -1,25 +1,17 @@
 import type { Customer } from "@/types/customer"
-import { db } from "@/lib/api/db"
-import { employeeService } from "./employee"
-import { ordersService } from "./orders"
 import type { Order } from "@/types/orders"
 
 export const customerService = {
   // Get customers based on user role and access
   getCustomers: async (userId: string, isAdmin: boolean) => {
     try {
-      // Admins can see all customers
-      if (isAdmin) {
-        const result = await db.query('SELECT data FROM customers')
-        return result.rows.map((row: { data: any }) => row.data)
-      }
-
-      // Employees can only see customers from their assigned orders
-      const assignedOrders = await employeeService.getAssignedOrders(userId)
-      const customerIds = new Set(assignedOrders.map((order: Order) => order.customerId))
-      
-      const result = await db.query('SELECT data FROM customers WHERE id IN ($1)', [Array.from(customerIds)])
-      return result.rows.map((row: { data: any }) => row.data)
+      const response = await fetch(`/api/customers?userId=${userId}&isAdmin=${isAdmin}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        }
+      })
+      if (!response.ok) throw new Error('Failed to fetch customers')
+      return response.json()
     } catch (error) {
       console.error("Failed to get customers:", error)
       return []
@@ -28,90 +20,68 @@ export const customerService = {
 
   // Get single customer with access check
   getCustomer: async (id: string, userId: string = "", isAdmin: boolean = false) => {
-    const result = await db.query('SELECT data FROM customers WHERE id = $1', [id])
-    if (!result.rows[0]) throw new Error("Customer not found")
-    const customer = result.rows[0].data
-
-    // Admins can access any customer
-    if (isAdmin) return customer
-
-    // If no user ID provided, return null
-    if (!userId) return null
-
     try {
-      // Check if customer is associated with any of employee's assigned orders
-      const assignedOrders = await employeeService.getAssignedOrders(userId)
-      const hasAccess = assignedOrders.some((order: Order) => order.customerId === id)
-      
-      return hasAccess ? customer : null
+      const response = await fetch(`/api/customers/${id}?userId=${userId}&isAdmin=${isAdmin}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        }
+      })
+      if (!response.ok) return null
+      return response.json()
     } catch (error) {
-      console.error("Failed to check customer access:", error)
+      console.error("Failed to get customer:", error)
       return null
     }
   },
 
   // Only admins can create/update customers
   createCustomer: async (customerData: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const id = `CUS${Date.now()}`
-    const now = new Date().toISOString()
-    const newCustomer: Customer = {
-      ...customerData,
-      id,
-      createdAt: now,
-      updatedAt: now
-    }
-
-    await db.query(
-      'INSERT INTO customers (id, data) VALUES ($1, $2)',
-      [id, newCustomer]
-    )
-
-    return newCustomer
+    const response = await fetch('/api/customers', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+      },
+      body: JSON.stringify(customerData)
+    })
+    if (!response.ok) throw new Error('Failed to create customer')
+    return response.json()
   },
 
   updateCustomer: async (id: string, updates: Partial<Omit<Customer, 'id' | 'createdAt'>>) => {
-    const result = await db.query('SELECT data FROM customers WHERE id = $1', [id])
-    if (!result.rows[0]) throw new Error("Customer not found")
-
-    const updatedCustomer = {
-      ...result.rows[0].data,
-      ...updates,
-      updatedAt: new Date().toISOString()
-    }
-
-    await db.query(
-      'UPDATE customers SET data = $1 WHERE id = $2',
-      [updatedCustomer, id]
-    )
-
-    return updatedCustomer
+    const response = await fetch(`/api/customers/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+      },
+      body: JSON.stringify(updates)
+    })
+    if (!response.ok) throw new Error('Failed to update customer')
+    return response.json()
   },
 
   getCustomerOrders: async (customerId: string) => {
-    await new Promise(resolve => setTimeout(resolve, 500))
-    const orders = await ordersService.getOrders(customerId, false)
-    return orders
-      .filter((order: Order) => order.customerId === customerId)
-      .sort((a: Order, b: Order) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    const response = await fetch(`/api/customers/${customerId}/orders`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+      }
+    })
+    if (!response.ok) return []
+    const orders = await response.json()
+    return orders.sort((a: Order, b: Order) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
   },
 
   getCustomerStats: async (customerId: string) => {
-    await new Promise(resolve => setTimeout(resolve, 500))
-    const orders = await ordersService.getOrders(customerId, false)
-    const customerOrders = orders.filter((order: Order) => order.customerId === customerId)
-    const totalSpent = customerOrders.reduce((sum: number, order: Order) => sum + order.total, 0)
-    const lastOrder = customerOrders.sort((a: Order, b: Order) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    )[0]
-
-    return {
-      orderCount: customerOrders.length,
-      totalSpent,
-      lastOrder,
-      firstOrderDate: customerOrders.length > 0 ? 
-        customerOrders[customerOrders.length - 1].createdAt : 
-        null
-    }
+    const response = await fetch(`/api/customers/${customerId}/stats`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+      }
+    })
+    if (!response.ok) throw new Error('Failed to fetch customer stats')
+    return response.json()
   },
 
   deleteCustomer: async (customerId: string, isAdmin: boolean): Promise<void> => {
@@ -119,6 +89,12 @@ export const customerService = {
       throw new Error("Only administrators can delete customers")
     }
     
-    await db.query('DELETE FROM customers WHERE id = $1', [customerId])
+    const response = await fetch(`/api/customers/${customerId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+      }
+    })
+    if (!response.ok) throw new Error('Failed to delete customer')
   }
 } 

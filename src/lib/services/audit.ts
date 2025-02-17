@@ -1,23 +1,23 @@
-import { db } from "@/lib/api/db"
 import type { AuditActionType, AuditLog } from "@/types/audit"
-import { authService } from "@/lib/services/auth"
 
 export const auditService = {
   log: async (action: string, userId: string, details: any): Promise<void> => {
-    const employee = await authService.getEmployeeById(userId)
-    const auditEntry: AuditLog = {
-      id: `AUD${Date.now()}`,
-      timestamp: new Date().toISOString(),
-      action: action as AuditActionType,
-      userId,
-      userRole: employee?.role || 'user',
-      details
+    try {
+      await fetch('/api/audit/log', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify({
+          action,
+          userId,
+          details
+        })
+      })
+    } catch (error) {
+      console.error('Failed to log audit:', error)
     }
-
-    await db.query(
-      'INSERT INTO storage (key, data) VALUES ($1, $2)',
-      [`audit:${auditEntry.id}`, auditEntry]
-    )
   },
 
   getAuditLogs: async (
@@ -26,43 +26,39 @@ export const auditService = {
     userId?: string,
     action?: AuditActionType
   ): Promise<AuditLog[]> => {
-    const result = await db.query(
-      'SELECT data FROM storage WHERE key LIKE \'audit:%\' ORDER BY data->>\'timestamp\' DESC'
-    )
+    try {
+      const params = new URLSearchParams()
+      if (startDate) params.append('startDate', startDate.toISOString())
+      if (endDate) params.append('endDate', endDate.toISOString())
+      if (userId) params.append('userId', userId)
+      if (action) params.append('action', action)
 
-    let logs = result.rows.map((row: { data: any }) => row.data)
+      const response = await fetch(`/api/audit/logs?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        }
+      })
 
-    // Apply filters
-    if (startDate) {
-      logs = logs.filter((log: AuditLog) => new Date(log.timestamp) >= startDate)
+      if (!response.ok) throw new Error('Failed to fetch audit logs')
+      return response.json()
+    } catch (error) {
+      console.error('Failed to get audit logs:', error)
+      return []
     }
-    if (endDate) {
-      logs = logs.filter((log: AuditLog)     => new Date(log.timestamp) <= endDate)
-    }
-    if (userId) {
-      logs = logs.filter((log: AuditLog) => log.userId === userId)
-    }
-    if (action) {
-      logs = logs.filter((log: AuditLog)     => log.action === action)
-    }
-
-    return logs
   },
 
   clearOldLogs: async (olderThan: Date): Promise<void> => {
-    const result = await db.query(
-      'SELECT key, data FROM storage WHERE key LIKE \'audit:%\''
-    )
-
-    const keysToDelete = result.rows
-      .filter((row: { data: any }) => new Date(row.data.timestamp) < olderThan)
-      .map((row: { key: string }) => row.key)
-
-    if (keysToDelete.length > 0) {
-      await db.query(
-        'DELETE FROM storage WHERE key = ANY($1)',
-        [keysToDelete]
-      )
+    try {
+      await fetch('/api/audit/clear', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify({ olderThan: olderThan.toISOString() })
+      })
+    } catch (error) {
+      console.error('Failed to clear old logs:', error)
     }
   }
 } 

@@ -1,5 +1,4 @@
 import type { Address } from "@/types/orders"
-import { db } from "@/lib/api/db"
 
 interface ShippingCostParams {
   distance: number
@@ -12,16 +11,15 @@ interface ShippingCostParams {
 export async function calculateDistance(origin: Address, destination: Address): Promise<number> {
   try {
     // First check if we have cached this route
-    const { rows: [cached] } = await db.query(
-      `SELECT data->>'distance' as distance 
-       FROM shipping_routes 
-       WHERE data->>'originPostal' = $1 
-       AND data->>'destPostal' = $2`,
-      [origin.postalCode, destination.postalCode]
-    )
+    const response = await fetch(`/api/shipping/routes?originPostal=${origin.postalCode}&destPostal=${destination.postalCode}`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+      }
+    })
 
-    if (cached) {
-      return parseInt(cached.distance)
+    if (response.ok) {
+      const cached = await response.json()
+      return cached.distance
     }
 
     // If not cached, calculate and store
@@ -33,20 +31,24 @@ export async function calculateDistance(origin: Address, destination: Address): 
     const distance = Math.round(difference * 0.8) + 100
 
     // Cache the result
-    await db.query(
-      'INSERT INTO shipping_routes (id, data) VALUES ($1, $2)',
-      [`route-${origin.postalCode}-${destination.postalCode}`, {
+    await fetch('/api/shipping/routes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+      },
+      body: JSON.stringify({
         originPostal: origin.postalCode,
         destPostal: destination.postalCode,
         distance,
         calculatedAt: new Date().toISOString()
-      }]
-    )
+      })
+    })
 
     return distance
   } catch (error) {
     console.error('Error calculating distance:', error)
-    // Fallback to basic calculation if DB operations fail
+    // Fallback to basic calculation if API operations fail
     const difference = Math.abs(
       parseInt(origin.postalCode) - parseInt(destination.postalCode)
     )

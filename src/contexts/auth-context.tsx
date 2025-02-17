@@ -1,6 +1,5 @@
 import * as React from "react"
 import type { Employee } from "@/types/employee"
-import { db } from "@/lib/api/db"
 
 interface AuthContextType {
   user: Employee | null
@@ -53,40 +52,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Log the attempt
       console.log('Login attempt:', { agentId })
 
-      const { rows } = await db.query(
-        `SELECT data FROM employees 
-         WHERE data->>'agentId' = $1`,
-        [agentId]
-      )
-
-      console.log('Found employee:', rows[0]?.data)
-
-      if (rows.length === 0) {
-        throw new Error("Employee not found")
-      }
-
-      const employee = rows[0].data
-
-      // Use the server's password verification endpoint
-      const verifyResponse = await fetch('/api/auth/verify', {
+      // Use the server's login endpoint
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          password,
-          hash: employee.passwordHash
+          agentId,
+          password
         })
       })
 
-      const { valid } = await verifyResponse.json()
-
-      if (!valid) {
-        throw new Error("Invalid password")
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Login failed")
       }
 
-      setUser(employee)
-      localStorage.setItem("auth_token", "session-" + employee.id)
+      const { user: userData } = await response.json()
+      console.log('Login successful:', userData)
+
+      setUser(userData)
+      localStorage.setItem("auth_token", "session-" + userData.id)
       
     } catch (error) {
       console.error("Login failed:", error)
