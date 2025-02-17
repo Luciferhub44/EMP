@@ -14,16 +14,31 @@ export interface ProductInventory {
 
 export interface Product {
   id: string
-  name: string
-  status: 'active' | 'inactive'
-  createdAt: string
-  updatedAt: string
-  inventory: ProductInventory[]
   category: string
+  name: string
   model: string
   sku: string
-  description?: string
   price: number
-  image?: string
-  specifications: ProductSpecifications
+  status: string
+  image: string
+  specifications: {
+    weight?: number
+    power?: number
+    digDepth?: number
+    maxReach?: number
+    engineType?: string
+    operatingWeight?: string
+    bucketCapacity?: string
+    liftingCapacity?: string
+    maxHeight?: string
+    boomLength?: string
+    drumDiameter?: string
+    [key: string]: string | number | undefined
+  }
+  inventory: Array<{
+    warehouseId: string
+    quantity: number
+  }>
+  createdAt: string
+  updatedAt: string
 } 

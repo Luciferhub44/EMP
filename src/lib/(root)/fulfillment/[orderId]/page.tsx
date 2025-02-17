@@ -73,7 +73,7 @@ export default function FulfillmentPage() {
         user.id,
         user.role === 'admin'
       )
-      setFulfillment(updatedFulfillment)
+      setFulfillment(updatedFulfillment as FulfillmentDetails)
       toast({
         title: "Success",
         description: "Fulfillment details updated successfully",
