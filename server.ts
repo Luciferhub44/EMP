@@ -530,16 +530,19 @@ async function initializeDatabase() {
       customers: [
         {
           id: 'CUST-1',
-          name: "Robert Anderson",
-          email: "r.anderson@constructioncorp.com",
-          company: "Anderson Construction Corp",
-          phone: "(555) 123-4567",
-          address: {
-            street: "789 Industrial Parkway",
-            city: "Houston",
-            state: "TX",
-            country: "USA",
-            postalCode: "77001"
+          data: {
+            id: 'CUST-1',
+            name: "Robert Anderson",
+            email: "r.anderson@constructioncorp.com",
+            company: "Anderson Construction Corp",
+            phone: "(555) 123-4567",
+            address: {
+              street: "789 Industrial Parkway",
+              city: "Houston",
+              state: "TX",
+              country: "USA",
+              postalCode: "77001"
+            }
           }
         },
         {
@@ -602,40 +605,25 @@ async function initializeDatabase() {
       products: [
         {
           id: "EX-001",
-          category: "Excavators",
-          name: "Compact Mini Excavator",
-          model: "ME-2000",
-          sku: "ME2000-001",
-          price: 15000,
-          status: "active",
-          image: "/images/products/mini-excavator.jpg",
-          specifications: {
-            weight: 2000,
-            power: 15,
-            digDepth: 2.5,
-            maxReach: 4.2,
-            engineType: "Diesel",
-            operatingWeight: "2000 kg",
-            bucketCapacity: "0.08 m³"
-          },
-          inventory: [
-            {
-              productId: "EX-001",
-              warehouseId: "wh-1",
-              quantity: 5,
-              minimumStock: 2,
-              lastUpdated: new Date().toISOString()
+          data: {
+            id: "EX-001",
+            category: "Excavators",
+            name: "Compact Mini Excavator",
+            model: "ME-2000",
+            sku: "ME2000-001",
+            price: 15000,
+            status: "active",
+            image: "/images/products/mini-excavator.jpg",
+            specifications: {
+              weight: 2000,
+              power: 15,
+              digDepth: 2.5,
+              maxReach: 4.2
             },
-            {
-              productId: "EX-001",
-              warehouseId: "wh-2",
-              quantity: 3,
-              minimumStock: 1,
-              lastUpdated: new Date().toISOString()
-            }
-          ],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
+            inventory: [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }
         },
         {
           id: "CR-001",
@@ -735,8 +723,10 @@ async function initializeDatabase() {
           updatedAt: new Date().toISOString()
         }
       }],
-        transport_companies: [
-          {
+      transport_companies: [
+        {
+          id: "trans-1",
+          data: {
             id: "trans-1",
             name: "FastTrack Logistics",
             rating: 4.8,
@@ -749,36 +739,37 @@ async function initializeDatabase() {
               phone: "1-800-555-0123",
               email: "contact@fasttrack.com"
             }
-          },
-          {
-            id: "trans-2",
-            name: "Heavy Haulers Co.",
-            rating: 4.6,
-            availableVehicles: ["medium-truck", "large-truck", "flatbed"],
-            basePrice: 750,
-            pricePerKm: 3.2,
-            serviceAreas: ["Los Angeles", "San Francisco", "Seattle"],
-            insuranceCoverage: 150000,
-            contactInfo: {
-              phone: "1-800-555-0124",
-              email: "support@heavyhaulers.com"
-            }
-          },
-          {
-            id: "trans-3",
-            name: "Reliable Transport",
-            rating: 4.9,
-            availableVehicles: ["small-truck", "medium-truck", "flatbed"],
-            basePrice: 450,
-            pricePerKm: 2.5,
-            serviceAreas: ["Chicago", "Detroit", "Cleveland"],
-            insuranceCoverage: 120000,
-            contactInfo: {
-              phone: "1-800-555-0125",
-              email: "info@reliabletransport.com"
-            }
           }
-        ],
+        },
+        {
+          id: "trans-2",
+          name: "Heavy Haulers Co.",
+          rating: 4.6,
+          availableVehicles: ["medium-truck", "large-truck", "flatbed"],
+          basePrice: 750,
+          pricePerKm: 3.2,
+          serviceAreas: ["Los Angeles", "San Francisco", "Seattle"],
+          insuranceCoverage: 150000,
+          contactInfo: {
+            phone: "1-800-555-0124",
+            email: "support@heavyhaulers.com"
+          }
+        },
+        {
+          id: "trans-3",
+          name: "Reliable Transport",
+          rating: 4.9,
+          availableVehicles: ["small-truck", "medium-truck", "flatbed"],
+          basePrice: 450,
+          pricePerKm: 2.5,
+          serviceAreas: ["Chicago", "Detroit", "Cleveland"],
+          insuranceCoverage: 120000,
+          contactInfo: {
+            phone: "1-800-555-0125",
+            email: "info@reliabletransport.com"
+          }
+        }
+      ],
       transport_orders: [{
         id: 'TO-1',
         data: {
@@ -792,23 +783,21 @@ async function initializeDatabase() {
       }]
     };
 
-    // Insert test data if not exists
+    // Add console logging for debugging
     for (const [table, items] of Object.entries(testData)) {
+      console.log(`Inserting test data for ${table}:`, items);
       for (const item of items) {
-        if (table === 'products' && 'sku' in item) {
-          await client.query(
-            `INSERT INTO ${table} (id, sku, status, data) 
-             VALUES ($1, $2, $3, $4) 
-             ON CONFLICT (id) DO NOTHING`,
-            [item.id, item.sku, item.status, item]
-          );
-        } else {
-          await client.query(
+        try {
+          const result = await client.query(
             `INSERT INTO ${table} (id, data) 
              VALUES ($1, $2) 
-             ON CONFLICT (id) DO NOTHING`,
-            [item.id, item]
+             ON CONFLICT (id) DO NOTHING 
+             RETURNING id`,
+            [item.id, item.data]
           );
+          console.log(`Inserted ${table} record:`, result.rows);
+        } catch (error) {
+          console.error(`Failed to insert ${table} record:`, error);
         }
       }
     }
