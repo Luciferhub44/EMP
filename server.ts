@@ -149,13 +149,13 @@ async function initializeDatabase() {
       );
     `);
 
-    // Create default admin user
+    // Create default admin user from environment variables
     console.log('Creating default admin user...');
     const adminPasswordHash = await hashPassword(ADMIN_PASSWORD);
     const adminUser = {
       id: ADMIN_ID,
       agentId: 'ADMIN001',
-      name: 'System Administrator',
+      name: 'Admin HQ',
       email: ADMIN_EMAIL,
       role: 'admin',
       status: 'active',
@@ -164,16 +164,25 @@ async function initializeDatabase() {
       updatedAt: new Date().toISOString(),
       passwordHash: adminPasswordHash,
       businessInfo: {
-        companyName: 'System Admin',
-        registrationNumber: 'SYSADMIN001',
-        taxId: 'ADMIN001',
+        companyName: 'Sany Global',
+        registrationNumber: 'REG123',
+        taxId: 'TAX123',
         businessAddress: {
-          street: '123 Admin Street',
+          street: '123 Admin St',
           city: 'Admin City',
           state: 'AS',
           postalCode: '12345',
           country: 'USA'
         }
+      },
+      payrollInfo: {
+        bankName: 'Sany Global',
+        accountNumber: '1234567890',
+        routingNumber: '987654321',
+        paymentFrequency: 'monthly',
+        baseRate: 5000,
+        currency: 'USD',
+        lastPaymentDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
       }
     };
 
@@ -183,7 +192,7 @@ async function initializeDatabase() {
     );
     console.log('Default admin user created');
 
-    // Insert data in correct order
+    // Insert other data in correct order
     console.log('Inserting warehouses...');
     for (const warehouse of warehouses) {
       await client.query(
@@ -200,23 +209,23 @@ async function initializeDatabase() {
       );
     }
 
-    console.log('Inserting employees...');
+    // Skip the admin user when inserting employees from data file
+    console.log('Inserting additional employees...');
     for (const employee of employees) {
-      try {
-        console.log('Attempting to insert employee:', {
-          id: employee.id,
-          email: employee.email,
-          role: employee.role,
-          data: employee
-        });
-        await client.query(
-          `INSERT INTO employees (id, email, role, data) VALUES ($1, $2, $3, $4)`,
-          [employee.id, employee.email, employee.role, employee]
-        );
-        console.log('Successfully inserted employee:', employee.id);
-      } catch (error) {
-        console.error('Failed to insert employee:', employee.id, error);
-        throw error;
+      if (employee.email !== ADMIN_EMAIL) {  // Skip the admin user
+        try {
+          console.log('Attempting to insert employee:', employee.id);
+          await client.query(
+            `INSERT INTO employees (id, email, role, data) VALUES ($1, $2, $3, $4)`,
+            [employee.id, employee.email, employee.role, employee]
+          );
+          console.log('Successfully inserted employee:', employee.id);
+        } catch (error) {
+          console.error('Failed to insert employee:', employee.id, error);
+          throw error;
+        }
+      } else {
+        console.log('Skipping duplicate admin user in employees data');
       }
     }
 
