@@ -4,6 +4,25 @@ import { ordersService } from "./orders"
 import { employeeService } from "./employee"
 import { fulfillmentStore } from "@/lib/utils/fulfillment"
 
+interface FulfillmentData {
+  [orderId: string]: {
+    orderId: string;
+    status: string;
+    carrier?: string;
+    trackingNumber?: string;
+    estimatedDelivery?: string;
+    notes?: string;
+    history: {
+      status: string;
+      timestamp: string;
+      note?: string;
+    }[];
+  }
+}
+
+// Add type assertion to fulfillments
+const fulfillmentsMap: FulfillmentData = fulfillments as FulfillmentData;
+
 export const fulfillmentService = {
   // Check if employee has access to the fulfillment
   checkAccess: async (orderId: string, userId?: string, isAdmin?: boolean) => {
@@ -57,7 +76,7 @@ export const fulfillmentService = {
       ]
     }
 
-    fulfillments[orderId] = fulfillment
+    fulfillmentsMap[orderId] = fulfillment
     return fulfillment
   },
 
@@ -77,7 +96,7 @@ export const fulfillmentService = {
     const order = await ordersService.getOrder(orderId, userId || '', isAdmin || false)
     if (!order) throw new Error("Access denied")
 
-    const fulfillment = fulfillments[orderId]
+    const fulfillment = fulfillmentsMap[orderId]
     if (!fulfillment) throw new Error("Fulfillment not found")
 
     // Add status change to history if status is updated
@@ -95,13 +114,13 @@ export const fulfillmentService = {
     }
 
     // Update the fulfillment
-    fulfillments[orderId] = {
+    fulfillmentsMap[orderId] = {
       ...fulfillment,
       ...updates,
       history: fulfillment.history // Preserve history
     }
 
-    return fulfillments[orderId]
+    return fulfillmentsMap[orderId]
   },
 
   updateStatus: async (
@@ -175,7 +194,7 @@ export const fulfillmentService = {
     try {
       const assignedOrders = await employeeService.getAssignedOrders(userId)
       return assignedOrders
-        .map((order: Order) => fulfillments[order.id])
+        .map((order: Order) => fulfillmentsMap[order.id])
         .filter(Boolean) // Remove undefined values
     } catch (error) {
       console.error("Failed to get employee fulfillments:", error)
