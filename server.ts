@@ -67,19 +67,13 @@ async function initializeDatabase() {
   try {
     await client.query('BEGIN');
 
-    // Drop existing tables in correct order
-    await client.query(`
-      DROP TABLE IF EXISTS fulfillments CASCADE;
-      DROP TABLE IF EXISTS transport_orders CASCADE;
-      DROP TABLE IF EXISTS transport_companies CASCADE;
-      DROP TABLE IF EXISTS orders CASCADE;
-      DROP TABLE IF EXISTS customers CASCADE;
-      DROP TABLE IF EXISTS employees CASCADE;
-      DROP TABLE IF EXISTS products CASCADE;
-      DROP TABLE IF EXISTS warehouses CASCADE;
-    `);
+    // Drop the entire database schema
+    await client.query(`DROP SCHEMA public CASCADE;`);
+    await client.query(`CREATE SCHEMA public;`);
+    await client.query(`GRANT ALL ON SCHEMA public TO postgres;`);
+    await client.query(`GRANT ALL ON SCHEMA public TO public;`);
 
-    // Create warehouses table
+    // Create tables in correct order
     await client.query(`
       CREATE TABLE IF NOT EXISTS warehouses (
         id TEXT PRIMARY KEY,
@@ -87,10 +81,7 @@ async function initializeDatabase() {
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
-    `);
 
-    // Create products table
-    await client.query(`
       CREATE TABLE IF NOT EXISTS products (
         id TEXT PRIMARY KEY,
         sku TEXT UNIQUE NOT NULL,
@@ -99,10 +90,7 @@ async function initializeDatabase() {
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
-    `);
 
-    // Create employees table
-    await client.query(`
       CREATE TABLE IF NOT EXISTS employees (
         id TEXT PRIMARY KEY,
         email TEXT UNIQUE NOT NULL,
@@ -111,10 +99,7 @@ async function initializeDatabase() {
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
-    `);
 
-    // Create customers table
-    await client.query(`
       CREATE TABLE IF NOT EXISTS customers (
         id TEXT PRIMARY KEY,
         email TEXT UNIQUE NOT NULL,
@@ -122,10 +107,7 @@ async function initializeDatabase() {
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
-    `);
 
-    // Create orders table
-    await client.query(`
       CREATE TABLE IF NOT EXISTS orders (
         id TEXT PRIMARY KEY,
         customer_id TEXT NOT NULL REFERENCES customers(id),
@@ -134,20 +116,14 @@ async function initializeDatabase() {
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
-    `);
 
-    // Create transport_companies table
-    await client.query(`
       CREATE TABLE IF NOT EXISTS transport_companies (
         id TEXT PRIMARY KEY,
         data JSONB NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
-    `);
 
-    // Create transport_orders table
-    await client.query(`
       CREATE TABLE IF NOT EXISTS transport_orders (
         id TEXT PRIMARY KEY,
         order_id TEXT NOT NULL REFERENCES orders(id),
@@ -157,10 +133,7 @@ async function initializeDatabase() {
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
-    `);
 
-    // Create fulfillments table
-    await client.query(`
       CREATE TABLE IF NOT EXISTS fulfillments (
         id TEXT PRIMARY KEY,
         order_id TEXT NOT NULL REFERENCES orders(id),
@@ -171,78 +144,69 @@ async function initializeDatabase() {
       );
     `);
 
-    // Insert data in correct order:
-    // 1. Independent tables first
+    // Insert data in correct order
+    console.log('Inserting warehouses...');
     for (const warehouse of warehouses) {
       await client.query(
-        `INSERT INTO warehouses (id, data) 
-         VALUES ($1, $2) 
-         ON CONFLICT (id) DO NOTHING`,
+        `INSERT INTO warehouses (id, data) VALUES ($1, $2)`,
         [warehouse.id, warehouse]
       );
     }
 
+    console.log('Inserting products...');
     for (const product of products) {
       await client.query(
-        `INSERT INTO products (id, sku, status, data) 
-         VALUES ($1, $2, $3, $4) 
-         ON CONFLICT (id) DO NOTHING`,
+        `INSERT INTO products (id, sku, status, data) VALUES ($1, $2, $3, $4)`,
         [product.id, product.sku, product.status, product]
       );
     }
 
+    console.log('Inserting employees...');
     for (const employee of employees) {
       await client.query(
-        `INSERT INTO employees (id, email, role, data) 
-         VALUES ($1, $2, $3, $4) 
-         ON CONFLICT (id) DO NOTHING`,
+        `INSERT INTO employees (id, email, role, data) VALUES ($1, $2, $3, $4)`,
         [employee.id, employee.email, employee.role, employee]
       );
     }
 
+    console.log('Inserting customers...');
     for (const customer of customers) {
       await client.query(
-        `INSERT INTO customers (id, email, data) 
-         VALUES ($1, $2, $3) 
-         ON CONFLICT (id) DO NOTHING`,
+        `INSERT INTO customers (id, email, data) VALUES ($1, $2, $3)`,
         [customer.id, customer.email, customer]
       );
     }
 
+    console.log('Inserting transport companies...');
     for (const company of transportCompanies) {
       await client.query(
-        `INSERT INTO transport_companies (id, data) 
-         VALUES ($1, $2) 
-         ON CONFLICT (id) DO NOTHING`,
+        `INSERT INTO transport_companies (id, data) VALUES ($1, $2)`,
         [company.id, company]
       );
     }
 
-    // 2. Dependent tables next
+    console.log('Inserting orders...');
     for (const order of orders) {
+      console.log('Inserting order:', order.id);
       await client.query(
-        `INSERT INTO orders (id, customer_id, status, data) 
-         VALUES ($1, $2, $3, $4) 
-         ON CONFLICT (id) DO NOTHING`,
+        `INSERT INTO orders (id, customer_id, status, data) VALUES ($1, $2, $3, $4)`,
         [order.id, order.customerId, order.status, order]
       );
     }
 
-    // 3. Tables dependent on orders last
+    console.log('Inserting fulfillments...');
     for (const [id, fulfillment] of Object.entries(fulfillments)) {
+      console.log('Inserting fulfillment:', id, 'for order:', fulfillment.orderId);
       await client.query(
-        `INSERT INTO fulfillments (id, order_id, status, data) 
-         VALUES ($1, $2, $3, $4) 
-         ON CONFLICT (id) DO NOTHING`,
+        `INSERT INTO fulfillments (id, order_id, status, data) VALUES ($1, $2, $3, $4)`,
         [id, fulfillment.orderId, fulfillment.status, fulfillment]
       );
     }
 
+    console.log('Inserting transport orders...');
     for (const transportOrder of transportOrders) {
       await client.query(
-        `INSERT INTO transport_orders (id, order_id, company_id, status, data) 
-         VALUES ($1, $2, $3, $4, $5) 
-         ON CONFLICT (id) DO NOTHING`,
+        `INSERT INTO transport_orders (id, order_id, company_id, status, data) VALUES ($1, $2, $3, $4, $5)`,
         [transportOrder.id, transportOrder.orderId, transportOrder.companyId, transportOrder.status, transportOrder]
       );
     }
@@ -251,6 +215,7 @@ async function initializeDatabase() {
     console.log('Database initialized successfully');
   } catch (err) {
     await client.query('ROLLBACK');
+    console.error('Database initialization failed:', err);
     throw err;
   } finally {
     client.release();
