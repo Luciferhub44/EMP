@@ -67,44 +67,43 @@ async function initializeDatabase() {
   try {
     await client.query('BEGIN');
 
-    // Create tables first
+    // Create warehouses table
     await client.query(`
       CREATE TABLE IF NOT EXISTS warehouses (
         id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
         data JSONB NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
-    // Insert test data
+    // Insert warehouse data
     for (const warehouse of warehouses) {
       await client.query(
-        `INSERT INTO warehouses (id, name, data) 
-         VALUES ($1, $2, $3) 
+        `INSERT INTO warehouses (id, data) 
+         VALUES ($1, $2) 
          ON CONFLICT (id) DO NOTHING`,
-        [warehouse.id, warehouse.name, warehouse]
+        [warehouse.id, warehouse]
       );
     }
 
-    // Similar pattern for other tables
+    // Create products table
     await client.query(`
       CREATE TABLE IF NOT EXISTS products (
         id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
         data JSONB NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
+    // Insert product data
     for (const product of products) {
       await client.query(
-        `INSERT INTO products (id, name, data) 
-         VALUES ($1, $2, $3) 
+        `INSERT INTO products (id, data) 
+         VALUES ($1, $2) 
          ON CONFLICT (id) DO NOTHING`,
-        [product.id, product.name, product]
+        [product.id, product]
       );
     }
 
