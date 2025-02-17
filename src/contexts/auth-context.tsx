@@ -66,7 +66,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const employee = rows[0].data
-      if (employee.passwordHash !== password) {
+
+      // Use the server's password verification endpoint
+      const verifyResponse = await fetch('/api/auth/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          password,
+          hash: employee.passwordHash
+        })
+      })
+
+      const { valid } = await verifyResponse.json()
+
+      if (!valid) {
         throw new Error("Invalid password")
       }
 
