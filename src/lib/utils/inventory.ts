@@ -148,7 +148,7 @@ export function getInventoryAlerts(): InventoryAlert[] {
         alerts.push({
           type: 'out_of_stock',
           severity: 'high',
-          product,
+          product: (product as unknown) as Product,
           warehouse: warehouses.find((w: any) => w.id === inv.warehouseId),
           message: `${product.name} is out of stock in ${inv.warehouseId}`
         })
@@ -156,7 +156,7 @@ export function getInventoryAlerts(): InventoryAlert[] {
         alerts.push({
           type: 'low_stock',
           severity: 'medium',
-          product,
+          product: (product as unknown) as Product,
           warehouse: warehouses.find(w => w.id === inv.warehouseId),
           message: `${product.name} is running low in ${inv.warehouseId}`
         })
