@@ -10,7 +10,12 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@src/*": ["src/*"]
+      "@src/*": ["src/*"],
+      "@types/*": ["src/types/*"],
+      "@src/data/*": ["src/data/*"],
+      "@src/lib/*": ["src/lib/*"],
+      "@src/lib/utils/*": ["src/lib/utils/*"],
+      "@src/lib/services/*": ["src/lib/services/*"],
     }
   },
   "include": ["server.js", "src/**/*"],
