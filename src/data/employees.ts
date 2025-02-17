@@ -9,7 +9,7 @@ export const employees = [
     assignedOrders: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    passwordHash: "$2a$10$dQlRrfR4z8i4XJ1xzQKJPuBzPJqQfkGZHQA7G5mGt5OY5dX5K5mKy", // "admin123"
+    passwordHash: "5b722b307fce6c944905d132691d5e4a2214b7fe92b738920eb3fce3a90420a19511c3010a0e7712b054daef5b57bad59ecbd93b3280f210578f547f4aed4d25:a72f47a6838bf4d0f539e366ee3e3e73", // "admin123"
     businessInfo: {
       companyName: "Admin Corp",
       registrationNumber: "REG123",
@@ -42,7 +42,7 @@ export const employees = [
     assignedOrders: ["ORD002"],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    passwordHash: "$2a$10$xJ1xzQKJPuBzPJqQfkGZHQA7G5mGt5OY5dX5K5mKydQlRrfR4z8i4", // "password123"
+    passwordHash: "8b2f8a76c8d5e3f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0:d4e5f6a7b8c9d0e1", // "password123"
     businessInfo: {
       companyName: "Smith LLC",
       registrationNumber: "REG456",
