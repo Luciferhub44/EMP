@@ -29,7 +29,9 @@ export const authService = {
         })
       })
 
-      if (!response.ok) {
+      const { valid } = await response.json()
+
+      if (!valid) {
         throw new Error("Invalid credentials")
       }
 

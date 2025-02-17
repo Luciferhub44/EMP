@@ -355,14 +355,14 @@ app.get('/api/debug/employees', async (req, res) => {
   }
 });
 
-// Add a new endpoint for admin login
+// Update the login endpoint to use agentId instead of email
 app.post('/api/auth/login', async (req, res) => {
-  const { email, password } = req.body;
+  const { agentId, password } = req.body;
   
   try {
     const result = await executeQuery(
-      'SELECT data FROM employees WHERE email = $1',
-      [email]
+      'SELECT data FROM employees WHERE data->>\'agentId\' = $1',
+      [agentId]
     );
 
     if (result.rows.length === 0) {
