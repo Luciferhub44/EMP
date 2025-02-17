@@ -91,6 +91,8 @@ async function initializeDatabase() {
     await client.query(`
       CREATE TABLE IF NOT EXISTS products (
         id TEXT PRIMARY KEY,
+        sku TEXT UNIQUE NOT NULL,
+        status TEXT NOT NULL,
         data JSONB NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
@@ -100,10 +102,10 @@ async function initializeDatabase() {
     // Insert product data
     for (const product of products) {
       await client.query(
-        `INSERT INTO products (id, data) 
-         VALUES ($1, $2) 
+        `INSERT INTO products (id, sku, status, data) 
+         VALUES ($1, $2, $3, $4) 
          ON CONFLICT (id) DO NOTHING`,
-        [product.id, product]
+        [product.id, product.sku, product.status, product]
       );
     }
 
