@@ -1,5 +1,5 @@
 // Helper function to generate unique customer IDs
-const generateCustomerId = (index) => {
+const generateCustomerId = (index: number) => {
   return `CUS${String(index + 1).padStart(5, '0')}`
 }
 

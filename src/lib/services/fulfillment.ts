@@ -21,7 +21,7 @@ interface FulfillmentData {
 }
 
 // Add type assertion to fulfillments
-const fulfillmentsMap: FulfillmentData = fulfillments as FulfillmentData;
+const fulfillmentsMap: FulfillmentData = fulfillments as unknown as FulfillmentData;
 
 export const fulfillmentService = {
   // Check if employee has access to the fulfillment

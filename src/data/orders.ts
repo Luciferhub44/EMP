@@ -1,9 +1,8 @@
-import { Order } from "@/types"
 import { customers } from "./customers"
-import { products } from "./products"
+import { products } from "@/data/products"
 
 // Helper function to generate unique order IDs
-const generateOrderId = (index) => {
+const generateOrderId = (index: number) => {
   return `ORD${String(index + 1).padStart(6, '0')}`
 }
 
@@ -31,7 +30,7 @@ const generateRandomStatus = () => {
 }
 
 // Helper function to generate random payment status
-const generatePaymentStatus = (orderStatus) => {
+const generatePaymentStatus = (orderStatus: string) => {
   if (orderStatus === "cancelled") return "refunded"
   if (["delivered", "shipped"].includes(orderStatus)) return "paid"
   if (orderStatus === "pending") return Math.random() > 0.3 ? "paid" : "pending"

@@ -24,6 +24,16 @@ interface InventoryAlert {
   message: string
 }
 
+interface ProductWithInventory {
+  id: string;
+  name: string;
+  minimumStock: number;
+  inventory: Array<{
+    warehouseId: string;
+    quantity: number;
+  }>;
+}
+
 // Get total stock for a product across all warehouses
 export async function getTotalStock(productId: string): Promise<number> {
   const { rows } = await db.query(
@@ -142,7 +152,9 @@ export async function transferStock({
 export function getInventoryAlerts(): InventoryAlert[] {
   const alerts: InventoryAlert[] = []
   
-  for (const product of products) {
+  const productArray = Object.values(products) as unknown as ProductWithInventory[];
+
+  for (const product of productArray) {
     for (const inv of product.inventory) {
       if (inv.quantity === 0) {
         alerts.push({
@@ -152,12 +164,12 @@ export function getInventoryAlerts(): InventoryAlert[] {
           warehouse: warehouses.find((w: any) => w.id === inv.warehouseId),
           message: `${product.name} is out of stock in ${inv.warehouseId}`
         })
-      } else if (inv.quantity <= inv.minimumStock) {
+      } else if (inv.quantity <= (product as unknown as ProductWithInventory).minimumStock) {
         alerts.push({
           type: 'low_stock',
           severity: 'medium',
           product: (product as unknown) as Product,
-          warehouse: warehouses.find(w => w.id === inv.warehouseId),
+          warehouse: warehouses.find((w: any) => w.id === inv.warehouseId),
           message: `${product.name} is running low in ${inv.warehouseId}`
         })
       }

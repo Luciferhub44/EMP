@@ -5,14 +5,14 @@ import express from 'express';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
-import { warehouses } from "@src/data/warehouses"
-import { products } from "@src/data/products"
-import { employees } from "@src/data/employees"
-import { customers } from "@src/data/customers"
-import { fulfillments } from "@src/data/fulfillments"
-import { orders } from "@src/data/orders"
-import { orderItems } from "@src/data/orderItems"
-import { transportCompanies, transportOrders, } from "@src/data/transport"
+import { warehouses } from "@src/data/warehouses.json"
+import { products } from "@src/data/products.json"
+import { employees } from "@src/data/employees.json"
+import { customers } from "@src/data/customers.json"
+import { fulfillments } from "@src/data/fulfillments.json"
+import { orders } from "@src/data/orders.json"
+import { orderItems } from "@src/data/orderItems.json"
+import { transportCompanies, transportOrders, } from "@src/data/transport.json"
 
 const DEFAULT_PORT = process.env.PORT || 3001;
 const __filename = fileURLToPath(import.meta.url);
@@ -558,7 +558,7 @@ async function executeQuery(queryText, params) {
 // API routes
 app.get('/api/db/test', async (req, res) => {
   try {
-    const result = await executeQuery('SELECT NOW()');
+    const result = await executeQuery('SELECT NOW()', []);
     res.json({ success: true, timestamp: result.rows[0].now });
   } catch (error) {
     console.error('Database test failed:', error);
