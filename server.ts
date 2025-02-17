@@ -12,6 +12,7 @@ import { customers } from "./src/data/customers.js"
 import { fulfillments } from "./src/data/fulfillments.js"
 import { orders } from "./src/data/orders.js"
 import { transportCompanies, transportOrders, } from "./src/data/transport.js"
+import bcrypt from 'bcrypt';
 
 const DEFAULT_PORT = process.env.PORT || 3001;
 const __filename = fileURLToPath(import.meta.url);
@@ -22,24 +23,13 @@ const PORT = DEFAULT_PORT;
 
 // Helper function for password hashing
 async function hashPassword(password: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const salt = crypto.randomBytes(16).toString('hex');
-    crypto.pbkdf2(password, salt, 1000, 64, 'sha512', (err, derivedKey) => {
-      if (err) reject(err);
-      resolve(salt + ':' + derivedKey.toString('hex'));
-    });
-  });
+  const saltRounds = 10;
+  return bcrypt.hash(password, saltRounds);
 }
 
 // Helper function for password verification
 async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  return new Promise((resolve, reject) => {
-    const [salt, key] = hash.split(':');
-    crypto.pbkdf2(password, salt, 1000, 64, 'sha512', (err, derivedKey) => {
-      if (err) reject(err);
-      resolve(key === derivedKey.toString('hex'));
-    });
-  });
+  return bcrypt.compare(password, hash);
 }
 
 // Configure database pool
@@ -167,12 +157,21 @@ async function initializeDatabase() {
         console.log('Attempting to insert employee:', {
           id: employee.id,
           email: employee.email,
-          role: employee.role,
-          data: employee
+          role: employee.role
         });
+        
         await client.query(
           `INSERT INTO employees (id, email, role, data) VALUES ($1, $2, $3, $4)`,
-          [employee.id, employee.email, employee.role, employee]
+          [
+            employee.id,
+            employee.email,
+            employee.role,
+            {
+              ...employee,
+              // Ensure passwordHash is included in the data
+              passwordHash: employee.passwordHash
+            }
+          ]
         );
         console.log('Successfully inserted employee:', employee.id);
       } catch (error) {
