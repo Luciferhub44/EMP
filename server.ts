@@ -171,7 +171,8 @@ async function initializeDatabase() {
       );
     `);
 
-    // Insert warehouse data
+    // Insert data in correct order:
+    // 1. Independent tables first
     for (const warehouse of warehouses) {
       await client.query(
         `INSERT INTO warehouses (id, data) 
@@ -181,7 +182,6 @@ async function initializeDatabase() {
       );
     }
 
-    // Insert product data
     for (const product of products) {
       await client.query(
         `INSERT INTO products (id, sku, status, data) 
@@ -191,7 +191,6 @@ async function initializeDatabase() {
       );
     }
 
-    // Insert employee data
     for (const employee of employees) {
       await client.query(
         `INSERT INTO employees (id, email, role, data) 
@@ -201,7 +200,6 @@ async function initializeDatabase() {
       );
     }
 
-    // Insert customer data
     for (const customer of customers) {
       await client.query(
         `INSERT INTO customers (id, email, data) 
@@ -211,7 +209,6 @@ async function initializeDatabase() {
       );
     }
 
-    // Insert transport company data
     for (const company of transportCompanies) {
       await client.query(
         `INSERT INTO transport_companies (id, data) 
@@ -221,7 +218,7 @@ async function initializeDatabase() {
       );
     }
 
-    // Insert order data (after customers exist)
+    // 2. Dependent tables next
     for (const order of orders) {
       await client.query(
         `INSERT INTO orders (id, customer_id, status, data) 
@@ -231,23 +228,22 @@ async function initializeDatabase() {
       );
     }
 
-    // Insert transport order data (after orders and companies exist)
-    for (const transportOrder of transportOrders) {
-      await client.query(
-        `INSERT INTO transport_orders (id, order_id, company_id, status, data) 
-         VALUES ($1, $2, $3, $4, $5) 
-         ON CONFLICT (id) DO NOTHING`,
-        [transportOrder.id, transportOrder.orderId, transportOrder.companyId, transportOrder.status, transportOrder]
-      );
-    }
-
-    // Insert fulfillment data
+    // 3. Tables dependent on orders last
     for (const [id, fulfillment] of Object.entries(fulfillments)) {
       await client.query(
         `INSERT INTO fulfillments (id, order_id, status, data) 
          VALUES ($1, $2, $3, $4) 
          ON CONFLICT (id) DO NOTHING`,
         [id, fulfillment.orderId, fulfillment.status, fulfillment]
+      );
+    }
+
+    for (const transportOrder of transportOrders) {
+      await client.query(
+        `INSERT INTO transport_orders (id, order_id, company_id, status, data) 
+         VALUES ($1, $2, $3, $4, $5) 
+         ON CONFLICT (id) DO NOTHING`,
+        [transportOrder.id, transportOrder.orderId, transportOrder.companyId, transportOrder.status, transportOrder]
       );
     }
 
