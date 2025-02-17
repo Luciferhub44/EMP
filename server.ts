@@ -196,6 +196,13 @@ async function initializeDatabase() {
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE TABLE IF NOT EXISTS transport_companies (
+        id TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
       -- Now add foreign key constraints
       DO $$ 
       BEGIN
@@ -347,6 +354,8 @@ async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);
       CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
       CREATE INDEX IF NOT EXISTS idx_audit_logs_entity ON audit_logs(entity_type, entity_id);
+
+      CREATE INDEX IF NOT EXISTS idx_transport_companies_data ON transport_companies USING gin (data);
 
       -- Create triggers for updated_at timestamps
       CREATE OR REPLACE FUNCTION update_updated_at_column()
