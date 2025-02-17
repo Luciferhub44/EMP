@@ -77,16 +77,6 @@ async function initializeDatabase() {
       );
     `);
 
-    // Insert warehouse data
-    for (const warehouse of warehouses) {
-      await client.query(
-        `INSERT INTO warehouses (id, data) 
-         VALUES ($1, $2) 
-         ON CONFLICT (id) DO NOTHING`,
-        [warehouse.id, warehouse]
-      );
-    }
-
     // Create products table
     await client.query(`
       CREATE TABLE IF NOT EXISTS products (
@@ -99,6 +89,86 @@ async function initializeDatabase() {
       );
     `);
 
+    // Create employees table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS employees (
+        id TEXT PRIMARY KEY,
+        email TEXT UNIQUE NOT NULL,
+        role TEXT NOT NULL,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Create customers table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS customers (
+        id TEXT PRIMARY KEY,
+        email TEXT UNIQUE NOT NULL,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Create orders table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS orders (
+        id TEXT PRIMARY KEY,
+        customer_id TEXT NOT NULL REFERENCES customers(id),
+        status TEXT NOT NULL,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Create transport_companies table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS transport_companies (
+        id TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Create transport_orders table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS transport_orders (
+        id TEXT PRIMARY KEY,
+        order_id TEXT NOT NULL REFERENCES orders(id),
+        company_id TEXT NOT NULL REFERENCES transport_companies(id),
+        status TEXT NOT NULL,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Create fulfillments table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS fulfillments (
+        id TEXT PRIMARY KEY,
+        order_id TEXT NOT NULL REFERENCES orders(id),
+        status TEXT NOT NULL,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Insert warehouse data
+    for (const warehouse of warehouses) {
+      await client.query(
+        `INSERT INTO warehouses (id, data) 
+         VALUES ($1, $2) 
+         ON CONFLICT (id) DO NOTHING`,
+        [warehouse.id, warehouse]
+      );
+    }
+
     // Insert product data
     for (const product of products) {
       await client.query(
@@ -106,6 +176,66 @@ async function initializeDatabase() {
          VALUES ($1, $2, $3, $4) 
          ON CONFLICT (id) DO NOTHING`,
         [product.id, product.sku, product.status, product]
+      );
+    }
+
+    // Insert employee data
+    for (const employee of employees) {
+      await client.query(
+        `INSERT INTO employees (id, email, role, data) 
+         VALUES ($1, $2, $3, $4) 
+         ON CONFLICT (id) DO NOTHING`,
+        [employee.id, employee.email, employee.role, employee]
+      );
+    }
+
+    // Insert customer data
+    for (const customer of customers) {
+      await client.query(
+        `INSERT INTO customers (id, email, data) 
+         VALUES ($1, $2, $3) 
+         ON CONFLICT (id) DO NOTHING`,
+        [customer.id, customer.email, customer]
+      );
+    }
+
+    // Insert transport company data
+    for (const company of transportCompanies) {
+      await client.query(
+        `INSERT INTO transport_companies (id, data) 
+         VALUES ($1, $2) 
+         ON CONFLICT (id) DO NOTHING`,
+        [company.id, company]
+      );
+    }
+
+    // Insert order data (after customers exist)
+    for (const order of orders) {
+      await client.query(
+        `INSERT INTO orders (id, customer_id, status, data) 
+         VALUES ($1, $2, $3, $4) 
+         ON CONFLICT (id) DO NOTHING`,
+        [order.id, order.customerId, order.status, order]
+      );
+    }
+
+    // Insert transport order data (after orders and companies exist)
+    for (const transportOrder of transportOrders) {
+      await client.query(
+        `INSERT INTO transport_orders (id, order_id, company_id, status, data) 
+         VALUES ($1, $2, $3, $4, $5) 
+         ON CONFLICT (id) DO NOTHING`,
+        [transportOrder.id, transportOrder.orderId, transportOrder.companyId, transportOrder.status, transportOrder]
+      );
+    }
+
+    // Insert fulfillment data
+    for (const [id, fulfillment] of Object.entries(fulfillments)) {
+      await client.query(
+        `INSERT INTO fulfillments (id, order_id, status, data) 
+         VALUES ($1, $2, $3, $4) 
+         ON CONFLICT (id) DO NOTHING`,
+        [id, fulfillment.orderId, fulfillment.status, fulfillment]
       );
     }
 
