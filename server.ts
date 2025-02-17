@@ -66,6 +66,8 @@ async function initializeDatabase() {
       DROP TABLE IF EXISTS notifications CASCADE;
       DROP TABLE IF EXISTS messages CASCADE;
       DROP TABLE IF EXISTS transport_quotes CASCADE;
+      DROP TABLE IF EXISTS transport_orders CASCADE;
+      DROP TABLE IF EXISTS transport_companies CASCADE;
       DROP TABLE IF EXISTS order_items CASCADE;
       DROP TABLE IF EXISTS fulfillments CASCADE;
       DROP TABLE IF EXISTS orders CASCADE;
