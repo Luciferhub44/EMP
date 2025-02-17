@@ -67,6 +67,18 @@ async function initializeDatabase() {
   try {
     await client.query('BEGIN');
 
+    // Drop existing tables in correct order
+    await client.query(`
+      DROP TABLE IF EXISTS fulfillments CASCADE;
+      DROP TABLE IF EXISTS transport_orders CASCADE;
+      DROP TABLE IF EXISTS transport_companies CASCADE;
+      DROP TABLE IF EXISTS orders CASCADE;
+      DROP TABLE IF EXISTS customers CASCADE;
+      DROP TABLE IF EXISTS employees CASCADE;
+      DROP TABLE IF EXISTS products CASCADE;
+      DROP TABLE IF EXISTS warehouses CASCADE;
+    `);
+
     // Create warehouses table
     await client.query(`
       CREATE TABLE IF NOT EXISTS warehouses (
