@@ -8,6 +8,6 @@
     "strict": true,
     "skipLibCheck": true
   },
-  "include": ["server.js", "src/**/*"],
-  "exclude": ["node_modules"]
+  "include": ["server.js"],
+  "exclude": ["node_modules", "src"]
 } 
