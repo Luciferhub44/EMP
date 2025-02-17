@@ -5,13 +5,13 @@ import express from 'express';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
-import { warehouses } from "./src/data/warehouses"
-import { products } from "./src/data/products"
-import { employees } from "./src/data/employees"
-import { customers } from "./src/data/customers"
-import { fulfillments } from "./src/data/fulfillments"
-import { orders } from "./src/data/orders"
-import { transportCompanies, transportOrders, } from "./src/data/transport"
+import { warehouses } from "./src/data/warehouses.js"
+import { products } from "./src/data/products.js"
+import { employees } from "./src/data/employees.js"
+import { customers } from "./src/data/customers.js"
+import { fulfillments } from "./src/data/fulfillments.js"
+import { orders } from "./src/data/orders.js"
+import { transportCompanies, transportOrders, } from "./src/data/transport.js"
 
 const DEFAULT_PORT = process.env.PORT || 3001;
 const __filename = fileURLToPath(import.meta.url);
@@ -21,7 +21,7 @@ const app = express();
 const PORT = DEFAULT_PORT;
 
 // Helper function for password hashing
-async function hashPassword(password) {
+async function hashPassword(password: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const salt = crypto.randomBytes(16).toString('hex');
     crypto.pbkdf2(password, salt, 1000, 64, 'sha512', (err, derivedKey) => {
@@ -32,7 +32,7 @@ async function hashPassword(password) {
 }
 
 // Helper function for password verification
-async function verifyPassword(password, hash) {
+async function verifyPassword(password: string, hash: string): Promise<boolean> {
   return new Promise((resolve, reject) => {
     const [salt, key] = hash.split(':');
     crypto.pbkdf2(password, salt, 1000, 64, 'sha512', (err, derivedKey) => {
@@ -540,7 +540,7 @@ async function initializeDatabase() {
 }
 
 // Wrapper function for database queries with error handling
-async function executeQuery(queryText, params) {
+async function executeQuery(queryText: string, params: any[]): Promise<any> {
   const client = await pool.connect();
   try {
     const result = await client.query(queryText, params);
@@ -575,8 +575,8 @@ app.post('/api/db/query', async (req, res) => {
     const result = await executeQuery(text, params);
     console.log('Query success:', result.rows.length, 'rows');
     res.json(result);
-  } catch (err) {
-    const error = err;
+  } catch (err: unknown) {
+    const error = err as Error;
     console.error('Query error details:', {
       message: error.message,
       stack: error.stack,

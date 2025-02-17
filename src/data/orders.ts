@@ -1,5 +1,5 @@
-import { customers } from "./customers"
-import { products } from "@/data/products"
+import { customers } from "./customers.js"
+import { products } from "./products.js"
 
 // Helper function to generate unique order IDs
 const generateOrderId = (index: number) => {
