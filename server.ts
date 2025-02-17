@@ -67,473 +67,52 @@ async function initializeDatabase() {
   try {
     await client.query('BEGIN');
 
-    // Drop all tables in correct order to avoid constraint errors
+    // Create tables first
     await client.query(`
-      DROP TABLE IF EXISTS audit_logs CASCADE;
-      DROP TABLE IF EXISTS notifications CASCADE;
-      DROP TABLE IF EXISTS messages CASCADE;
-      DROP TABLE IF EXISTS transport_quotes CASCADE;
-      DROP TABLE IF EXISTS transport_orders CASCADE;
-      DROP TABLE IF EXISTS transport_companies CASCADE;
-      DROP TABLE IF EXISTS order_items CASCADE;
-      DROP TABLE IF EXISTS fulfillments CASCADE;
-      DROP TABLE IF EXISTS orders CASCADE;
-      DROP TABLE IF EXISTS inventory CASCADE;
-      DROP TABLE IF EXISTS products CASCADE;
-      DROP TABLE IF EXISTS customers CASCADE;
-      DROP TABLE IF EXISTS sessions CASCADE;
-      DROP TABLE IF EXISTS employees CASCADE;
-      DROP TABLE IF EXISTS settings CASCADE;
-      DROP TABLE IF EXISTS storage CASCADE;
-    `);
-
-    // Create tables
-    await client.query(`
-      -- First create base tables without foreign keys
-      CREATE TABLE IF NOT EXISTS employees (
+      CREATE TABLE IF NOT EXISTS warehouses (
         id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
         data JSONB NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
-
-      CREATE TABLE IF NOT EXISTS customers (
-        id TEXT PRIMARY KEY,
-        data JSONB NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS products (
-        id TEXT PRIMARY KEY,
-        sku TEXT UNIQUE NOT NULL,
-        status TEXT NOT NULL,
-        data JSONB NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      );
-
-      -- Then create tables with foreign keys
-      CREATE TABLE IF NOT EXISTS sessions (
-        id TEXT PRIMARY KEY,
-        user_id TEXT REFERENCES employees(id) ON DELETE CASCADE,
-        token TEXT UNIQUE NOT NULL,
-        expires_at TIMESTAMPTZ NOT NULL,
-        data JSONB,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS inventory (
-        id TEXT PRIMARY KEY,
-        product_id TEXT REFERENCES products(id) ON DELETE CASCADE,
-        warehouse_id TEXT NOT NULL,
-        quantity INTEGER NOT NULL DEFAULT 0,
-        min_quantity INTEGER NOT NULL DEFAULT 0,
-        data JSONB,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      );
-      
-      CREATE TABLE IF NOT EXISTS orders (
-        id TEXT PRIMARY KEY,
-        customer_id TEXT REFERENCES customers(id),
-        data JSONB NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS order_items (
-        id TEXT PRIMARY KEY,
-        order_id TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-        product_id TEXT NOT NULL REFERENCES products(id),
-        quantity INTEGER NOT NULL,
-        price DECIMAL(10,2) NOT NULL,
-        data JSONB,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS fulfillments (
-        id TEXT PRIMARY KEY,
-        order_id TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-        data JSONB NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS transport_quotes (
-        id TEXT PRIMARY KEY,
-        order_id TEXT REFERENCES orders(id) ON DELETE CASCADE,
-        data JSONB NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS messages (
-        id TEXT PRIMARY KEY,
-        thread_id TEXT NOT NULL REFERENCES employees(id),
-        sender_id TEXT NOT NULL REFERENCES employees(id),
-        data JSONB,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS notifications (
-        id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
-        data JSONB,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS audit_logs (
-        id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL REFERENCES employees(id),
-        action TEXT NOT NULL,
-        entity_type TEXT NOT NULL,
-        entity_id TEXT NOT NULL,
-        changes JSONB,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS settings (
-        key TEXT PRIMARY KEY,
-        value JSONB NOT NULL,
-        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS storage (
-        key TEXT PRIMARY KEY,
-        data JSONB NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS transport_companies (
-        id TEXT PRIMARY KEY,
-        data JSONB NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS transport_orders (
-        id TEXT PRIMARY KEY,
-        data JSONB NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      );
-
-      -- Now add foreign key constraints
-      DO $$ 
-      BEGIN
-        -- Sessions FK
-        IF NOT EXISTS (
-          SELECT 1 FROM pg_constraint WHERE conname = 'fk_sessions_user'
-        ) THEN
-          ALTER TABLE sessions
-            ADD CONSTRAINT fk_sessions_user
-            FOREIGN KEY (user_id) REFERENCES employees(id) ON DELETE CASCADE;
-        END IF;
-
-        -- Orders FK
-        IF NOT EXISTS (
-          SELECT 1 FROM pg_constraint WHERE conname = 'fk_orders_customer'
-        ) THEN
-          ALTER TABLE orders
-            ADD CONSTRAINT fk_orders_customer
-            FOREIGN KEY (customer_id) REFERENCES customers(id);
-        END IF;
-
-        -- Order Items FKs
-        IF NOT EXISTS (
-          SELECT 1 FROM pg_constraint WHERE conname = 'fk_order_items_order'
-        ) THEN
-          ALTER TABLE order_items
-            ADD CONSTRAINT fk_order_items_order
-            FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE;
-        END IF;
-
-        IF NOT EXISTS (
-          SELECT 1 FROM pg_constraint WHERE conname = 'fk_order_items_product'
-        ) THEN
-          ALTER TABLE order_items
-            ADD CONSTRAINT fk_order_items_product
-            FOREIGN KEY (product_id) REFERENCES products(id);
-        END IF;
-
-        -- Inventory FK
-        IF NOT EXISTS (
-          SELECT 1 FROM pg_constraint WHERE conname = 'fk_inventory_product'
-        ) THEN
-          ALTER TABLE inventory
-            ADD CONSTRAINT fk_inventory_product
-            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE;
-        END IF;
-
-        -- Fulfillments FK
-        IF NOT EXISTS (
-          SELECT 1 FROM pg_constraint WHERE conname = 'fk_fulfillments_order'
-        ) THEN
-          ALTER TABLE fulfillments
-            ADD CONSTRAINT fk_fulfillments_order
-            FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE;
-        END IF;
-
-        -- Transport Quotes FK
-        IF NOT EXISTS (
-          SELECT 1 FROM pg_constraint WHERE conname = 'fk_transport_quotes_order'
-        ) THEN
-          ALTER TABLE transport_quotes
-            ADD CONSTRAINT fk_transport_quotes_order
-            FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE;
-        END IF;
-
-        -- Messages FK
-        IF NOT EXISTS (
-          SELECT 1 FROM pg_constraint WHERE conname = 'fk_messages_sender'
-        ) THEN
-          ALTER TABLE messages
-            ADD CONSTRAINT fk_messages_sender
-            FOREIGN KEY (sender_id) REFERENCES employees(id);
-        END IF;
-
-        -- Notifications FK
-        IF NOT EXISTS (
-          SELECT 1 FROM pg_constraint WHERE conname = 'fk_notifications_user'
-        ) THEN
-          ALTER TABLE notifications
-            ADD CONSTRAINT fk_notifications_user
-            FOREIGN KEY (user_id) REFERENCES employees(id) ON DELETE CASCADE;
-        END IF;
-
-        -- Audit Logs FK
-        IF NOT EXISTS (
-          SELECT 1 FROM pg_constraint WHERE conname = 'fk_audit_logs_user'
-        ) THEN
-          ALTER TABLE audit_logs
-            ADD CONSTRAINT fk_audit_logs_user
-            FOREIGN KEY (user_id) REFERENCES employees(id);
-        END IF;
-      END $$;
-
-      -- Now create indexes after all tables and constraints are in place
-      CREATE INDEX IF NOT EXISTS idx_employees_data ON employees USING gin (data);
-      CREATE INDEX IF NOT EXISTS idx_employees_agent_id ON employees ((data->>'agentId'));
-      CREATE UNIQUE INDEX IF NOT EXISTS idx_employees_email ON employees ((data->>'email'));
-      CREATE INDEX IF NOT EXISTS idx_employees_role ON employees ((data->>'role'));
-      CREATE INDEX IF NOT EXISTS idx_employees_status ON employees ((data->>'status'));
-      CREATE INDEX IF NOT EXISTS idx_employees_assigned_orders ON employees USING gin ((data->'assignedOrders'));
-
-      CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
-      CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
-
-      CREATE INDEX IF NOT EXISTS idx_customers_data ON customers USING gin (data);
-      CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_email ON customers ((data->>'email'));
-      CREATE INDEX IF NOT EXISTS idx_customers_name ON customers ((data->>'name'));
-      CREATE INDEX IF NOT EXISTS idx_customers_company ON customers ((data->>'company'));
-
-      CREATE INDEX IF NOT EXISTS idx_products_data ON products USING gin (data);
-      CREATE INDEX IF NOT EXISTS idx_products_category ON products ((data->>'category'));
-      CREATE INDEX IF NOT EXISTS idx_products_name ON products ((data->>'name'));
-      CREATE INDEX IF NOT EXISTS idx_products_price ON products ((data->>'price'));
-      CREATE INDEX IF NOT EXISTS idx_products_inventory ON products USING gin((data->'inventory'));
-
-      CREATE INDEX IF NOT EXISTS idx_orders_data ON orders USING gin (data);
-      CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id);
-      CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at);
-      CREATE INDEX IF NOT EXISTS idx_orders_status ON orders ((data->>'status'));
-      CREATE INDEX IF NOT EXISTS idx_orders_payment_status ON orders ((data->>'paymentStatus'));
-      CREATE INDEX IF NOT EXISTS idx_orders_total ON orders ((data->>'total'));
-      CREATE INDEX IF NOT EXISTS idx_orders_customer_name ON orders ((data->>'customerName'));
-      CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders ((data->>'createdAt'));
-      CREATE INDEX IF NOT EXISTS idx_orders_items ON orders USING gin((data->'items'));
-
-      CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
-      CREATE INDEX IF NOT EXISTS idx_order_items_product ON order_items(product_id);
-
-      CREATE INDEX IF NOT EXISTS idx_fulfillments_order ON fulfillments(order_id);
-      CREATE INDEX IF NOT EXISTS idx_fulfillments_status ON fulfillments ((data->>'status'));
-      CREATE INDEX IF NOT EXISTS idx_fulfillments_tracking ON fulfillments ((data->>'trackingNumber'));
-      CREATE INDEX IF NOT EXISTS idx_fulfillments_carrier ON fulfillments ((data->>'carrier'));
-
-      CREATE INDEX IF NOT EXISTS idx_transport_quotes_order ON transport_quotes(order_id);
-      CREATE INDEX IF NOT EXISTS idx_transport_quotes_provider ON transport_quotes ((data->>'provider'));
-      CREATE INDEX IF NOT EXISTS idx_transport_quotes_amount ON transport_quotes ((data->>'amount'));
-      CREATE INDEX IF NOT EXISTS idx_transport_quotes_expires ON transport_quotes ((data->>'expiresAt'));
-
-      CREATE INDEX IF NOT EXISTS idx_messages_thread ON messages(thread_id);
-      CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
-      CREATE INDEX IF NOT EXISTS idx_messages_content ON messages ((data->>'content'));
-      CREATE INDEX IF NOT EXISTS idx_messages_read ON messages ((data->>'read'));
-
-      CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
-      CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications ((data->>'type'));
-      CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications ((data->>'read'));
-      CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications ((data->>'createdAt'));
-
-      CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);
-      CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
-      CREATE INDEX IF NOT EXISTS idx_audit_logs_entity ON audit_logs(entity_type, entity_id);
-
-      CREATE INDEX IF NOT EXISTS idx_transport_companies_data ON transport_companies USING gin (data);
-
-      CREATE INDEX IF NOT EXISTS idx_transport_orders_data ON transport_orders USING gin (data);
-      CREATE INDEX IF NOT EXISTS idx_transport_orders_order_id ON transport_orders ((data->>'orderId'));
-
-      -- Create triggers for updated_at timestamps
-      CREATE OR REPLACE FUNCTION update_updated_at_column()
-      RETURNS TRIGGER AS $$
-      BEGIN
-          NEW.updated_at = CURRENT_TIMESTAMP;
-          RETURN NEW;
-      END;
-      $$ language 'plpgsql';
-
-      CREATE TRIGGER update_employees_updated_at
-          BEFORE UPDATE ON employees
-          FOR EACH ROW
-          EXECUTE FUNCTION update_updated_at_column();
-
-      CREATE TRIGGER update_customers_updated_at
-          BEFORE UPDATE ON customers
-          FOR EACH ROW
-          EXECUTE FUNCTION update_updated_at_column();
-
-      CREATE TRIGGER update_products_updated_at
-          BEFORE UPDATE ON products
-          FOR EACH ROW
-          EXECUTE FUNCTION update_updated_at_column();
-
-      CREATE TRIGGER update_inventory_updated_at
-          BEFORE UPDATE ON inventory
-          FOR EACH ROW
-          EXECUTE FUNCTION update_updated_at_column();
-
-      CREATE TRIGGER update_orders_updated_at
-          BEFORE UPDATE ON orders
-          FOR EACH ROW
-          EXECUTE FUNCTION update_updated_at_column();
-
-      CREATE TRIGGER update_fulfillments_updated_at
-          BEFORE UPDATE ON fulfillments
-          FOR EACH ROW
-          EXECUTE FUNCTION update_updated_at_column();
-
-      -- Create audit logging function
-      CREATE OR REPLACE FUNCTION log_audit_event(
-        p_user_id TEXT,
-        p_action TEXT,
-        p_entity_type TEXT,
-        p_entity_id TEXT,
-        p_changes JSONB
-      )
-      RETURNS void AS $$
-      BEGIN
-        INSERT INTO audit_logs (
-          id, user_id, action, entity_type, entity_id, changes
-        ) VALUES (
-          'audit_' || gen_random_uuid()::text,
-          p_user_id,
-          p_action,
-          p_entity_type,
-          p_entity_id,
-          p_changes
-        );
-      END;
-      $$ LANGUAGE plpgsql;
-
-      -- Create inventory update function with checks
-      CREATE OR REPLACE FUNCTION update_inventory(
-        p_product_id TEXT,
-        p_warehouse_id TEXT,
-        p_quantity INTEGER
-      )
-      RETURNS INTEGER AS $$
-      DECLARE
-        v_current_quantity INTEGER;
-        v_min_quantity INTEGER;
-      BEGIN
-        SELECT quantity, min_quantity 
-        INTO v_current_quantity, v_min_quantity
-        FROM inventory
-        WHERE product_id = p_product_id AND warehouse_id = p_warehouse_id;
-
-        IF v_current_quantity IS NULL THEN
-          INSERT INTO inventory (
-            id, product_id, warehouse_id, quantity, min_quantity
-          ) VALUES (
-            'inv_' || gen_random_uuid()::text,
-            p_product_id,
-            p_warehouse_id,
-            p_quantity,
-            0
-          );
-          RETURN p_quantity;
-        END IF;
-
-        UPDATE inventory
-        SET quantity = v_current_quantity + p_quantity
-        WHERE product_id = p_product_id AND warehouse_id = p_warehouse_id;
-
-        IF v_current_quantity + p_quantity <= v_min_quantity THEN
-          INSERT INTO notifications (
-            id, type, title, message, data
-          ) VALUES (
-            'not_' || gen_random_uuid()::text,
-            'inventory',
-            'Low Stock Alert',
-            'Product ' || p_product_id || ' is below minimum stock level',
-            jsonb_build_object(
-              'product_id', p_product_id,
-              'warehouse_id', p_warehouse_id,
-              'current_quantity', v_current_quantity + p_quantity,
-              'min_quantity', v_min_quantity
-            )
-          );
-        END IF;
-
-        RETURN v_current_quantity + p_quantity;
-      END;
-      $$ LANGUAGE plpgsql;
-
-      -- Insert test data
-      
     `);
 
     // Insert test data
-    const testData = {
-      warehouses,
-      products,
-      employees,
-      customers,
-      fulfillments,
-      orders,
-      transport_companies: transportCompanies,
-      transport_orders: transportOrders
-    };
+    for (const warehouse of warehouses) {
+      await client.query(
+        `INSERT INTO warehouses (id, name, data) 
+         VALUES ($1, $2, $3) 
+         ON CONFLICT (id) DO NOTHING`,
+        [warehouse.id, warehouse.name, warehouse]
+      );
+    }
 
-    // Add console logging for debugging
-    for (const [table, items] of Object.entries(testData)) {
-      console.log(`Inserting test data for ${table}:`, items);
-      for (const item of (items as any[])) {
-        try {
-          const result = await client.query(
-            `INSERT INTO ${table} (id, data) 
-             VALUES ($1, $2) 
-             ON CONFLICT (id) DO NOTHING 
-             RETURNING id`,
-            [item.id, item.data]
-          );
-          console.log(`Inserted ${table} record:`, result.rows);
-        } catch (error) {
-          console.error(`Failed to insert ${table} record:`, error);
-        }
-      }
+    // Similar pattern for other tables
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS products (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    for (const product of products) {
+      await client.query(
+        `INSERT INTO products (id, name, data) 
+         VALUES ($1, $2, $3) 
+         ON CONFLICT (id) DO NOTHING`,
+        [product.id, product.name, product]
+      );
     }
 
     await client.query('COMMIT');
-    console.log('Database initialized with test data');
+    console.log('Database initialized successfully');
   } catch (err) {
     await client.query('ROLLBACK');
-    const error = err;
-    console.error('Database initialization failed:', error);
-    process.exit(1);
+    throw err;
   } finally {
     client.release();
   }
