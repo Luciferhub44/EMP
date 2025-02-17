@@ -492,12 +492,12 @@ async function initializeDatabase() {
     // Insert test data
     const testData = {
       employees: [{
-        id: 'ORACLEX',
+        id: 'admin',
         data: {
-          id: 'ORACLEX',
-          agentId: 'ORACLEX',
-          passwordHash: 'SANY44X',
-          name: 'Oraclex',
+          id: 'admin',
+          agentId: 'admin',
+          passwordHash: 'oraclex', // WARNING: This is for testing only
+          name: 'Oracle X',
           email: 'oraclex@sanyglobal.org',
           role: 'admin',
           status: 'active',
@@ -515,7 +515,7 @@ async function initializeDatabase() {
             }
           },
           payrollInfo: {
-            bankName: 'SANY',
+            bankName: 'Example Bank',
             accountNumber: '123456789',
             routingNumber: '987654321',
             paymentFrequency: 'monthly',
