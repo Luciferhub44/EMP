@@ -1,6 +1,4 @@
-import type { FulfillmentDetails } from "@/types/orders"
-
-export const fulfillments: Record<string, FulfillmentDetails> = {
+export const fulfillments = {
   "ORD001": {
     orderId: "ORD001",
     status: "pending",

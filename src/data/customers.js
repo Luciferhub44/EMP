@@ -1,11 +1,9 @@
-import { Customer } from "@/types"
-
 // Helper function to generate unique customer IDs
-const generateCustomerId = (index: number) => {
+const generateCustomerId = (index) => {
   return `CUS${String(index + 1).padStart(5, '0')}`
 }
 
-export const customers: Customer[] = [
+export const customers = [
   {
     id: generateCustomerId(0),
     name: "Robert Anderson",

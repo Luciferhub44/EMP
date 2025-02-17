@@ -3,7 +3,7 @@ import { customers } from "./customers"
 import { products } from "./products"
 
 // Helper function to generate unique order IDs
-const generateOrderId = (index: number) => {
+const generateOrderId = (index) => {
   return `ORD${String(index + 1).padStart(6, '0')}`
 }
 
@@ -16,8 +16,8 @@ const generateRandomDate = () => {
 }
 
 // Helper function to generate random order status
-const generateRandomStatus = (): Order["status"] => {
-  const statuses: Order["status"][] = ["pending", "processing", "shipped", "delivered", "cancelled"]
+const generateRandomStatus = () => {
+  const statuses = ["pending", "processing", "shipped", "delivered", "cancelled"]
   const weights = [15, 20, 25, 20, 15, 5] // Probability weights for each status
   const totalWeight = weights.reduce((a, b) => a + b, 0)
   const random = Math.random() * totalWeight
@@ -31,7 +31,7 @@ const generateRandomStatus = (): Order["status"] => {
 }
 
 // Helper function to generate random payment status
-const generatePaymentStatus = (orderStatus: Order["status"]): Order["paymentStatus"] => {
+const generatePaymentStatus = (orderStatus) => {
   if (orderStatus === "cancelled") return "refunded"
   if (["delivered", "shipped"].includes(orderStatus)) return "paid"
   if (orderStatus === "pending") return Math.random() > 0.3 ? "paid" : "pending"
@@ -39,7 +39,7 @@ const generatePaymentStatus = (orderStatus: Order["status"]): Order["paymentStat
 }
 
 // Generate 50+ orders
-export const orders: Order[] = Array.from({ length: 55 }, (_, index) => {
+export const orders = Array.from({ length: 55 }, (_, index) => {
   const customer = customers[Math.floor(Math.random() * customers.length)]
   const orderStatus = generateRandomStatus()
   const createdAt = generateRandomDate()

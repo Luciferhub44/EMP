@@ -1,12 +1,4 @@
-export interface Warehouse {
-  id: string
-  name: string
-  location: string
-  capacity: number
-  isActive: boolean
-}
-
-export const warehouses: Warehouse[] = [
+export const warehouses = [
   {
     id: 'WH-1',
     name: 'Main Warehouse',

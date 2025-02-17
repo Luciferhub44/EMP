@@ -1,8 +1,4 @@
-import type { ProductCategory } from "@/types"
-import type { Product as ProductType } from "@/types/products"
-
-// Main categories from the catalog
-export const productCategories: ProductCategory[] = [
+export const productCategories = [
   {
     name: "Excavators",
     description: "Digging and earthmoving equipment",
@@ -23,7 +19,7 @@ export const productCategories: ProductCategory[] = [
   }
 ]
 
-export const products: ProductType[] = [
+export const products = [
   {
     id: "EX-001",
     category: "Excavators",

@@ -1,6 +1,4 @@
-import type { Employee } from "@/types/employee"
-
-export const employees: Employee[] = [
+export const employees = [
   {
     id: "EMP001",
     agentId: "ADMIN001",

@@ -1,6 +1,4 @@
-import { TransportCompany, VehicleType } from "@/types"
-
-export const vehicleTypes: VehicleType[] = [
+export const vehicleTypes = [
   {
     id: "small-truck",
     name: "Small Truck",
@@ -31,7 +29,7 @@ export const vehicleTypes: VehicleType[] = [
   }
 ]
 
-export const transportCompanies: TransportCompany[] = [
+export const transportCompanies = [
   {
     id: "trans-1",
     name: "FastTrack Logistics",

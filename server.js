@@ -5,6 +5,14 @@ import express from 'express';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
+import { warehouses } from "@src/data/warehouses"
+import { products } from "@src/data/products"
+import { employees } from "@src/data/employees"
+import { customers } from "@src/data/customers"
+import { fulfillments } from "@src/data/fulfillments"
+import { orders } from "@src/data/orders"
+import { orderItems } from "@src/data/orderItems"
+import { transportCompanies, transportOrders, } from "@src/data/transport"
 
 const DEFAULT_PORT = process.env.PORT || 3001;
 const __filename = fileURLToPath(import.meta.url);
@@ -14,7 +22,7 @@ const app = express();
 const PORT = DEFAULT_PORT;
 
 // Helper function for password hashing
-async function hashPassword(password: string): Promise<string> {
+async function hashPassword(password) {
   return new Promise((resolve, reject) => {
     const salt = crypto.randomBytes(16).toString('hex');
     crypto.pbkdf2(password, salt, 1000, 64, 'sha512', (err, derivedKey) => {
@@ -25,7 +33,7 @@ async function hashPassword(password: string): Promise<string> {
 }
 
 // Helper function for password verification
-async function verifyPassword(password: string, hash: string): Promise<boolean> {
+async function verifyPassword(password, hash) {
   return new Promise((resolve, reject) => {
     const [salt, key] = hash.split(':');
     crypto.pbkdf2(password, salt, 1000, 64, 'sha512', (err, derivedKey) => {
@@ -491,296 +499,15 @@ async function initializeDatabase() {
 
     // Insert test data
     const testData = {
-      employees: [{
-        id: 'admin',
-        data: {
-          id: 'admin',
-          agentId: 'admin',
-          passwordHash: 'oraclex', // WARNING: This is for testing only
-          name: 'Oracle X',
-          email: 'oraclex@sanyglobal.org',
-          role: 'admin',
-          status: 'active',
-          assignedOrders: [],
-          businessInfo: {
-            companyName: 'SANY',
-            registrationNumber: '12345',
-            taxId: '67890',
-            businessAddress: {
-              street: '123 Main St',
-              city: 'Example City',
-              state: 'EX',
-              postalCode: '12345',
-              country: 'US'
-            }
-          },
-          payrollInfo: {
-            bankName: 'Example Bank',
-            accountNumber: '123456789',
-            routingNumber: '987654321',
-            paymentFrequency: 'monthly',
-            baseRate: 5000,
-            currency: 'USD',
-            lastPaymentDate: new Date().toISOString()
-          },
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-      }],
-      customers: [
-        {
-          id: 'CUST-1',
-          data: {
-            id: 'CUST-1',
-            name: "Robert Anderson",
-            email: "r.anderson@constructioncorp.com",
-            company: "Anderson Construction Corp",
-            phone: "(555) 123-4567",
-            address: {
-              street: "789 Industrial Parkway",
-              city: "Houston",
-              state: "TX",
-              country: "USA",
-              postalCode: "77001"
-            }
-          }
-        },
-        {
-          id: 'CUST-2',
-          name: "Sarah Martinez",
-          email: "smartinez@buildpro.com",
-          company: "BuildPro Solutions",
-          phone: "(555) 234-5678",
-          address: {
-            street: "456 Commerce Drive",
-            city: "Phoenix",
-            state: "AZ",
-            country: "USA",
-            postalCode: "85001"
-          }
-        },
-        {
-          id: 'CUST-3',
-          name: "David Wilson",
-          email: "dwilson@wilsonbuilders.com",
-          company: "Wilson Builders & Associates",
-          phone: "(555) 345-6789",
-          address: {
-            street: "234 Construction Way",
-            city: "Dallas",
-            state: "TX",
-            country: "USA",
-            postalCode: "75201"
-          }
-        },
-        {
-          id: 'CUST-4',
-          name: "Michael Chang",
-          email: "mchang@pacificbuilders.com",
-          company: "Pacific Builders Inc",
-          phone: "(555) 987-6543",
-          address: {
-            street: "123 Harbor Boulevard",
-            city: "San Francisco",
-            state: "CA",
-            country: "USA",
-            postalCode: "94111"
-          }
-        },
-        {
-          id: 'CUST-5',
-          name: "Emily Johnson",
-          email: "ejohnson@midwestconstruction.com",
-          company: "Midwest Construction Group",
-          phone: "(555) 876-5432",
-          address: {
-            street: "567 Prairie Road",
-            city: "Chicago",
-            state: "IL",
-            country: "USA",
-            postalCode: "60601"
-          }
-        }
-      ],
-      products: [
-        {
-          id: "EX-001",
-          data: {
-            id: "EX-001",
-            category: "Excavators",
-            name: "Compact Mini Excavator",
-            model: "ME-2000",
-            sku: "ME2000-001",
-            price: 15000,
-            status: "active",
-            image: "/images/products/mini-excavator.jpg",
-            specifications: {
-              weight: 2000,
-              power: 15,
-              digDepth: 2.5,
-              maxReach: 4.2
-            },
-            inventory: [],
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }
-        },
-        {
-          id: "CR-001",
-          category: "Cranes",
-          name: "Heavy Duty Tower Crane",
-          model: "TC-5000",
-          sku: "TC5000-001",
-          price: 180000,
-          status: "active",
-          image: "/images/products/tower-crane.jpg",
-          specifications: {
-            liftingCapacity: 5000,
-            maxHeight: 80,
-            boomLength: 60,
-            engineType: "Electric",
-            maxLoad: "5000 kg",
-            towerHeight: "80 m",
-            jibLength: "60 m"
-          },
-          inventory: [
-            {
-              productId: "CR-001",
-              warehouseId: "wh-2",
-              quantity: 2,
-              minimumStock: 1,
-              lastUpdated: new Date().toISOString()
-            }
-          ],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: "CM-001",
-          category: "Concrete Equipment",
-          name: "Professional Concrete Mixer",
-          model: "PCM-3000",
-          sku: "PCM3000-001",
-          price: 8500,
-          status: "active",
-          image: "/images/products/concrete-mixer.jpg",
-          specifications: {
-            capacity: 3,
-            power: 7.5,
-            drumSpeed: 24,
-            engineType: "Electric",
-            mixingCapacity: "3 m³",
-            drumDiameter: "1.8 m",
-            weight: "1200 kg"
-          },
-          inventory: [
-            {
-              productId: "CM-001",
-              warehouseId: "wh-1",
-              quantity: 8,
-              minimumStock: 3,
-              lastUpdated: new Date().toISOString()
-            },
-            {
-              productId: "CM-001",
-              warehouseId: "wh-3",
-              quantity: 4,
-              minimumStock: 2,
-              lastUpdated: new Date().toISOString()
-            }
-          ],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-      ],
-      orders: [{
-        id: 'ORD-1',
-        customer_id: 'CUST-1',
-        data: {
-          id: 'ORD-1',
-          customerId: 'CUST-1',
-          items: [{
-            productId: 'PROD-1',
-            quantity: 1,
-            price: 99.99
-          }],
-          status: 'pending',
-          paymentStatus: 'pending',
-          total: 99.99,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-      }],
-      transport_quotes: [{
-        id: 'TQ-1',
-        data: {
-          id: 'TQ-1',
-          orderId: 'ORD-1',
-          provider: 'Test Shipping',
-          price: 10.00,
-          status: 'pending',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-      }],
-      transport_companies: [
-        {
-          id: "trans-1",
-          data: {
-            id: "trans-1",
-            name: "FastTrack Logistics",
-            rating: 4.8,
-            availableVehicles: ["small-truck", "medium-truck", "large-truck"],
-            basePrice: 500,
-            pricePerKm: 2.8,
-            serviceAreas: ["New York", "Los Angeles", "Chicago"],
-            insuranceCoverage: 100000,
-            contactInfo: {
-              phone: "1-800-555-0123",
-              email: "contact@fasttrack.com"
-            }
-          }
-        },
-        {
-          id: "trans-2",
-          name: "Heavy Haulers Co.",
-          rating: 4.6,
-          availableVehicles: ["medium-truck", "large-truck", "flatbed"],
-          basePrice: 750,
-          pricePerKm: 3.2,
-          serviceAreas: ["Los Angeles", "San Francisco", "Seattle"],
-          insuranceCoverage: 150000,
-          contactInfo: {
-            phone: "1-800-555-0124",
-            email: "support@heavyhaulers.com"
-          }
-        },
-        {
-          id: "trans-3",
-          name: "Reliable Transport",
-          rating: 4.9,
-          availableVehicles: ["small-truck", "medium-truck", "flatbed"],
-          basePrice: 450,
-          pricePerKm: 2.5,
-          serviceAreas: ["Chicago", "Detroit", "Cleveland"],
-          insuranceCoverage: 120000,
-          contactInfo: {
-            phone: "1-800-555-0125",
-            email: "info@reliabletransport.com"
-          }
-        }
-      ],
-      transport_orders: [{
-        id: 'TO-1',
-        data: {
-          id: 'TO-1',
-          orderId: 'ORD-1',
-          provider: 'FastTrack Logistics',
-          status: 'pending',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-      }]
+      warehouses,
+      products,
+      employees,
+      customers,
+      fulfillments,
+      orders,
+      order_items: orderItems,
+      transport_companies: transportCompanies,
+      transport_orders: transportOrders
     };
 
     // Add console logging for debugging
@@ -806,7 +533,7 @@ async function initializeDatabase() {
     console.log('Database initialized with test data');
   } catch (err) {
     await client.query('ROLLBACK');
-    const error = err as Error;
+    const error = err;
     console.error('Database initialization failed:', error);
     process.exit(1);
   } finally {
@@ -815,7 +542,7 @@ async function initializeDatabase() {
 }
 
 // Wrapper function for database queries with error handling
-async function executeQuery(queryText: string, params?: any[]) {
+async function executeQuery(queryText, params) {
   const client = await pool.connect();
   try {
     const result = await client.query(queryText, params);
@@ -848,7 +575,7 @@ app.post('/api/db/query', async (req, res) => {
     console.log('Query success:', result.rows.length, 'rows');
     res.json(result);
   } catch (err) {
-    const error = err as Error;
+    const error = err;
     console.error('Query error details:', {
       message: error.message,
       stack: error.stack,
