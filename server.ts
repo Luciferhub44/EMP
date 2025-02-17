@@ -187,20 +187,29 @@ async function initializeDatabase() {
 
     console.log('Inserting orders...');
     for (const order of orders) {
-      console.log('Inserting order:', order.id);
+      console.log('Inserting order:', order.id, order);
       await client.query(
         `INSERT INTO orders (id, customer_id, status, data) VALUES ($1, $2, $3, $4)`,
         [order.id, order.customerId, order.status, order]
       );
     }
 
+    // Get list of valid order IDs
+    const orderCheck = await client.query('SELECT id FROM orders');
+    const validOrderIds = orderCheck.rows.map(row => row.id);
+    console.log('Valid order IDs:', validOrderIds);
+
+    // Only insert fulfillments for valid orders
     console.log('Inserting fulfillments...');
     for (const [id, fulfillment] of Object.entries(fulfillments)) {
-      console.log('Inserting fulfillment:', id, 'for order:', fulfillment.orderId);
-      await client.query(
-        `INSERT INTO fulfillments (id, order_id, status, data) VALUES ($1, $2, $3, $4)`,
-        [id, fulfillment.orderId, fulfillment.status, fulfillment]
-      );
+      if (validOrderIds.includes(fulfillment.orderId)) {
+        await client.query(
+          `INSERT INTO fulfillments (id, order_id, status, data) VALUES ($1, $2, $3, $4)`,
+          [id, fulfillment.orderId, fulfillment.status, fulfillment]
+        );
+      } else {
+        console.log(`Skipping fulfillment ${id} - order ${fulfillment.orderId} does not exist`);
+      }
     }
 
     console.log('Inserting transport orders...');
