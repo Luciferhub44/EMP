@@ -43,3 +43,10 @@ export interface Product {
   createdAt: string
   updatedAt: string
 } 
+
+export interface ProductCategory {
+  id: string
+  name: string
+  subCategories: string[]
+}
+

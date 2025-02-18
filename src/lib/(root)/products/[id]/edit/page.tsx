@@ -14,7 +14,8 @@ import {
 import { Loader2 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { toast } from "@/components/ui/use-toast"
-import type { Product, ProductCategory } from "@/types"
+import type { Product, ProductCategory } from "@/types/products"
+import { productService } from "@/lib/services/product"
 
 export default function EditProductPage() {
   const { id } = useParams()
@@ -29,28 +30,29 @@ export default function EditProductPage() {
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    if (!user) {
-      navigate('/login')
+    if (user?.role !== 'admin') {
+      toast({
+        title: "Access Denied",
+        description: "Only administrators can edit products",
+        variant: "destructive",
+      })
+      navigate('/products')
       return
     }
 
-    const loadData = async () => {
+    const loadProduct = async () => {
       try {
-        // Load product
-        const productRes = await fetch(`/api/products/${id}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
-        })
-        if (!productRes.ok) throw new Error('Failed to load product')
-        const productData = await productRes.json()
+        const productData = await productService.getProduct(id!)
         setProduct(productData)
         setFormData({
           name: productData.name,
           model: productData.model,
           sku: productData.sku,
-          price: productData.price.toString(),
+          price: productData.price,
           category: productData.category,
           subCategory: productData.subCategory,
-          specifications: { ...productData.specifications },
+          status: productData.status,
+          specifications: { ...productData.specifications }
         })
 
         // Load categories
@@ -61,18 +63,19 @@ export default function EditProductPage() {
         const categoriesData = await categoriesRes.json()
         setCategories(categoriesData)
       } catch (error) {
-        console.error('Failed to load data:', error)
+        console.error('Failed to load product:', error)
         toast({
           title: "Error",
           description: "Failed to load product data",
           variant: "destructive",
         })
+        navigate('/products')
       } finally {
         setIsLoading(false)
       }
     }
 
-    loadData()
+    loadProduct()
   }, [id, user, navigate])
 
   const validateForm = () => {
@@ -94,21 +97,10 @@ export default function EditProductPage() {
 
     setIsSubmitting(true)
     try {
-      const response = await fetch(`/api/products/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        },
-        body: JSON.stringify({
-          ...formData,
-          price: formData.price ? parseFloat(formData.price.toString()) : 0,
-          updatedBy: user?.id,
-          updatedAt: new Date().toISOString()
-        })
+      await productService.updateProduct(id!, {
+        ...formData,
+        updatedAt: new Date().toISOString()
       })
-
-      if (!response.ok) throw new Error('Failed to update product')
 
       toast({
         title: "Success",
@@ -262,7 +254,7 @@ export default function EditProductPage() {
                     <SelectValue placeholder="Select sub-category" />
                   </SelectTrigger>
                   <SelectContent>
-                    {selectedCategory.subCategories.map((sub) => (
+                    {selectedCategory.subCategories.map((sub: string) => (
                       <SelectItem key={sub} value={sub}>
                         {sub}
                       </SelectItem>
