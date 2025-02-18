@@ -47,7 +47,20 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: isProd,
           ws: true,
-          rewrite: (path) => path.replace(/^\/api/, '')
+          rewrite: (path) => path.replace(/^\/api/, ''),
+          configure: (proxy, options) => {
+            proxy.on('error', (err: any, req: any, res: any) => {
+              console.error('Proxy error:', err)
+            })
+            proxy.on('proxyReq', (proxyReq: any, req: any, res: any) => {
+              if (req.body) {
+                const bodyData = JSON.stringify(req.body)
+                proxyReq.setHeader('Content-Type', 'application/json')
+                proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData))
+                proxyReq.write(bodyData)
+              }
+            })
+          }
         }
       }
     },
@@ -64,7 +77,7 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks: {
             'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-            'ui-vendor': ['@radix-ui/react-icons', '@radix-ui/react-slot', '@radix-ui/react-dialog'],
+            'ui-vendor': ['@radix-ui/react-icons', '@radix-ui/react-slot'],
             'utils-vendor': ['lodash-es']
           },
           chunkFileNames: 'assets/js/[name]-[hash].js',

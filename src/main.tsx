@@ -6,46 +6,44 @@ import App from '@/App'
 const rootElement = document.getElementById('root')
 if (!rootElement) throw new Error('Failed to find the root element')
 
+// API request helper
+const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
+  const token = localStorage.getItem('token')
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` }),
+    ...options.headers
+  }
+
+  const response = await fetch(`/api${endpoint}`, {
+    ...options,
+    headers
+  })
+
+  if (!response.ok) {
+    throw new Error(`API request failed: ${response.statusText}`)
+  }
+
+  return response
+}
+
 // Initialize app
 const init = async () => {
   try {
-    const token = localStorage.getItem('token')
-    
-    // If no token, render app directly (will redirect to login)
-    if (!token) {
-      createRoot(rootElement).render(
-        <StrictMode>
-          <App />
-        </StrictMode>
-      )
-      return
-    }
-
-    // Check server connection
+    // Check server health first
     const maxRetries = 3
     let retries = 0
-    let connected = false
     
-    while (retries < maxRetries && !connected) {
+    while (retries < maxRetries) {
       try {
-        const response = await fetch('/api/health', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        })
-        
-        if (response.ok) {
-          connected = true
-          console.log('Server connection verified')
-        } else {
-          throw new Error('Server connection failed')
-        }
+        await apiRequest('/health')
+        console.log('Server connection verified')
+        break
       } catch (error) {
         retries++
         console.warn(`Connection attempt ${retries} failed:`, error)
         if (retries === maxRetries) {
-          throw new Error('Failed to connect to server after multiple attempts')
+          throw new Error('Failed to connect to server')
         }
         await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retries - 1)))
       }
