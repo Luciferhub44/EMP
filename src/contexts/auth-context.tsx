@@ -5,7 +5,7 @@ interface AuthContextType {
   user: Employee | null
   loading: boolean
   error: string | null
-  login: (agentId: string, password: string, role: string) => Promise<void>
+  login: (agentId: string, password: string) => Promise<void>
   logout: () => void
 }
 
@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth()
   }, [])
 
-  const login = async (agentId: string, password: string, role: string) => {
+  const login = async (agentId: string, password: string) => {
     try {
       setLoading(true)
       setError(null)
@@ -62,8 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
         body: JSON.stringify({
           agentId,
-          password,
-          role
+          password
         })
       })
 

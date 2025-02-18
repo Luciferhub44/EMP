@@ -26,7 +26,6 @@ interface Employee {
   agentId: string;
   name: string;
   email: string;
-  role: 'admin' | 'employee';
   status: 'active' | 'inactive';
   passwordHash: string;
   settings?: any;
@@ -143,100 +142,33 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'hq@sanyglobal.org';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'sany444global';
 const ADMIN_ID = 'ADMIN001';
 
-
-// Helper function for password hashing
-async function hashPassword(password: string): Promise<string> {
-  const salt = crypto.randomBytes(16).toString('hex');
-  const hash = crypto
-    .pbkdf2Sync(password, salt, 1000, 64, 'sha512')
-    .toString('hex');
-  return `${hash}:${salt}`;
-}
-
-// Helper function for password verification
-async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
-  try {
-    // Split the stored hash into salt and hash parts
-    const [hashedPart, salt] = storedHash.split(':');
-    
-    // Hash the provided password with the same salt
-    const hash = crypto
-      .pbkdf2Sync(password, salt, 1000, 64, 'sha512')
-      .toString('hex');
-    
-    // Compare the hashes
-    return hash === hashedPart;
-  } catch (error) {
-    console.error('Password verification failed:', error);
-    return false;
-  }
-}
+// Database connection
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
 
 // Middleware
 app.use(express.json());
 app.use(cors());
 app.use(express.static(path.join(__dirname, '../dist')));
 
-// Configure database pool with better settings
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-});
+// Add auth routes here
+const authRouter = Router();
 
-
-// API health check
-app.get('/api/db/test', async (req, res) => {
-  try {
-    await pool.query('SELECT NOW()');
-    res.json({ success: true, timestamp: new Date().toISOString() });
-  } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      error: 'Database connection failed',
-      message: process.env.NODE_ENV === 'production' ? (error as Error).message : undefined
-    });
-  }
-});
-
-// Catch-all route for SPA
-app.get('*', (req, res, next) => {
-  if (req.path.startsWith('/api/')) {
-    next();
-    return;
-  }
-  res.sendFile(path.join(__dirname, '../dist/index.html'));
-});
-
-// Health check endpoint
-app.get('/health', async (req, res) => {
-  try {
-    const dbCheck = await pool.query('SELECT NOW()');
-    res.json({
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      database: 'connected',
-      uptime: process.uptime()
-    });
-  } catch (error) {
-    res.status(503).json({
-      status: 'unhealthy',
-      timestamp: new Date().toISOString(),
-      database: 'disconnected'
-    });
-  }
-});
-
-// Auth endpoints
-app.post('/api/auth/login', async (req, res) => {
+// Login endpoint
+authRouter.post('/login', async (req: Request, res: Response) => {
   try {
     const { agentId, password } = req.body;
-    
+
+    if (!agentId || !password) {
+      return res.status(400).json({ message: 'Agent ID and password are required' });
+    }
+
+    // Find employee by agentId
     const result = await pool.query(
-      'SELECT data FROM employees WHERE data->>\'agentId\' = $1',
-      [agentId]
+      `SELECT data FROM employees WHERE data->>'agentId' = $1`,
+      [agentId.toUpperCase()]
     );
 
     if (result.rows.length === 0) {
@@ -244,67 +176,105 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const employee = result.rows[0].data;
-    const isValid = await verifyPassword(password, employee.passwordHash);
+    const isValidPassword = await verifyPassword(password, employee.passwordHash);
 
-    if (!isValid) {
+    if (!isValidPassword) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    const token = generateToken();
-    const session: Session = {
-      token,
-      employeeId: employee.id,
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-    };
+    if (employee.status !== 'active') {
+      return res.status(403).json({ message: 'Account is inactive' });
+    }
 
+    // Generate session token
+    const token = generateToken();
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    // Store session
     await pool.query(
-      'INSERT INTO sessions (id, data) VALUES ($1, $2)',
-      [token, session]
+      'INSERT INTO sessions (id, data, expires_at) VALUES ($1, $2, $3)',
+      [
+        token,
+        {
+          token,
+          employeeId: employee.id,
+          expiresAt: expiresAt.toISOString()
+        },
+        expiresAt
+      ]
     );
 
-    const { passwordHash, ...safeEmployee } = employee;
-    res.json({ user: safeEmployee, token });
+    // Remove password hash from response
+    const { passwordHash, ...userWithoutPassword } = employee;
+
+    res.json({
+      token,
+      user: userWithoutPassword
+    });
   } catch (error) {
-    console.error('Login failed:', error);
-    res.status(500).json({ message: 'Authentication failed' });
+    console.error('Login error:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 
-app.get('/api/auth/session', async (req, res) => {
+// Session validation endpoint
+authRouter.get('/session', async (req: Request, res: Response) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
       return res.status(401).json({ message: 'No token provided' });
     }
 
+    const token = authHeader.split(' ')[1];
     const result = await pool.query(
-      'SELECT data FROM sessions WHERE data->>\'token\' = $1',
+      `SELECT data FROM sessions WHERE data->>'token' = $1 AND expires_at > NOW()`,
       [token]
     );
 
     if (result.rows.length === 0) {
-      return res.status(401).json({ message: 'Invalid session' });
+      return res.status(401).json({ message: 'Invalid or expired session' });
     }
 
     const session = result.rows[0].data;
     const employeeResult = await pool.query(
-      'SELECT data FROM employees WHERE id = $1',
+      `SELECT data FROM employees WHERE data->>'id' = $1`,
       [session.employeeId]
     );
 
     if (employeeResult.rows.length === 0) {
-      return res.status(401).json({ message: 'Employee not found' });
+      return res.status(401).json({ message: 'User not found' });
     }
 
     const employee = employeeResult.rows[0].data;
-    const { passwordHash, ...safeEmployee } = employee;
+    const { passwordHash, ...userWithoutPassword } = employee;
 
-    res.json({ user: safeEmployee });
+    res.json({ user: userWithoutPassword });
   } catch (error) {
-    console.error('Session validation failed:', error);
-    res.status(500).json({ message: 'Session validation failed' });
+    console.error('Session validation error:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
+
+// Logout endpoint
+authRouter.post('/logout', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      await pool.query(
+        `DELETE FROM sessions WHERE data->>'token' = $1`,
+        [token]
+      );
+    }
+    res.status(200).json({ message: 'Logged out successfully' });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Add auth routes to app
+app.use('/api/auth', authRouter);
 
 // Start server with enhanced error handling
 async function startServer() {
@@ -356,9 +326,11 @@ const schema = {
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         CONSTRAINT employees_data_check CHECK (
           data ? 'id' AND
+          data ? 'agentId' AND
           data ? 'email' AND
           data ? 'name' AND
-          data ? 'role'
+          data ? 'status' AND
+          data ? 'passwordHash'
         )
       )
     `,
@@ -476,18 +448,8 @@ async function initializeDatabase() {
         agentId: "ADMIN001",
         name: "Admin HQ",
         email: "hq@sanyglobal.org",
-        role: "admin",
         status: "active",
-        passwordHash: "5b722b307fce6c944905d132691d5e4a2214b7fe92b738920eb3fce3a90420a19511c3010a0e7712b054daef5b57bad59ecbd93b3280f210578f547f4aed4d25:a72f47a6838bf4d0f539e366ee3e3e73" // "sany444global"
-      },
-      {
-        id: "EMP002",
-        agentId: "AGENT48392",
-        name: "David PIERRE-JEAN",
-        email: "david.pierrejean@sanyglobal.org",
-        role: "employee",
-        status: "active",
-        passwordHash: "5b722b307fce6c944905d132691d5e4a2214b7fe92b738920eb3fce3a90420a19511c3010a0e7712b054daef5b57bad59ecbd93b3280f210578f547f4aed4d25:a72f47a6838bf4d0f539e366ee3e3e73" // "sany2025global"
+        passwordHash: await hashPassword(ADMIN_PASSWORD)
       }
     ];
 
@@ -566,4 +528,32 @@ export { app, pool };
 // Utility functions
 function generateToken(): string {
   return crypto.randomBytes(32).toString('hex');
+}
+
+function hashPassword(password: string): Promise<string> {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto
+    .pbkdf2Sync(password, salt, 1000, 64, 'sha512')
+    .toString('hex');
+  return Promise.resolve(`${hash}:${salt}`);
+}
+
+function verifyPassword(password: string, storedHash: string): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    try {
+      // Split the stored hash into salt and hash parts
+      const [hashedPart, salt] = storedHash.split(':');
+      
+      // Hash the provided password with the same salt
+      const hash = crypto
+        .pbkdf2Sync(password, salt, 1000, 64, 'sha512')
+        .toString('hex');
+      
+      // Compare the hashes
+      resolve(hash === hashedPart);
+    } catch (error) {
+      console.error('Password verification failed:', error);
+      resolve(false);
+    }
+  });
 }
