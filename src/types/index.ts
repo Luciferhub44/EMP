@@ -1,4 +1,4 @@
-import { Address } from './orders'
+import { Address } from './orders.js'
 
 export type OrderStatus = 
   | "pending"
@@ -137,4 +137,4 @@ export * from './customer.js'
 export * from './employee.js'
 export * from './audit.js'
 // Re-export common types
-export type { Address } from './orders' 
+export type { Address } from './orders.js' 
