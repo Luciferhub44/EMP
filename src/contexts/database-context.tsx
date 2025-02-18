@@ -9,11 +9,13 @@ interface DatabaseContextType {
 // Create an API client for database operations
 const dbClient = {
   query: async (text: string, params?: any[]) => {
+    const token = localStorage.getItem('auth_token')
     try {
       const response = await fetch('/api/db/query', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ text, params }),
       })
@@ -41,10 +43,11 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const testConnection = async () => {
       try {
+        const token = localStorage.getItem('auth_token')
         const response = await fetch('/api/db/test', {
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+            'Authorization': `Bearer ${token}`
           }
         })
         
