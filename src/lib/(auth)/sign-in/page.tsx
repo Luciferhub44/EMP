@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/contexts/auth-context"
 import { toast } from "@/components/ui/use-toast"
+import { useNavigate } from "react-router-dom"
 
 export default function SignInPage() {
   const { login } = useAuth()
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [credentials, setCredentials] = useState({
     agentId: "",
@@ -24,6 +26,7 @@ export default function SignInPage() {
         title: "Welcome",
         description: "Successfully signed in",
       })
+      navigate("/") // Redirect to home after successful login
     } catch (error) {
       toast({
         title: "Authentication Failed",
