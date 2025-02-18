@@ -15,6 +15,13 @@ import { orders } from "./src/data/orders.js"
 import { transportCompanies, transportOrders } from "./src/data/transport.js"
 import { defaultSettings } from './src/config/default-settings.js';
 
+interface DbRow {
+  data: {
+    passwordHash?: string;
+    [key: string]: any;
+  };
+}
+
 const DEFAULT_PORT = Number(process.env.PORT) || 3001;
 const MAX_PORT_RETRIES = 10;
 const __filename = fileURLToPath(import.meta.url);
@@ -593,7 +600,7 @@ app.get('/api/orders', async (req, res) => {
 
     // Get orders from database
     const ordersResult = await executeQuery('SELECT data FROM orders ORDER BY data->>\'createdAt\' DESC', []);
-    const orders = ordersResult.rows.map(row => row.data);
+    const orders = ordersResult.rows.map((row: DbRow) => row.data);
 
     res.json(orders);
   } catch (error) {
@@ -624,7 +631,7 @@ app.get('/api/customers', async (req, res) => {
 
     // Get customers from database
     const customersResult = await executeQuery('SELECT data FROM customers ORDER BY data->>\'createdAt\' DESC', []);
-    const customers = customersResult.rows.map(row => row.data);
+    const customers = customersResult.rows.map((row: DbRow) => row.data);
 
     res.json(customers);
   } catch (error) {
@@ -642,7 +649,7 @@ app.get('/api/products', async (req, res) => {
     }
 
     const productsResult = await executeQuery('SELECT data FROM products ORDER BY data->>\'createdAt\' DESC', []);
-    const products = productsResult.rows.map(row => row.data);
+    const products = productsResult.rows.map((row: DbRow) => row.data);
     res.json(products);
   } catch (error) {
     console.error('Failed to fetch products:', error);
@@ -701,7 +708,7 @@ app.get('/api/employees', async (req, res) => {
     }
 
     const employeesResult = await executeQuery('SELECT data FROM employees ORDER BY data->>\'createdAt\' DESC', []);
-    const employees = employeesResult.rows.map(row => {
+    const employees = employeesResult.rows.map((row: DbRow) => {
       const { passwordHash, ...safeEmployee } = row.data;
       return safeEmployee;
     });
@@ -724,7 +731,7 @@ app.get('/api/orders/pending', async (req, res) => {
       'SELECT data FROM orders WHERE data->>\'status\' = $1 ORDER BY data->>\'createdAt\' DESC',
       ['pending']
     );
-    const pendingOrders = pendingOrdersResult.rows.map(row => row.data);
+    const pendingOrders = pendingOrdersResult.rows.map((row: DbRow) => row.data);
     res.json(pendingOrders);
   } catch (error) {
     console.error('Failed to fetch pending orders:', error);
@@ -741,7 +748,7 @@ app.get('/api/fulfillments', async (req, res) => {
     }
 
     const fulfillmentsResult = await executeQuery('SELECT data FROM fulfillments ORDER BY data->>\'createdAt\' DESC', []);
-    const fulfillments = fulfillmentsResult.rows.map(row => row.data);
+    const fulfillments = fulfillmentsResult.rows.map((row: DbRow) => row.data);
     res.json(fulfillments);
   } catch (error) {
     console.error('Failed to fetch fulfillments:', error);
@@ -758,7 +765,7 @@ app.get('/api/transport/companies', async (req, res) => {
     }
 
     const companiesResult = await executeQuery('SELECT data FROM transport_companies ORDER BY data->>\'name\' ASC', []);
-    const companies = companiesResult.rows.map(row => row.data);
+    const companies = companiesResult.rows.map((row: DbRow) => row.data);
     res.json(companies);
   } catch (error) {
     console.error('Failed to fetch transport companies:', error);
@@ -775,7 +782,7 @@ app.get('/api/transport/orders', async (req, res) => {
     }
 
     const transportOrdersResult = await executeQuery('SELECT data FROM transport_orders ORDER BY data->>\'createdAt\' DESC', []);
-    const transportOrders = transportOrdersResult.rows.map(row => row.data);
+    const transportOrders = transportOrdersResult.rows.map((row: DbRow) => row.data);
     res.json(transportOrders);
   } catch (error) {
     console.error('Failed to fetch transport orders:', error);
