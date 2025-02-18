@@ -436,8 +436,8 @@ async function initializeDatabase() {
 
     // Drop and recreate database
     await client.query(`
-      DROP DATABASE IF EXISTS equipment-db;
-      CREATE DATABASE equipment-db;
+      DROP DATABASE IF EXISTS empdb;
+      CREATE DATABASE empdb;
     `);
 
     // Create tables and indexes
