@@ -31,5 +31,38 @@ export const employees = [
       currency: "USD",
       lastPaymentDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
     }
+  },
+  {
+    id: "EMP002",
+    agentId: "AGENT48392",
+    name: "David PIERRE-JEAN",
+    email: "david.pierrejean@sanyglobal.org",
+    role: "Employee",
+    status: "active",
+    assignedOrders: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    passwordHash: "5b722b307fce6c944905d132691d5e4a2214b7fe92b738920eb3fce3a90420a19511c3010a0e7712b054daef5b57bad59ecbd93b3280f210578f547f4aed4d25:a72f47a6838bf4d0f539e366ee3e3e73", // "sany2025global"
+    businessInfo: {
+      companyName: "SOSIAC",
+      registrationNumber: "N/A",
+      taxId: "N/A",
+      businessAddress: {
+        street: "228 Park Ave S",
+        city: "New York",
+        state: "NY",
+        postalCode: "10003",
+        country: "USA"
+      }
+    },
+    payrollInfo: {
+      bankName: "Bank of America",
+      accountNumber: "483101090345",
+      routingNumber: "21000322",
+      paymentFrequency: "monthly",
+      baseRate: 17000,
+      currency: "USD",
+      lastPaymentDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+    }
   }
 ]
