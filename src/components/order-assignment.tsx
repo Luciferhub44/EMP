@@ -47,7 +47,7 @@ export function OrderAssignment({ orderId, currentAssignee }: OrderAssignmentPro
         if (currentAssignee) {
           await employeeService.unassignOrder(orderId, currentAssignee, true)
         }
-        await employeeService.assignOrder(orderId, employeeId, true)
+        await employeeService.assignOrder(orderId, employeeId)
       }
 
       await ordersService.updateOrder(orderId, {
