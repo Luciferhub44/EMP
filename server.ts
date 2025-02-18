@@ -18,7 +18,7 @@ import bcrypt from 'bcryptjs';
 
 interface DbRow {
   data: {
-    passwordHash?: string;
+    id: string;
     [key: string]: any;
   };
 }
@@ -1441,7 +1441,7 @@ app.get('/api/inventory/restock-needed', async (req, res) => {
       []
     );
 
-    res.json(result.rows.map(row => row.product));
+    res.json(result.rows.map((row: DbRow) => row.data));
   } catch (error) {
     console.error('Failed to fetch restock needed products:', error);
     res.status(500).json({ error: 'Failed to fetch restock needed products' });
