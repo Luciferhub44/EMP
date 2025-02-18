@@ -93,6 +93,21 @@ interface Inventory {
   lastUpdated: string;
 }
 
+interface Payment {
+  id: string;
+  employeeId: string;
+  amount: number;
+  currency: string;
+  status: 'pending' | 'completed' | 'failed';
+  type: 'salary' | 'bonus' | 'commission';
+  period: {
+    start: string;
+    end: string;
+  };
+  createdAt: string;
+  paidAt?: string;
+}
+
 const DEFAULT_PORT = Number(process.env.PORT) || 3001;
 const MAX_PORT_RETRIES = 10;
 const __filename = fileURLToPath(import.meta.url);
@@ -1117,28 +1132,14 @@ app.get('/api/fulfillments/:orderId', async (req, res) => {
       };
 
       await executeQuery(
-        'INSERT INTO fulfillments (data) VALUES ($1)',
-        [JSON.stringify(defaultFulfillment)]
+        'INSERT INTO fulfillments (id, data) VALUES ($1, $2)',
+        [defaultFulfillment.id, defaultFulfillment]
       );
 
       return res.json(defaultFulfillment);
     }
 
-    // Return existing fulfillment
-    const fulfillment = fulfillmentResult.rows[0].data;
-    
-    // Ensure history array exists
-    if (!fulfillment.history) {
-      fulfillment.history = [
-        {
-          status: fulfillment.status,
-          timestamp: fulfillment.createdAt,
-          note: 'Fulfillment initialized'
-        }
-      ];
-    }
-
-    res.json(fulfillment);
+    res.json(fulfillmentResult.rows[0].data);
   } catch (error) {
     console.error('Failed to fetch fulfillment:', error);
     res.status(500).json({ error: 'Failed to fetch fulfillment' });
@@ -1578,6 +1579,131 @@ app.put('/api/employees/:employeeId', async (req, res) => {
   } catch (error) {
     console.error('Failed to update employee:', error);
     res.status(500).json({ error: 'Failed to update employee' });
+  }
+});
+
+// Get employee payment history
+app.get('/api/employees/:employeeId/payments', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const { requesterId, isAdmin } = req.query;
+    
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { employeeId } = req.params;
+
+    // Security check
+    if (employeeId !== requesterId && !isAdmin) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Generate sample payment history
+    const payments: Payment[] = [
+      {
+        id: `PAY-${employeeId}-1`,
+        employeeId,
+        amount: 5000,
+        currency: 'USD',
+        status: 'completed',
+        type: 'salary',
+        period: {
+          start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+          end: new Date().toISOString()
+        },
+        createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+        paidAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        id: `PAY-${employeeId}-2`,
+        employeeId,
+        amount: 1000,
+        currency: 'USD',
+        status: 'completed',
+        type: 'bonus',
+        period: {
+          start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+          end: new Date().toISOString()
+        },
+        createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+        paidAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
+      }
+    ];
+
+    res.json(payments);
+  } catch (error) {
+    console.error('Failed to fetch payment history:', error);
+    res.status(500).json({ error: 'Failed to fetch payment history' });
+  }
+});
+
+// Process new payment
+app.post('/api/employees/:employeeId/payments', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token || !req.body.isAdmin) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { employeeId } = req.params;
+    const payment = req.body;
+
+    // Add payment processing logic here
+    const newPayment: Payment = {
+      id: `PAY-${employeeId}-${Date.now()}`,
+      employeeId,
+      ...payment,
+      status: 'completed',
+      createdAt: new Date().toISOString(),
+      paidAt: new Date().toISOString()
+    };
+
+    res.json(newPayment);
+  } catch (error) {
+    console.error('Failed to process payment:', error);
+    res.status(500).json({ error: 'Failed to process payment' });
+  }
+});
+
+// Update fulfillment
+app.put('/api/fulfillments/:orderId', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { orderId } = req.params;
+    const updates = req.body;
+
+    // Add history entry
+    const historyEntry = {
+      status: updates.status || 'updated',
+      timestamp: new Date().toISOString(),
+      note: updates.notes || 'Fulfillment details updated'
+    };
+
+    const result = await executeQuery(
+      `UPDATE fulfillments 
+       SET data = jsonb_set(
+         jsonb_set(data, '{history}', (data->'history') || $1::jsonb),
+         '{updatedAt}',
+         $2::jsonb
+       )
+       WHERE data->>'orderId' = $3
+       RETURNING data`,
+      [JSON.stringify([historyEntry]), JSON.stringify(new Date().toISOString()), orderId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Fulfillment not found' });
+    }
+
+    res.json(result.rows[0].data);
+  } catch (error) {
+    console.error('Failed to update fulfillment:', error);
+    res.status(500).json({ error: 'Failed to update fulfillment' });
   }
 });
 
