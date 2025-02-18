@@ -1430,16 +1430,16 @@ app.get('/api/inventory/restock-needed', async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    // Get all products with their total stock
-    const result = await executeQuery(`
-      SELECT 
+    const result = await executeQuery(
+      `SELECT 
         p.data as product,
         COALESCE(SUM((i.data->>'quantity')::integer), 0) as total_stock
       FROM products p
       LEFT JOIN inventory i ON i.data->>'productId' = p.data->>'id'
       GROUP BY p.data
-      HAVING COALESCE(SUM((i.data->>'quantity')::integer), 0) < COALESCE((p.data->>'minStock')::integer, 10)
-    `, []);
+      HAVING COALESCE(SUM((i.data->>'quantity')::integer), 0) < COALESCE((p.data->>'minStock')::integer, 10)`,
+      []
+    );
 
     res.json(result.rows.map(row => row.product));
   } catch (error) {
