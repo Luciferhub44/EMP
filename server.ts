@@ -434,19 +434,24 @@ async function initializeDatabase() {
   try {
     await client.query('BEGIN');
 
-    // Create tables
+    // Drop and recreate database
+    await client.query(`
+      DROP DATABASE IF EXISTS equipment-db;
+      CREATE DATABASE equipment-db;
+    `);
+
+    // Create tables and indexes
     for (const [tableName, tableSchema] of Object.entries(schema.tables)) {
       console.log(`Creating table: ${tableName}`);
       await client.query(tableSchema);
     }
 
-    // Create indexes
     for (const [indexName, indexSchema] of Object.entries(schema.indexes)) {
       console.log(`Creating index: ${indexName}`);
       await client.query(indexSchema);
     }
 
-    // Insert initial employee data
+    // Insert initial employees
     console.log('Inserting initial data...');
     const initialEmployees = [
       {
@@ -471,7 +476,7 @@ async function initializeDatabase() {
 
     for (const employee of initialEmployees) {
       await client.query(
-        'INSERT INTO employees (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2',
+        'INSERT INTO employees (id, data) VALUES ($1, $2)',
         [employee.id, employee]
       );
     }
