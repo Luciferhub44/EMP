@@ -1,6 +1,6 @@
 import { createContext, useContext, ReactNode } from 'react'
 import { chatWebSocket } from '@/lib/services/websocket'
-import React from 'react'
+import { useState, useEffect } from 'react'
 
 const WebSocketContext = createContext<{
   socket: typeof chatWebSocket;
@@ -13,10 +13,10 @@ const WebSocketContext = createContext<{
 })
 
 export function WebSocketProvider({ children }: { children: ReactNode }) {
-  const [isConnected, setIsConnected] = React.useState(false)
-  const [error, setError] = React.useState<string | null>(null)
+  const [isConnected, setIsConnected] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  React.useEffect(() => {
+  useEffect(() => {
     const token = localStorage.getItem('auth_token')
     if (!token) {
       setError('Authentication required')
