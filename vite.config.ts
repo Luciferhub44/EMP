@@ -5,6 +5,8 @@ import { fileURLToPath } from 'url'
 import { dirname } from 'path'
 import compression from 'vite-plugin-compression'
 import { visualizer } from 'rollup-plugin-visualizer'
+import type { Connect } from 'vite'
+import type { IncomingMessage, ServerResponse } from 'http'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -47,22 +49,22 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: isProd,
           ws: true,
-          rewrite: (path) => path.replace(/^\/api/, ''),
-          configure: (proxy, options) => {
-            proxy.on('error', (err: any, req: any, res: any) => {
-              console.error('Proxy error:', err)
-            })
-            proxy.on('proxyReq', (proxyReq: any, req: any, res: any) => {
-              if (req.body) {
-                const bodyData = JSON.stringify(req.body)
-                proxyReq.setHeader('Content-Type', 'application/json')
-                proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData))
-                proxyReq.write(bodyData)
+          rewrite: (path) => path.replace(/^\/api/, '')
+        }
+      },
+      middlewares: [
+        {
+          name: 'handle-client-routing',
+          configureServer(server) {
+            server.middlewares.use((req: IncomingMessage, res: ServerResponse, next: Connect.NextFunction) => {
+              if (!req.url?.startsWith('/api')) {
+                req.url = '/index.html'
               }
+              next()
             })
           }
         }
-      }
+      ]
     },
 
     build: {
