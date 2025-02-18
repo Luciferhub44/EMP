@@ -61,11 +61,14 @@ export default defineConfig(({ mode }) => {
       reportCompressedSize: false,
       rollupOptions: {
         output: {
-          manualChunks: {
-            vendor: ['react', 'react-dom', 'react-router-dom'],
-            ui: ['@radix-ui/react-icons', '@radix-ui/react-slot', '@radix-ui/react-dialog'],
-            charts: ['recharts'],
-            utils: ['date-fns', 'lodash-es']
+          manualChunks: (id) => {
+            if (id.includes('node_modules')) {
+              if (id.includes('react')) return 'vendor-react'
+              if (id.includes('@radix-ui')) return 'vendor-radix'
+              if (id.includes('recharts')) return 'vendor-charts'
+              if (id.includes('date-fns') || id.includes('lodash')) return 'vendor-utils'
+              return 'vendor'
+            }
           },
           chunkFileNames: 'assets/js/[name]-[hash].js',
           entryFileNames: 'assets/js/[name]-[hash].js',
