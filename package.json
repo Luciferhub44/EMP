@@ -1,5 +1,5 @@
 {
-  "name": "lastest",
+  "name": "emp",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,10 +10,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && tsc -p tsconfig.server.json",
-    "lint": "eslint .",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "start": "node dist/server.js",
-    "postinstall": "yarn build"
+    "clean": "rm -rf dist node_modules"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.0.4",
