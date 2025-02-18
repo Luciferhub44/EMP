@@ -1448,5 +1448,68 @@ app.get('/api/inventory/restock-needed', async (req, res) => {
   }
 });
 
+// Get single employee
+app.get('/api/employees/:employeeId', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { employeeId } = req.params;
+    const employeeResult = await executeQuery(
+      'SELECT data FROM employees WHERE data->>\'id\' = $1',
+      [employeeId]
+    );
+
+    if (employeeResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Employee not found' });
+    }
+
+    // Remove sensitive data
+    const employee = employeeResult.rows[0].data;
+    const { passwordHash, ...safeEmployee } = employee;
+
+    res.json(safeEmployee);
+  } catch (error) {
+    console.error('Failed to fetch employee:', error);
+    res.status(500).json({ error: 'Failed to fetch employee' });
+  }
+});
+
+// Update employee
+app.put('/api/employees/:employeeId', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { employeeId } = req.params;
+    const updates = req.body;
+
+    // Check if employee exists
+    const employeeResult = await executeQuery(
+      'SELECT data FROM employees WHERE data->>\'id\' = $1',
+      [employeeId]
+    );
+
+    if (employeeResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Employee not found' });
+    }
+
+    // Update employee data
+    await executeQuery(
+      'UPDATE employees SET data = data || $1::jsonb WHERE data->>\'id\' = $2',
+      [JSON.stringify(updates), employeeId]
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Failed to update employee:', error);
+    res.status(500).json({ error: 'Failed to update employee' });
+  }
+});
+
 // Start the server
 startServer().catch(console.error);
