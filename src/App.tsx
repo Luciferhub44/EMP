@@ -196,7 +196,6 @@ export default function App() {
                           </AdminRoute>
                         } />
                       </Route>
-                      <Route path="*" element={<SignInPage />} />
                     </Routes>
                     <Toaster />
                   </SettingsProvider>

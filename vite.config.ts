@@ -5,8 +5,6 @@ import { fileURLToPath } from 'url'
 import { dirname } from 'path'
 import compression from 'vite-plugin-compression'
 import { visualizer } from 'rollup-plugin-visualizer'
-import type { Connect } from 'vite'
-import type { IncomingMessage, ServerResponse } from 'http'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -48,28 +46,14 @@ export default defineConfig(({ mode }) => {
           target: env.VITE_API_URL || "http://127.0.0.1:3001",
           changeOrigin: true,
           secure: isProd,
-          ws: true,
-          rewrite: (path) => path.replace(/^\/api/, '')
+          ws: true
         }
-      },
-      middlewares: [
-        {
-          name: 'handle-client-routing',
-          configureServer(server) {
-            server.middlewares.use((req: IncomingMessage, res: ServerResponse, next: Connect.NextFunction) => {
-              if (!req.url?.startsWith('/api')) {
-                req.url = '/index.html'
-              }
-              next()
-            })
-          }
-        }
-      ]
+      }
     },
 
     build: {
       outDir: "dist",
-      sourcemap: !isProd,
+      sourcemap: false,
       minify: 'esbuild',
       target: 'esnext',
       assetsDir: 'assets',
@@ -79,7 +63,7 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks: {
             'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-            'ui-vendor': ['@radix-ui/react-icons', '@radix-ui/react-slot'],
+            'ui-vendor': ['@radix-ui/react-icons', '@radix-ui/react-slot', '@radix-ui/react-dialog'],
             'utils-vendor': ['lodash-es']
           },
           chunkFileNames: 'assets/js/[name]-[hash].js',
