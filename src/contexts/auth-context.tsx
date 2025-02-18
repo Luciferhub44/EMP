@@ -1,10 +1,11 @@
 import type { Employee } from "@/types/employee"
 import { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react"
+
 interface AuthContextType {
   user: Employee | null
   loading: boolean
   error: string | null
-  login: (agentId: string, password: string) => Promise<void>
+  login: (agentId: string, password: string, role: string) => Promise<void>
   logout: () => void
 }
 
@@ -49,7 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth()
   }, [])
 
-  const login = async (agentId: string, password: string) => {
+  const login = async (agentId: string, password: string, role: string) => {
     try {
       setLoading(true)
       setError(null)
@@ -61,18 +62,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
         body: JSON.stringify({
           agentId,
-          password
+          password,
+          role
         })
       })
 
+      const data = await response.json()
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || "Login failed")
+        throw new Error(data.message || "Login failed")
       }
 
-      const { user: userData, token } = await response.json()
-      setUser(userData)
-      localStorage.setItem("auth_token", token)
+      setUser(data.user)
+      localStorage.setItem("auth_token", data.token)
       
     } catch (error) {
       console.error("Login failed:", error)

@@ -27,7 +27,7 @@ export default function SignInPage() {
     setLoading(true)
 
     try {
-      await login(credentials.agentId, credentials.password)
+      await login(credentials.agentId, credentials.password, credentials.role)
       toast({
         title: "Welcome",
         description: `Successfully signed in as ${credentials.role}`,
@@ -78,11 +78,12 @@ export default function SignInPage() {
                 value={credentials.agentId}
                 onChange={(e) => setCredentials(prev => ({
                   ...prev,
-                  agentId: e.target.value
+                  agentId: e.target.value.toUpperCase()
                 }))}
                 required
                 disabled={loading}
                 autoComplete="username"
+                placeholder="Enter your agent ID"
               />
             </div>
             <div className="space-y-2">
@@ -98,6 +99,7 @@ export default function SignInPage() {
                 required
                 disabled={loading}
                 autoComplete="current-password"
+                placeholder="Enter your password"
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
