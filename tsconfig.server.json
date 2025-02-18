@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "jsx": "react-jsx",
+    "allowJs": true,
     "target": "ES2020",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
