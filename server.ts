@@ -1,7 +1,7 @@
 import pkg from 'pg';
 const { Pool } = pkg;
 
-import express from 'express';
+import express, { Router, Request, Response } from 'express';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
@@ -15,13 +15,11 @@ import { orders } from "./src/data/orders.js"
 import { transportCompanies, transportOrders } from "./src/data/transport.js"
 import { defaultSettings } from './src/config/default-settings.js';
 import bcrypt from 'bcryptjs';
+import multer from 'multer';
 
 // Interfaces
 interface DbRow {
-  data: {
-    id: string;
-    [key: string]: any;
-  };
+  data: any;
 }
 
 interface Employee {
@@ -106,6 +104,24 @@ interface Payment {
   };
   createdAt: string;
   paidAt?: string;
+}
+
+// Add new FulfillmentPayment interface (keep existing Payment interface for payroll)
+interface FulfillmentPayment {
+  id: string;
+  fulfillmentId: string;
+  userId: string;
+  amount: number;
+  method: 'bank-wire' | 'crypto';
+  status: 'pending' | 'confirmed' | 'rejected';
+  receipt: string;
+  note?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface RequestWithFile extends Request {
+  file?: Express.Multer.File;
 }
 
 const DEFAULT_PORT = Number(process.env.PORT) || 3001;
@@ -495,7 +511,7 @@ app.post('/api/db/query', async (req, res) => {
   try {
     const result = await executeQuery(text, params);
     console.log('Query success:', result.rows.length, 'rows');
-    res.json(result);
+    res.json(result.rows.map((row: DbRow) => row.data));
   } catch (err: unknown) {
     const error = err as Error;
     console.error('Query error details:', {
@@ -526,7 +542,7 @@ app.get('/api/debug/employees', async (req, res) => {
   try {
     const result = await executeQuery('SELECT * FROM employees', []);
     console.log('Current employees:', result.rows);
-    res.json(result.rows);
+    res.json(result.rows.map((row: DbRow) => row.data));
   } catch (error) {
     console.error('Failed to fetch employees:', error);
     res.status(500).json({ error: 'Failed to fetch employees' });
@@ -1739,7 +1755,7 @@ app.post('/api/products', async (req, res) => {
 
     // Create initial inventory records with 0 quantity for all warehouses
     const warehousesResult = await executeQuery('SELECT data FROM warehouses', []);
-    const warehouses = warehousesResult.rows.map(row => row.data);
+    const warehouses = warehousesResult.rows.map((row: DbRow) => row.data);
 
     for (const warehouse of warehouses) {
       await executeQuery(
@@ -1804,12 +1820,62 @@ app.get('/api/product-categories', async (req, res) => {
       return res.json(defaultCategories);
     }
 
-    res.json(result.rows.map(row => row.data));
+    res.json(result.rows.map((row: DbRow) => row.data));
   } catch (error) {
     console.error('Failed to fetch product categories:', error);
     res.status(500).json({ error: 'Failed to fetch product categories' });
   }
 });
+
+// Add fulfillment payment endpoints
+const storage = multer.diskStorage({
+  destination: './uploads/receipts',
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname}`);
+  }
+});
+
+const upload = multer({ storage });
+
+const router = Router();
+
+router.post('/api/payments/confirm', async (req: RequestWithFile, res: Response) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { fulfillmentId, userId, method, amount, note } = req.body;
+    const receipt = req.file?.filename;
+
+    const paymentId = `FPAY-${crypto.randomBytes(8).toString('hex')}`;
+    const payment: FulfillmentPayment = {
+      id: paymentId,
+      fulfillmentId,
+      userId,
+      amount,
+      method,
+      status: 'pending',
+      receipt: receipt || '',
+      note,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    await executeQuery(
+      'INSERT INTO fulfillment_payments (data) VALUES ($1)',
+      [JSON.stringify(payment)]
+    );
+
+    res.json(payment);
+  } catch (error) {
+    console.error('Payment confirmation failed:', error);
+    res.status(500).json({ error: 'Failed to confirm payment' });
+  }
+});
+
+app.use(router);
 
 // Start the server
 startServer().catch(console.error);
