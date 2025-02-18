@@ -605,119 +605,66 @@ async function initializeAdminUser() {
 // Login endpoint
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { agentId, password } = req.body;
-    console.log('Login attempt for:', agentId); // Debug log
+    const { agentId, password } = req.body
 
-    const result = await executeQuery(
-      'SELECT data FROM employees WHERE data->>\'agentId\' = $1',
-      [agentId],
-      pool
-    );
-
-    console.log('Query result:', result.rows); // Debug log
-
-    if (result.rows.length === 0) {
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
-
-    const employee = result.rows[0].data;
+    // Find employee by agentId
+    const employee = employees.find(emp => emp.agentId === agentId.toUpperCase())
     
-    // Debug log (without sensitive data)
-    console.log('Found employee:', { 
-      id: employee.id, 
-      agentId: employee.agentId, 
-      role: employee.role 
-    });
-
-    // Verify password using stored hash
-    const isValid = await verifyPassword(password, employee.passwordHash);
-    console.log('Password verification:', isValid); // Debug log
-
-    if (!isValid) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+    if (!employee) {
+      return res.status(401).json({ error: 'Invalid credentials' })
     }
 
-    // Create session with proper ID
-    const sessionId = crypto.randomUUID();
-    const sessionData = {
-      id: sessionId,
-      employeeId: employee.id,
-      role: employee.role,
-      token: `session-${employee.id}-${Date.now()}`,
-      createdAt: new Date().toISOString()
-    };
+    // Verify password
+    const [hash, salt] = employee.passwordHash.split(':')
+    const verifyHash = crypto
+      .pbkdf2Sync(password, salt, 1000, 64, 'sha512')
+      .toString('hex')
 
-    await executeQuery(
-      'INSERT INTO sessions (id, data) VALUES ($1, $2)',
-      [sessionId, sessionData],
-      pool
-    );
+    if (hash !== verifyHash) {
+      return res.status(401).json({ error: 'Invalid credentials' })
+    }
 
-    res.json({ 
-      token: sessionData.token,
-      user: {
-        id: employee.id,
-        role: employee.role,
-        name: employee.name
-      }
-    });
+    // Create session token
+    const token = `session-${employee.id}-${Date.now()}`
+    
+    // Return sanitized user data
+    const { passwordHash, ...safeEmployee } = employee
+    
+    res.json({
+      token,
+      user: safeEmployee
+    })
   } catch (error) {
-    console.error('Login failed:', error);
-    res.status(500).json({ message: 'Authentication failed' });
+    console.error('Login failed:', error)
+    res.status(500).json({ error: 'Authentication failed' })
   }
-});
+})
 
-// Session validation endpoint
 app.get('/api/auth/session', async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
+    const token = req.headers.authorization?.split(' ')[1]
     if (!token) {
-      return res.status(401).json({ message: 'No token provided' });
+      return res.status(401).json({ error: 'Unauthorized' })
     }
 
-    // Verify session
-    const sessionResult = await executeQuery(
-      'SELECT data FROM sessions WHERE data->>\'token\' = $1',
-      [token],
-      pool
-    );
+    const employeeId = token.split('-')[1]
+    const employee = employees.find(emp => emp.id === employeeId)
 
-    if (sessionResult.rows.length === 0) {
-      return res.status(401).json({ message: 'Invalid session' });
+    if (!employee) {
+      return res.status(401).json({ error: 'Invalid session' })
     }
 
-    const session = sessionResult.rows[0].data;
-
-    // Check if session is expired
-    if (new Date(session.expiresAt) < new Date()) {
-      await executeQuery(
-        'DELETE FROM sessions WHERE data->>\'token\' = $1',
-        [token],
-        pool
-      );
-      return res.status(401).json({ message: 'Session expired' });
-    }
-
-    // Get employee data
-    const employeeResult = await executeQuery(
-      'SELECT data FROM employees WHERE data->>\'id\' = $1',
-      [session.employeeId],
-      pool
-    );
-
-    if (employeeResult.rows.length === 0) {
-      return res.status(401).json({ message: 'Employee not found' });
-    }
-
-    const employee = employeeResult.rows[0].data;
-    const { passwordHash, ...safeEmployee } = employee;
-
-    res.json({ user: safeEmployee });
+    const { passwordHash, ...safeEmployee } = employee
+    res.json({ user: safeEmployee })
   } catch (error) {
-    console.error('Session validation failed:', error);
-    res.status(500).json({ message: 'Session validation failed' });
+    console.error('Session validation failed:', error)
+    res.status(500).json({ error: 'Session validation failed' })
   }
-});
+})
+
+app.post('/api/auth/logout', (req, res) => {
+  res.json({ success: true })
+})
 
 // Add employee creation endpoint (requires admin)
 app.post('/api/employees', async (req, res) => {
