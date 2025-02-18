@@ -1934,5 +1934,103 @@ app.put('/api/orders/:orderId', async (req, res) => {
   }
 });
 
+// Create new order
+app.post('/api/orders', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+
+    const order = {
+      id: `ORD${String(Date.now()).slice(-6)}`,
+      ...req.body,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      history: [{
+        status: 'pending',
+        timestamp: new Date().toISOString(),
+        note: 'Order created'
+      }]
+    };
+
+    await executeQuery(
+      'INSERT INTO orders (data) VALUES ($1)',
+      [JSON.stringify(order)]
+    );
+
+    // Create initial fulfillment
+    const fulfillment = {
+      id: `FUL${String(Date.now()).slice(-6)}`,
+      orderId: order.id,
+      status: 'pending',
+      history: [{
+        status: 'pending',
+        timestamp: new Date().toISOString(),
+        note: 'Fulfillment created'
+      }],
+      trackingNumber: '',
+      carrier: '',
+      notes: '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    await executeQuery(
+      'INSERT INTO fulfillments (data) VALUES ($1)',
+      [JSON.stringify(fulfillment)]
+    );
+
+    res.status(201).json(order);
+  } catch (error) {
+    console.error('Failed to create order:', error);
+    res.status(500).json({ error: 'Failed to create order' });
+  }
+});
+
+// Update fulfillment status
+app.put('/api/fulfillments/:orderId', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { orderId } = req.params;
+    const updates = req.body;
+
+    const result = await executeQuery(
+      'SELECT data FROM fulfillments WHERE data->>\'orderId\' = $1',
+      [orderId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Fulfillment not found' });
+    }
+
+    const fulfillment = result.rows[0].data;
+    const updatedFulfillment = {
+      ...fulfillment,
+      ...updates,
+      updatedAt: new Date().toISOString(),
+      history: [
+        ...fulfillment.history,
+        {
+          status: updates.status || 'updated',
+          timestamp: new Date().toISOString(),
+          note: updates.notes || 'Fulfillment updated'
+        }
+      ]
+    };
+
+    await executeQuery(
+      'UPDATE fulfillments SET data = $1 WHERE data->>\'orderId\' = $2',
+      [JSON.stringify(updatedFulfillment), orderId]
+    );
+
+    res.json(updatedFulfillment);
+  } catch (error) {
+    console.error('Failed to update fulfillment:', error);
+    res.status(500).json({ error: 'Failed to update fulfillment' });
+  }
+});
+
 // Start the server
 startServer().catch(console.error);
