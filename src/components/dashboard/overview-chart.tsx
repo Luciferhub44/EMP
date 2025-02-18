@@ -1,4 +1,4 @@
-import * as React from "react"
+import { useState, useEffect } from "react"
 import {
   LineChart,
   Line,
@@ -72,10 +72,10 @@ async function getChartData(): Promise<ChartData[]> {
 }
 
 export function Overview() {
-  const [data, setData] = React.useState<ChartData[]>([])
-  const [loading, setLoading] = React.useState(true)
+  const [data, setData] = useState<ChartData[]>([])
+  const [loading, setLoading] = useState(true)
 
-  React.useEffect(() => {
+  useEffect(() => {
     const loadData = async () => {
       try {
         const chartData = await getChartData()

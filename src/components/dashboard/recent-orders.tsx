@@ -6,13 +6,13 @@ import { formatDate, formatCurrency } from "@/lib/utils"
 import { ArrowRight } from "lucide-react"
 import { db } from "@/lib/api/db"
 import { Order } from "@/types"
-import * as React from "react"
+import { useState, useEffect } from "react"
 
 export function RecentOrders() {
-  const [recentOrders, setRecentOrders] = React.useState<Order[]>([])
-  const [loading, setLoading] = React.useState(true)
+  const [recentOrders, setRecentOrders] = useState<Order[]>([])
+  const [loading, setLoading] = useState(true)
 
-  React.useEffect(() => {
+  useEffect(() => {
     async function loadOrders() {
       try {
         const { rows } = await db.query(

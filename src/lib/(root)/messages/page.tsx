@@ -1,4 +1,4 @@
-import * as React from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -15,11 +15,11 @@ import type { ChatThread } from "@/types/messages"
 export default function MessagesPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [threads, setThreads] = React.useState<ChatThread[]>([])
-  const [isLoading, setIsLoading] = React.useState(true)
-  const [showNewThread, setShowNewThread] = React.useState(false)
+  const [threads, setThreads] = useState<ChatThread[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [showNewThread, setShowNewThread] = useState(false)
 
-  React.useEffect(() => {
+  useEffect(() => {
     const loadThreads = async () => {
       if (!user) return
       setIsLoading(true)

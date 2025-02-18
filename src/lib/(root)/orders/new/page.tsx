@@ -1,4 +1,4 @@
-import * as React from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAuth } from "@/contexts/auth-context"
 import { toast } from "@/components/ui/use-toast"
@@ -51,11 +51,11 @@ const defaultFormData: OrderFormData = {
 export default function NewOrderPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [formData, setFormData] = React.useState<OrderFormData>(defaultFormData)
-  const [selectedProduct, setSelectedProduct] = React.useState("")
-  const [quantity, setQuantity] = React.useState("1")
+  const [formData, setFormData] = useState<OrderFormData>(defaultFormData)
+  const [selectedProduct, setSelectedProduct] = useState("")
+  const [quantity, setQuantity] = useState("1")
 
-  React.useEffect(() => {
+  useEffect(() => {
     // Redirect non-admin users
     if (user && user.role !== 'admin') {
       toast({

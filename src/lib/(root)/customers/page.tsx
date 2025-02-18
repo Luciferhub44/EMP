@@ -1,4 +1,4 @@
-import * as React from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,11 +12,11 @@ import { useNavigate } from "react-router-dom"
 export default function CustomersPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [customers, setCustomers] = React.useState<Customer[]>([])
-  const [search, setSearch] = React.useState("")
-  const [isLoading, setIsLoading] = React.useState(true)
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [search, setSearch] = useState("")
+  const [isLoading, setIsLoading] = useState(true)
 
-  React.useEffect(() => {
+  useEffect(() => {
     const loadCustomers = async () => {
       if (!user) return
       setIsLoading(true)
@@ -38,7 +38,7 @@ export default function CustomersPage() {
     loadCustomers()
   }, [user])
 
-  const filteredCustomers = React.useMemo(() => {
+  const filteredCustomers = useMemo(() => {
     const searchLower = search.toLowerCase()
     return customers.filter(customer => 
       customer.name.toLowerCase().includes(searchLower) ||

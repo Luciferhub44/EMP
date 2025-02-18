@@ -1,4 +1,4 @@
-import * as React from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -46,7 +46,7 @@ const tourSteps: TourStep[] = [
 
 export function TourGuide() {
   const [showTour, setShowTour] = useDbStorage("show-tour", true)
-  const [currentStep, setCurrentStep] = React.useState(0)
+  const [currentStep, setCurrentStep] = useState(0)
 
   const handleNext = () => {
     if (currentStep < tourSteps.length - 1) {

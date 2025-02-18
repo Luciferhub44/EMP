@@ -1,4 +1,4 @@
-import * as React from "react"
+import { useState, useEffect } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -16,12 +16,12 @@ export default function EmployeeDetailsPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [employee, setEmployee] = React.useState<Employee | null>(null)
-  const [payments, setPayments] = React.useState<PaymentHistoryType[]>([])
-  const [isLoading, setIsLoading] = React.useState(true)
-  const [showPaymentDialog, setShowPaymentDialog] = React.useState(false)
+  const [employee, setEmployee] = useState<Employee | null>(null)
+  const [payments, setPayments] = useState<PaymentHistoryType[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false)
 
-  React.useEffect(() => {
+  useEffect(() => {
     const loadEmployeeData = async () => {
       if (!id || !user) return
       setIsLoading(true)

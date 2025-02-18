@@ -1,4 +1,4 @@
-import * as React from "react"
+import { useState } from "react"
 import { Link } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -50,7 +50,7 @@ const checklistItems: ChecklistItem[] = [
 ]
 
 export function OnboardingChecklist() {
-  const [items, setItems] = React.useState(() => {
+  const [items, setItems] = useState(() => {
     const saved = localStorage.getItem("onboarding-checklist")
     return saved ? JSON.parse(saved) : checklistItems
   })

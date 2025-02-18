@@ -1,4 +1,4 @@
-import * as React from "react"
+import { createContext, useContext, useState, useEffect, useCallback } from "react"
 import type { Notification } from "@/types/notification"
 
 interface NotificationContextType {
@@ -11,13 +11,13 @@ interface NotificationContextType {
   error: string | null
 }
 
-const NotificationContext = React.createContext<NotificationContextType | undefined>(undefined)
+const NotificationContext = createContext<NotificationContextType | undefined>(undefined)
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
-  const [notifications, setNotifications] = React.useState<Notification[]>([])
-  const [error, setError] = React.useState<string | null>(null)
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [error, setError] = useState<string | null>(null)
 
-  React.useEffect(() => {
+  useEffect(() => {
     const fetchNotifications = async () => {
       try {
         const response = await fetch('/api/notifications', {
@@ -43,7 +43,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   const unreadCount = notifications.filter(n => !n.isRead).length
 
-  const addNotification = React.useCallback((notification: Omit<Notification, "id" | "timestamp" | "isRead">) => {
+  const addNotification = useCallback((notification: Omit<Notification, "id" | "timestamp" | "isRead">) => {
     const newNotification: Notification = {
       ...notification,
       id: `not-${Date.now()}`,
@@ -53,7 +53,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     setNotifications(prev => [newNotification, ...prev])
   }, [])
 
-  const markAsRead = React.useCallback((notificationId: string) => {
+  const markAsRead = useCallback((notificationId: string) => {
     setNotifications(prev =>
       prev.map(n =>
         n.id === notificationId ? { ...n, isRead: true } : n
@@ -61,13 +61,13 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     )
   }, [])
 
-  const markAllAsRead = React.useCallback(() => {
+  const markAllAsRead = useCallback(() => {
     setNotifications(prev =>
       prev.map(n => ({ ...n, isRead: true }))
     )
   }, [])
 
-  const clearAll = React.useCallback(() => {
+  const clearAll = useCallback(() => {
     setNotifications([])
   }, [])
 
@@ -89,7 +89,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 }
 
 export function useNotifications() {
-  const context = React.useContext(NotificationContext)
+  const context = useContext(NotificationContext)
   if (context === undefined) {
     throw new Error('useNotifications must be used within a NotificationProvider')
   }

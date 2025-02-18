@@ -1,4 +1,4 @@
-import * as React from "react"
+import { useState, useEffect } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -20,12 +20,12 @@ export default function FulfillmentPage() {
   const { orderId } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [order, setOrder] = React.useState<Order | null>(null)
-  const [fulfillment, setFulfillment] = React.useState<FulfillmentDetails | null>(null)
-  const [isLoading, setIsLoading] = React.useState(true)
-  const [isUpdating, setIsUpdating] = React.useState(false)
+  const [order, setOrder] = useState<Order | null>(null)
+  const [fulfillment, setFulfillment] = useState<FulfillmentDetails | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isUpdating, setIsUpdating] = useState(false)
 
-  React.useEffect(() => {
+  useEffect(() => {
     const loadFulfillment = async () => {
       if (!orderId || !user) return
       setIsLoading(true)

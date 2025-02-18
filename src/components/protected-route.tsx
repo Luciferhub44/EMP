@@ -1,4 +1,3 @@
-import * as React from "react"
 import { Navigate, useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "@/contexts/auth-context"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"

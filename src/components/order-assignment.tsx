@@ -1,4 +1,4 @@
-import * as React from "react"
+import { useState, useEffect } from "react"
 import {
   Select,
   SelectContent,
@@ -17,10 +17,10 @@ interface OrderAssignmentProps {
 }
 
 export function OrderAssignment({ orderId, currentAssignee }: OrderAssignmentProps) {
-  const [employees, setEmployees] = React.useState<Employee[]>([])
-  const [isLoading, setIsLoading] = React.useState(true)
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  React.useEffect(() => {
+  useEffect(() => {
     const loadEmployees = async () => {
       try {
         const data = await employeeService.getEmployees()

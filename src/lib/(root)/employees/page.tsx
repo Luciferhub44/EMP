@@ -1,4 +1,4 @@
-import * as React from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -40,11 +40,11 @@ import { useNavigate } from "react-router-dom"
 
 export default function EmployeesPage() {
   const { user } = useAuth()
-  const [employees, setEmployees] = React.useState<Employee[]>([])
-  const [loading, setLoading] = React.useState(true)
-  const [search, setSearch] = React.useState("")
-  const [isAddingEmployee, setIsAddingEmployee] = React.useState(false)
-  const [newEmployee, setNewEmployee] = React.useState<{
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState("")
+  const [isAddingEmployee, setIsAddingEmployee] = useState(false)
+  const [newEmployee, setNewEmployee] = useState<{
     name: string
     email: string
     agentId: string
@@ -57,13 +57,13 @@ export default function EmployeesPage() {
     role: "employee",
     password: "",
   })
-  const [resetPasswordFor, setResetPasswordFor] = React.useState<string | null>(null)
-  const [newPassword, setNewPassword] = React.useState("")
-  const [selectedEmployee, setSelectedEmployee] = React.useState<Employee | null>(null)
+  const [resetPasswordFor, setResetPasswordFor] = useState<string | null>(null)
+  const [newPassword, setNewPassword] = useState("")
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
   const navigate = useNavigate()
 
   // Load employees
-  React.useEffect(() => {
+  useEffect(() => {
     const loadEmployees = async () => {
       try {
         const data = await employeeService.getEmployees()
@@ -83,7 +83,7 @@ export default function EmployeesPage() {
   }, [])
 
   // Filter employees based on search
-  const filteredEmployees = React.useMemo(() => {
+  const filteredEmployees = useMemo(() => {
     const searchLower = search.toLowerCase()
     return employees.filter(employee => 
       employee.name.toLowerCase().includes(searchLower) ||

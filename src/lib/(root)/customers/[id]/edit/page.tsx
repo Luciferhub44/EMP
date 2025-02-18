@@ -1,4 +1,4 @@
-import * as React from "react"
+import { useState, useEffect } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -12,11 +12,11 @@ import type { Customer } from "@/types"
 export default function CustomerEditPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const [customer, setCustomer] = React.useState<Customer | null>(null)
-  const [isLoading, setIsLoading] = React.useState(true)
-  const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const [customer, setCustomer] = useState<Customer | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  React.useEffect(() => {
+  useEffect(() => {
     const loadCustomer = async () => {
       if (!id) return
       try {

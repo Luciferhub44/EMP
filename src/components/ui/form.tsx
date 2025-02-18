@@ -1,9 +1,8 @@
-import * as React from "react"
 import { cn } from "@/lib/utils"
-
+import { forwardRef } from "react"
 export interface FormProps extends React.FormHTMLAttributes<HTMLFormElement> {}
 
-const Form = React.forwardRef<HTMLFormElement, FormProps>(
+const Form = forwardRef<HTMLFormElement, FormProps>(
   ({ className, ...props }, ref) => {
     return (
       <form
@@ -19,7 +18,7 @@ const Form = React.forwardRef<HTMLFormElement, FormProps>(
 )
 Form.displayName = "Form"
 
-const FormField = React.forwardRef<
+const FormField = forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => {
@@ -33,7 +32,7 @@ const FormField = React.forwardRef<
 })
 FormField.displayName = "FormField"
 
-const FormLabel = React.forwardRef<
+const FormLabel = forwardRef<
   HTMLLabelElement,
   React.LabelHTMLAttributes<HTMLLabelElement>
 >(({ className, ...props }, ref) => {
@@ -50,7 +49,7 @@ const FormLabel = React.forwardRef<
 })
 FormLabel.displayName = "FormLabel"
 
-const FormControl = React.forwardRef<
+const FormControl = forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => {

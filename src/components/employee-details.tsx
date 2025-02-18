@@ -1,4 +1,4 @@
-import * as React from "react"
+import { useState } from "react"
 import {
   Dialog,
   DialogContent,
@@ -27,8 +27,8 @@ export function EmployeeDetails({
   onOpenChange,
   onUpdate 
 }: EmployeeDetailsProps) {
-  const [isUpdating, setIsUpdating] = React.useState(false)
-  const [formData, setFormData] = React.useState({
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [formData, setFormData] = useState({
     businessInfo: employee.businessInfo || {
       companyName: "",
       registrationNumber: "",

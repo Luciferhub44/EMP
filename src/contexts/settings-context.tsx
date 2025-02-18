@@ -1,6 +1,5 @@
-import * as React from "react"
 import { defaultSettings } from '@/config/default-settings'
-
+import { createContext, useContext, useState, useEffect, useCallback } from "react"
 interface UserSettings {
   notifications: {
     email: boolean
@@ -30,14 +29,14 @@ interface SettingsContextType {
   error: string | null
 }
 
-const SettingsContext = React.createContext<SettingsContextType | undefined>(undefined)
+const SettingsContext = createContext<SettingsContextType | undefined>(undefined)
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
-  const [settings, setSettings] = React.useState<UserSettings>(defaultSettings as UserSettings)
-  const [isLoading, setIsLoading] = React.useState(false)
-  const [error, setError] = React.useState<string | null>(null)
+  const [settings, setSettings] = useState<UserSettings>(defaultSettings as UserSettings)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  React.useEffect(() => {
+  useEffect(() => {
     const fetchSettings = async () => {
       try {
         const response = await fetch('/api/settings', {
@@ -61,7 +60,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     fetchSettings()
   }, [])
 
-  const updateSettings = React.useCallback(async (newSettings: Partial<UserSettings>) => {
+  const updateSettings = useCallback(async (newSettings: Partial<UserSettings>) => {
     setIsLoading(true)
     try {
       // Simulate API call
@@ -75,7 +74,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  const updateProfile = React.useCallback(async (profile: Partial<UserSettings['profile']>) => {
+  const updateProfile = useCallback(async (profile: Partial<UserSettings['profile']>) => {
     setIsLoading(true)
     try {
       // Simulate API call
@@ -92,7 +91,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  const updatePassword = React.useCallback(async (currentPassword: string, newPassword: string) => {
+  const updatePassword = useCallback(async (currentPassword: string, newPassword: string) => {
     setIsLoading(true)
     try {
       // Simulate API call
@@ -125,7 +124,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useSettings() {
-  const context = React.useContext(SettingsContext)
+  const context = useContext(SettingsContext)
   if (context === undefined) {
     throw new Error('useSettings must be used within a SettingsProvider')
   }

@@ -1,4 +1,4 @@
-import * as React from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,13 +25,13 @@ interface PaymentHistory {
 
 export default function ProfilePage() {
   const { user } = useAuth()
-  const [loading, setLoading] = React.useState(true)
-  const [employee, setEmployee] = React.useState<Employee | null>(null)
-  const [isUpdating, setIsUpdating] = React.useState(false)
-  const [payrollInfo, setPayrollInfo] = React.useState<PayrollInfo | null>(null)
-  const [paymentHistory, setPaymentHistory] = React.useState<PaymentHistory[]>([])
+  const [loading, setLoading] = useState(true)
+  const [employee, setEmployee] = useState<Employee | null>(null)
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [payrollInfo, setPayrollInfo] = useState<PayrollInfo | null>(null)
+  const [paymentHistory, setPaymentHistory] = useState<PaymentHistory[]>([])
 
-  React.useEffect(() => {
+  useEffect(() => {
     const loadProfile = async () => {
       if (!user) return
       

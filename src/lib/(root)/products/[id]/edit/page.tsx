@@ -1,4 +1,4 @@
-import * as React from "react"
+import { useState, useEffect } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -21,14 +21,14 @@ export default function EditProductPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
   
-  const [isLoading, setIsLoading] = React.useState(true)
-  const [isSubmitting, setIsSubmitting] = React.useState(false)
-  const [product, setProduct] = React.useState<Product | null>(null)
-  const [categories, setCategories] = React.useState<ProductCategory[]>([])
-  const [formData, setFormData] = React.useState<Partial<Product> | null>(null)
-  const [errors, setErrors] = React.useState<Record<string, string>>({})
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [product, setProduct] = useState<Product | null>(null)
+  const [categories, setCategories] = useState<ProductCategory[]>([])
+  const [formData, setFormData] = useState<Partial<Product> | null>(null)
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!user) {
       navigate('/login')
       return

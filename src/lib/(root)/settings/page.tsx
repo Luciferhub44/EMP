@@ -1,4 +1,4 @@
-import * as React from "react"
+import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -13,9 +13,9 @@ import { useNavigate } from "react-router-dom"
 
 export default function SettingsPage() {
   const { settings, updateSettings, updateProfile, updatePassword, isLoading } = useSettings()
-  const [currentPassword, setCurrentPassword] = React.useState("")
-  const [newPassword, setNewPassword] = React.useState("")
-  const [confirmPassword, setConfirmPassword] = React.useState("")
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const navigate = useNavigate()
 
   const handleProfileSubmit = async (e: React.FormEvent) => {

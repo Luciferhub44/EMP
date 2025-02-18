@@ -1,4 +1,4 @@
-import * as React from "react"
+import { useState, useEffect } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -12,12 +12,12 @@ import { Loader2 } from "lucide-react"
 export default function ProductPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const [product, setProduct] = React.useState<Product | null>(null)
-  const [loading, setLoading] = React.useState(true)
-  const [totalStockCount, setTotalStockCount] = React.useState(0)
-  const [isRestocking, setIsRestocking] = React.useState(false)
+  const [product, setProduct] = useState<Product | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [totalStockCount, setTotalStockCount] = useState(0)
+  const [isRestocking, setIsRestocking] = useState(false)
 
-  React.useEffect(() => {
+  useEffect(() => {
     async function loadData() {
       try {
         // Load product

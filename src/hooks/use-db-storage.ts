@@ -1,9 +1,8 @@
-import * as React from "react"
 import { db } from "@/lib/api/db"
-
+import { useState, useCallback } from "react"
 export function useDbStorage<T>(key: string, initialValue: T): [T, (value: T) => void] {
   // State to store our value
-  const [storedValue, setStoredValue] = React.useState<T>(() => {
+  const [storedValue, setStoredValue] = useState<T>(() => {
     try {
       // Try to get value from database on init
       const fetchInitialValue = async () => {
@@ -21,7 +20,7 @@ export function useDbStorage<T>(key: string, initialValue: T): [T, (value: T) =>
 
   // Return a wrapped version of useState's setter function that ...
   // ... persists the new value to database
-  const setValue = React.useCallback(async (value: T) => {
+  const setValue = useCallback(async (value: T) => {
     try {
       // Allow value to be a function so we have same API as useState
       const valueToStore = value instanceof Function ? value(storedValue) : value

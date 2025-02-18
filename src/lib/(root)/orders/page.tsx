@@ -1,4 +1,4 @@
-import * as React from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Link } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -49,11 +49,11 @@ function getPaymentStatusColor(status: Order['paymentStatus']) {
 
 export default function OrdersPage() {
   const { user } = useAuth()
-  const [orders, setOrders] = React.useState<Order[]>([])
-  const [search, setSearch] = React.useState("")
-  const [isLoading, setIsLoading] = React.useState(true)
+  const [orders, setOrders] = useState<Order[]>([])
+  const [search, setSearch] = useState("")
+  const [isLoading, setIsLoading] = useState(true)
 
-  React.useEffect(() => {
+  useEffect(() => {
     const loadOrders = async () => {
       if (!user) return
       setIsLoading(true)
@@ -78,7 +78,7 @@ export default function OrdersPage() {
     loadOrders()
   }, [user])
 
-  const filteredOrders = React.useMemo(() => {
+  const filteredOrders = useMemo(() => {
     return orders.filter(order => {
       const searchLower = search.toLowerCase()
       return (

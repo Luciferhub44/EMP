@@ -1,4 +1,4 @@
-import * as React from "react"
+import { useState, useEffect } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -21,24 +21,24 @@ export default function ProductInventoryPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
   
-  const [isLoading, setIsLoading] = React.useState(true)
-  const [isSubmitting, setIsSubmitting] = React.useState(false)
-  const [product, setProduct] = React.useState<Product | null>(null)
-  const [warehouses, setWarehouses] = React.useState<Warehouse[]>([])
-  const [warehouseStocks, setWarehouseStocks] = React.useState<Record<string, number>>({})
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [product, setProduct] = useState<Product | null>(null)
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([])
+  const [warehouseStocks, setWarehouseStocks] = useState<Record<string, number>>({})
   
-  const [updateData, setUpdateData] = React.useState({
+  const [updateData, setUpdateData] = useState({
     warehouseId: "",
     quantity: "",
   })
   
-  const [transferData, setTransferData] = React.useState({
+  const [transferData, setTransferData] = useState({
     fromWarehouse: "",
     toWarehouse: "",
     quantity: "",
   })
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!user) {
       navigate('/login')
       return

@@ -1,6 +1,5 @@
-import * as React from "react"
 import type { Employee } from "@/types/employee"
-
+import { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react"
 interface AuthContextType {
   user: Employee | null
   loading: boolean
@@ -9,14 +8,14 @@ interface AuthContextType {
   logout: () => void
 }
 
-const AuthContext = React.createContext<AuthContextType | undefined>(undefined)
+const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = React.useState<Employee | null>(null)
-  const [loading, setLoading] = React.useState(true)
-  const [error, setError] = React.useState<string | null>(null)
+  const [user, setUser] = useState<Employee | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  React.useEffect(() => {
+  useEffect(() => {
     const initAuth = async () => {
       try {
         const token = localStorage.getItem("auth_token")
@@ -90,12 +89,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const logout = React.useCallback(() => {
+  const logout = useCallback(() => {
     setUser(null)
     localStorage.removeItem("auth_token")
   }, [])
 
-  const value = React.useMemo(() => ({
+  const value = useMemo(() => ({
     user,
     loading,
     error,
@@ -111,7 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useAuth() {
-  const context = React.useContext(AuthContext)
+  const context = useContext(AuthContext)
   if (context === undefined) {
     throw new Error("useAuth must be used within an AuthProvider")
   }

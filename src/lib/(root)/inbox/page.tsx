@@ -1,4 +1,4 @@
-import * as React from "react"
+import { useState, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -54,10 +54,10 @@ function getNotificationColor(type: NotificationType): string {
 export default function InboxPage() {
   const navigate = useNavigate()
   const { notifications, markAsRead, markAllAsRead, clearAll } = useNotifications()
-  const [search, setSearch] = React.useState("")
-  const [selectedType, setSelectedType] = React.useState<NotificationType | "all">("all")
+  const [search, setSearch] = useState("")
+  const [selectedType, setSelectedType] = useState<NotificationType | "all">("all")
 
-  const filteredNotifications = React.useMemo(() => {
+  const filteredNotifications = useMemo(() => {
     return notifications.filter(notification => {
       const matchesSearch = 
         notification.title.toLowerCase().includes(search.toLowerCase()) ||

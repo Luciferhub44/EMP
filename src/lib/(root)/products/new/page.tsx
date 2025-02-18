@@ -1,4 +1,4 @@
-import * as React from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -40,12 +40,12 @@ const defaultProduct = {
 export default function NewProductPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [isLoading, setIsLoading] = React.useState(false)
-  const [categories, setCategories] = React.useState<ProductCategory[]>([])
-  const [formData, setFormData] = React.useState(defaultProduct)
-  const [errors, setErrors] = React.useState<Record<string, string>>({})
+  const [isLoading, setIsLoading] = useState(false)
+  const [categories, setCategories] = useState<ProductCategory[]>([])
+  const [formData, setFormData] = useState(defaultProduct)
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!user) {
       navigate('/login')
       return

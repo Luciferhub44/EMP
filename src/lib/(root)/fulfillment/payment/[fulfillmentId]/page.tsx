@@ -1,4 +1,4 @@
-import * as React from "react"
+import { useState, useRef } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -24,13 +24,13 @@ export default function PaymentPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
   
-  const [selectedMethod, setSelectedMethod] = React.useState("bank-wire")
-  const [selectedCrypto, setSelectedCrypto] = React.useState(0)
-  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = React.useState(false)
-  const [confirmationNote, setConfirmationNote] = React.useState("")
-  const [selectedFile, setSelectedFile] = React.useState<File | null>(null)
-  const fileInputRef = React.useRef<HTMLInputElement>(null)
-  const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const [selectedMethod, setSelectedMethod] = useState("bank-wire")
+  const [selectedCrypto, setSelectedCrypto] = useState(0)
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false)
+  const [confirmationNote, setConfirmationNote] = useState("")
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // In a real app, fetch fulfillment and quote details
   const amount = 15000 // This would come from the quote

@@ -1,4 +1,4 @@
-import * as React from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -14,11 +14,11 @@ interface TransportQuotesProps {
 }
 
 export function TransportQuotes({ orderId }: TransportQuotesProps) {
-  const [quotes, setQuotes] = React.useState<TransportQuote[]>([])
-  const [isLoading, setIsLoading] = React.useState(true)
-  const [isAccepting, setIsAccepting] = React.useState(false)
+  const [quotes, setQuotes] = useState<TransportQuote[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isAccepting, setIsAccepting] = useState(false)
 
-  React.useEffect(() => {
+  useEffect(() => {
     const loadQuotes = async () => {
       try {
         const data = await transportService.getQuotes(orderId)

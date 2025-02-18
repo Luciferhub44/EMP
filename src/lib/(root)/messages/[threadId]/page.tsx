@@ -1,4 +1,4 @@
-import * as React from "react"
+import { useState, useEffect, useRef } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -16,14 +16,14 @@ export default function ThreadPage() {
   const { threadId } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [thread, setThread] = React.useState<ChatThread | null>(null)
-  const [messages, setMessages] = React.useState<Message[]>([])
-  const [newMessage, setNewMessage] = React.useState("")
-  const [isLoading, setIsLoading] = React.useState(true)
-  const [isSending, setIsSending] = React.useState(false)
-  const messagesEndRef = React.useRef<HTMLDivElement>(null)
+  const [thread, setThread] = useState<ChatThread | null>(null)
+  const [messages, setMessages] = useState<Message[]>([])
+  const [newMessage, setNewMessage] = useState("")
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSending, setIsSending] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  React.useEffect(() => {
+  useEffect(() => {
     const loadThread = async () => {
       if (!user || !threadId) return
       setIsLoading(true)
@@ -51,7 +51,7 @@ export default function ThreadPage() {
   }, [threadId, user, navigate])
 
   // Scroll to bottom when messages change
-  React.useEffect(() => {
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 

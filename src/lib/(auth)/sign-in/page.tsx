@@ -1,4 +1,4 @@
-import * as React from "react"
+import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -8,8 +8,8 @@ import { toast } from "@/components/ui/use-toast"
 
 export default function SignInPage() {
   const { login } = useAuth()
-  const [loading, setLoading] = React.useState(false)
-  const [credentials, setCredentials] = React.useState({
+  const [loading, setLoading] = useState(false)
+  const [credentials, setCredentials] = useState({
     agentId: "",
     password: ""
   })

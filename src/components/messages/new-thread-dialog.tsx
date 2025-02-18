@@ -1,4 +1,4 @@
-import * as React from "react"
+import { useState } from "react"
 import {
   Dialog,
   DialogContent,
@@ -28,9 +28,9 @@ export function NewThreadDialog({
   onOpenChange,
   onSubmit
 }: NewThreadDialogProps) {
-  const [department, setDepartment] = React.useState("")
-  const [message, setMessage] = React.useState("")
-  const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const [department, setDepartment] = useState("")
+  const [message, setMessage] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

@@ -1,4 +1,4 @@
-import * as React from "react"
+import { useState } from "react"
 import { Link } from "react-router-dom"
 import { Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -10,7 +10,7 @@ import {
 import { mainNav } from "@/config/nav"
 
 export function MobileNav() {
-  const [open, setOpen] = React.useState(false)
+  const [open, setOpen] = useState(false)
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>

@@ -1,4 +1,4 @@
-import * as React from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -21,10 +21,10 @@ import type { Order } from "@/types/orders"
 export default function FulfillmentListPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [pendingOrders, setPendingOrders] = React.useState<Order[]>([])
-  const [isLoading, setIsLoading] = React.useState(true)
+  const [pendingOrders, setPendingOrders] = useState<Order[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  React.useEffect(() => {
+  useEffect(() => {
     const loadPendingOrders = async () => {
       if (!user) return
       setIsLoading(true)

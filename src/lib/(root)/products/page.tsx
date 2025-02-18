@@ -1,4 +1,4 @@
-import * as React from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -16,11 +16,11 @@ import type { Product } from "@/types/products"
 export default function ProductsPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [search, setSearch] = React.useState("")
-  const [products, setProducts] = React.useState<Product[]>([])
-  const [loading, setLoading] = React.useState(true)
+  const [search, setSearch] = useState("")
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
 
-  React.useEffect(() => {
+  useEffect(() => {
     const loadProducts = async () => {
       try {
         const data = await productService.getProducts()
@@ -40,7 +40,7 @@ export default function ProductsPage() {
     loadProducts()
   }, [])
 
-  const filteredProducts = React.useMemo(() => {
+  const filteredProducts = useMemo(() => {
     return products.filter(product => {
       const searchLower = search.toLowerCase()
       return (

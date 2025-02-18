@@ -1,4 +1,4 @@
-import * as React from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -11,12 +11,12 @@ import { toast } from "@/components/ui/use-toast"
 export default function DashboardPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [orders, setOrders] = React.useState<Order[]>([])
-  const [fulfillments, setFulfillments] = React.useState<FulfillmentDetails[]>([])
-  const [isLoading, setIsLoading] = React.useState(true)
-  const [error, setError] = React.useState<string | null>(null)
+  const [orders, setOrders] = useState<Order[]>([])
+  const [fulfillments, setFulfillments] = useState<FulfillmentDetails[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  React.useEffect(() => {
+  useEffect(() => {
     const loadDashboardData = async () => {
       if (!user) return
       setIsLoading(true)

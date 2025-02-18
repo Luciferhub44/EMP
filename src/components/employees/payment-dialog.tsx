@@ -1,4 +1,4 @@
-import * as React from "react"
+import { useState } from "react"  
 import {
   Dialog,
   DialogContent,
@@ -37,11 +37,11 @@ export function PaymentDialog({
   onSubmit,
   employeeName
 }: PaymentDialogProps) {
-  const [type, setType] = React.useState<PaymentType>('salary')
-  const [amount, setAmount] = React.useState("")
-  const [description, setDescription] = React.useState("")
-  const [reference, setReference] = React.useState("")
-  const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const [type, setType] = useState<PaymentType>('salary')
+  const [amount, setAmount] = useState("")
+  const [description, setDescription] = useState("")
+  const [reference, setReference] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
