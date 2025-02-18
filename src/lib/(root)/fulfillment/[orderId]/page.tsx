@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { formatDate } from "@/lib/utils"
-import { ArrowLeft, Loader2 } from "lucide-react"
+import { ArrowLeft, Loader2, DollarSign } from "lucide-react"
 import { ordersService } from "@/lib/services/orders"
 import { fulfillmentService } from "@/lib/services/fulfillment"
 import { useAuth } from "@/contexts/auth-context"
@@ -90,6 +90,10 @@ export default function FulfillmentPage() {
     }
   }
 
+  const handlePaymentRedirect = () => {
+    navigate(`/fulfillment/payment/${orderId}`)
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[50vh]">
@@ -133,6 +137,12 @@ export default function FulfillmentPage() {
             </p>
           </div>
         </div>
+        {order.paymentStatus !== 'paid' && (
+          <Button onClick={handlePaymentRedirect}>
+            <DollarSign className="mr-2 h-4 w-4" />
+            Process Payment
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">

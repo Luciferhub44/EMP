@@ -14,77 +14,23 @@ import {
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { formatCurrency } from "@/lib/utils"
-import { Building2, Bitcoin, Copy, QrCode, Upload, Check } from "lucide-react"
-
-const paymentMethods = [
-  {
-    id: "bank-wire",
-    name: "Bank Wire Transfer",
-    icon: Building2,
-    description: "2-3 business days processing time",
-    details: {
-      bankName: "Chase Bank",
-      accountName: "Heavy Equipment Inc",
-      accountNumber: "000123456789",
-      routingNumber: "021000021",
-      swift: "CHASUS33",
-      reference: "Please include your Fulfillment ID as reference"
-    }
-  },
-  {
-    id: "ach",
-    name: "ACH Transfer",
-    icon: Building2,
-    description: "3-5 business days processing time",
-    details: {
-      bankName: "Wells Fargo",
-      accountName: "Heavy Equipment Inc",
-      accountNumber: "987654321000",
-      routingNumber: "121000248",
-      reference: "Please include your Fulfillment ID as reference"
-    }
-  },
-  {
-    id: "crypto",
-    name: "Cryptocurrency",
-    icon: Bitcoin,
-    description: "Instant processing with blockchain confirmation",
-    details: {
-      networks: [
-        {
-          name: "Bitcoin (BTC)",
-          address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
-          qrCode: true
-        },
-        {
-          name: "Ethereum (ETH)",
-          address: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
-          qrCode: true
-        },
-        {
-          name: "USDC (ERC-20)",
-          address: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
-          qrCode: true
-        },
-        {
-          name: "USDT (TRC-20)",
-          address: "TXoiGd3WuHtqHwGrHJzHPVbGGJYkrECXJs",
-          qrCode: true
-        }
-      ]
-    }
-  }
-]
+import { Copy, QrCode, Upload, Check, Loader2 } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
+import { toast } from "@/components/ui/use-toast"
+import { paymentMethods } from "@/lib/constants/payment-methods"
 
 export default function PaymentPage() {
   const { fulfillmentId } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
+  
   const [selectedMethod, setSelectedMethod] = React.useState("bank-wire")
   const [selectedCrypto, setSelectedCrypto] = React.useState(0)
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = React.useState(false)
   const [confirmationNote, setConfirmationNote] = React.useState("")
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const [isSubmitting, setIsSubmitting] = React.useState(false)
 
   // In a real app, fetch fulfillment and quote details
   const amount = 15000 // This would come from the quote
@@ -102,23 +48,42 @@ export default function PaymentPage() {
   }
 
   const handleConfirmPayment = async () => {
-    try {
-      // In a real app, this would upload the file and send payment confirmation
-      if (selectedFile) {
-        const formData = new FormData()
-        formData.append('receipt', selectedFile)
-        formData.append('note', confirmationNote)
-        formData.append('fulfillmentId', fulfillmentId!)
-        formData.append('paymentMethod', selectedMethod)
+    if (!selectedFile || !user) return
+    setIsSubmitting(true)
 
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1500))
-        
-        alert("Payment confirmation submitted successfully!")
-        navigate("/fulfillment")
-      }
+    try {
+      const formData = new FormData()
+      formData.append('receipt', selectedFile)
+      formData.append('note', confirmationNote)
+      formData.append('fulfillmentId', fulfillmentId!)
+      formData.append('paymentMethod', selectedMethod)
+      formData.append('userId', user.id)
+
+      const response = await fetch('/api/payments/confirm', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: formData
+      })
+
+      if (!response.ok) throw new Error('Failed to confirm payment')
+
+      toast({
+        title: "Success",
+        description: "Payment confirmation submitted successfully",
+      })
+      navigate(`/fulfillment/${fulfillmentId}`)
     } catch (error) {
-      alert("Failed to submit payment confirmation. Please try again.")
+      console.error('Failed to confirm payment:', error)
+      toast({
+        title: "Error",
+        description: "Failed to submit payment confirmation",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmitting(false)
+      setIsConfirmDialogOpen(false)
     }
   }
 
@@ -253,9 +218,16 @@ export default function PaymentPage() {
                 </Button>
                 <Button 
                   onClick={handleConfirmPayment}
-                  disabled={!selectedFile}
+                  disabled={!selectedFile || isSubmitting}
                 >
-                  Submit Confirmation
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    'Submit Confirmation'
+                  )}
                 </Button>
               </DialogFooter>
             </DialogContent>
