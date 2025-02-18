@@ -5,13 +5,14 @@ import express from 'express';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
+import cors from 'cors';
 import { warehouses } from "./src/data/warehouses.js"
 import { products } from "./src/data/products.js"
 import { employees } from "./src/data/employees.js"
 import { customers } from "./src/data/customers.js"
 import { fulfillments } from "./src/data/fulfillments.js"
 import { orders } from "./src/data/orders.js"
-import { transportCompanies, transportOrders, } from "./src/data/transport.js"
+import { transportCompanies, transportOrders } from "./src/data/transport.js"
 
 const DEFAULT_PORT = process.env.PORT || 3001;
 const __filename = fileURLToPath(import.meta.url);
@@ -47,24 +48,71 @@ async function verifyPassword(password: string, hash: string): Promise<boolean> 
   });
 }
 
+// Middleware
+app.use(express.json());
+app.use(cors());
+app.use(express.static(path.join(__dirname, '../dist')));
+
+// Error handling middleware
+app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('Server error:', err);
+  res.status(500).json({
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'production' ? err.message : undefined
+  });
+});
+
 // Configure database pool
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
-  max: 20, // Maximum number of clients in the pool
-  idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-  connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
+
+// API health check
+app.get('/api/db/test', async (req, res) => {
+  try {
+    await pool.query('SELECT NOW()');
+    res.json({ success: true, timestamp: new Date().toISOString() });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      error: 'Database connection failed',
+      message: process.env.NODE_ENV === 'production' ? (error as Error).message : undefined
+    });
+  }
+});
+
+// Catch-all route for SPA
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api/')) {
+    next();
+    return;
+  }
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(`API available at http://localhost:${PORT}/api`);
+  console.log(`Frontend available at http://localhost:${PORT}`);
 });
 
 // Handle pool errors
-pool.on('error', (err, client) => {
+pool.on('error', (err) => {
   console.error('Unexpected error on idle client', err);
   process.exit(-1);
 });
 
-// Middleware
-app.use(express.json());
-app.use(express.static(path.join(__dirname, '../dist')));
+// Handle process termination
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  pool.end();
+  process.exit(0);
+});
 
 // Initialize database tables
 async function initializeDatabase() {
@@ -306,19 +354,6 @@ async function executeQuery(queryText: string, params: any[]): Promise<any> {
 }
 
 // API routes
-app.get('/api/db/test', async (req, res) => {
-  try {
-    interface TimeResult {
-      current_time: Date;
-    }
-    const result = await executeQuery('SELECT NOW() as current_time', []);
-    res.json({ success: true, timestamp: (result.rows[0] as unknown as TimeResult).current_time });
-  } catch (error) {
-    console.error('Database test failed:', error);
-    res.status(500).json({ error: 'Database connection failed' });
-  }
-});
-
 app.post('/api/db/query', async (req, res) => {
   const { text, params } = req.body;
   console.log('Received query:', { text, params });
@@ -429,11 +464,6 @@ app.post('/api/employees', async (req, res) => {
     console.error('Failed to create employee:', error);
     res.status(500).json({ error: 'Failed to create employee' });
   }
-});
-
-// Handle client-side routing
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
 // Start server function
