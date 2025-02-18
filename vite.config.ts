@@ -15,9 +15,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [
-      react({
-        plugins: [['@swc/plugin-react', { runtime: 'automatic' }]],
-      }),
+      react(),
       compression({
         algorithm: 'gzip',
         ext: '.gz',
