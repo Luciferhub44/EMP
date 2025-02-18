@@ -1098,7 +1098,7 @@ app.get('/api/fulfillments/:orderId', async (req, res) => {
     if (result.rows.length === 0) {
       // Create new fulfillment if none exists
       const fulfillment = {
-        id: `FUL-${crypto.randomBytes(8).toString('hex')}`,
+        id: `FUL${String(Date.now()).slice(-6)}`,
         orderId,
         status: 'pending',
         history: [{
@@ -1886,6 +1886,53 @@ async function ensureRecordExists(
 
   return result.rows[0].data;
 }
+
+// Update order
+app.put('/api/orders/:orderId', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { orderId } = req.params;
+    const updates = req.body;
+
+    // Check if order exists
+    const orderResult = await executeQuery(
+      'SELECT data FROM orders WHERE data->>\'id\' = $1',
+      [orderId]
+    );
+
+    if (orderResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Update order data
+    await executeQuery(
+      'UPDATE orders SET data = data || $1::jsonb WHERE data->>\'id\' = $2',
+      [JSON.stringify(updates), orderId]
+    );
+
+    // Add history entry
+    const historyEntry = {
+      action: 'update',
+      timestamp: new Date().toISOString(),
+      changes: updates,
+      userId: token.replace('session-', '')
+    };
+
+    await executeQuery(
+      'UPDATE orders SET data = jsonb_set(data, \'{history}\', COALESCE(data->\'history\', \'[]\'::jsonb) || $1::jsonb) WHERE data->>\'id\' = $2',
+      [JSON.stringify([historyEntry]), orderId]
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Failed to update order:', error);
+    res.status(500).json({ error: 'Failed to update order' });
+  }
+});
 
 // Start the server
 startServer().catch(console.error);
