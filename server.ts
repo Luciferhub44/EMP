@@ -883,32 +883,16 @@ const isAdmin = async (req: any, res: any, next: any) => {
 };
 
 // Employee management endpoints
-app.post('/api/employees/:employeeId/assign-order', async (req, res) => {
+app.post('/api/employees/assign-order', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { employeeId } = req.params;
-    const { orderId } = req.body;
+    const { employeeId, orderId } = req.body;
 
-    // Check if requester is admin or the employee themselves
-    const requesterResult = await executeQuery(
-      'SELECT data FROM employees WHERE data->>\'id\' = $1',
-      [token.replace('session-', '')]
-    );
-
-    if (requesterResult.rows.length === 0) {
-      return res.status(401).json({ error: 'Invalid session' });
-    }
-
-    const requester = requesterResult.rows[0].data;
-    if (requester.role !== 'admin' && requester.id !== employeeId) {
-      return res.status(403).json({ error: 'Insufficient permissions' });
-    }
-
-    // Verify employee exists
+    // Check if employee exists
     const employeeResult = await executeQuery(
       'SELECT data FROM employees WHERE data->>\'id\' = $1',
       [employeeId]
@@ -918,7 +902,7 @@ app.post('/api/employees/:employeeId/assign-order', async (req, res) => {
       return res.status(404).json({ error: 'Employee not found' });
     }
 
-    // Verify order exists and is unassigned
+    // Check if order exists
     const orderResult = await executeQuery(
       'SELECT data FROM orders WHERE data->>\'id\' = $1',
       [orderId]
@@ -928,28 +912,10 @@ app.post('/api/employees/:employeeId/assign-order', async (req, res) => {
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    const order = orderResult.rows[0].data;
-    if (order.assignedTo) {
-      return res.status(400).json({ error: 'Order already assigned' });
-    }
-
     // Update order assignment
     await executeQuery(
       'UPDATE orders SET data = jsonb_set(data, \'{assignedTo}\', $1::jsonb) WHERE data->>\'id\' = $2',
       [JSON.stringify(employeeId), orderId]
-    );
-
-    // Create notification for the employee
-    await executeQuery(
-      'INSERT INTO notifications (data) VALUES ($1)',
-      [JSON.stringify({
-        id: `not-${Date.now()}`,
-        userId: employeeId,
-        type: 'ORDER_ASSIGNED',
-        message: `Order ${orderId} has been assigned to you`,
-        timestamp: new Date().toISOString(),
-        isRead: false
-      })]
     );
 
     res.json({ success: true, message: 'Order assigned successfully' });

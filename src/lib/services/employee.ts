@@ -53,13 +53,11 @@ export const employeeService = {
   getAssignedOrders: (employeeId: string) =>
     baseService.handleRequest<Order[]>(`/api/employees/${employeeId}/assigned-orders`),
 
-  assignOrder: (employeeId: string, orderId: string, isAdmin: boolean) => {
-    if (!isAdmin) throw new Error("Only administrators can assign orders")
-    return baseService.handleRequest<void>(`/api/employees/${employeeId}/assign-order`, {
+  assignOrder: (orderId: string, employeeId: string) =>
+    baseService.handleRequest('/api/employees/assign-order', {
       method: 'POST',
-      body: JSON.stringify({ orderId })
-    })
-  },
+      body: JSON.stringify({ orderId, employeeId })
+    }),
 
   unassignOrder: (employeeId: string, orderId: string, isAdmin: boolean) => {
     if (!isAdmin) throw new Error("Only administrators can unassign orders")
