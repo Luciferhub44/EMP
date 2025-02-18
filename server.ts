@@ -13,7 +13,7 @@ import { customers } from "./src/data/customers.js"
 import { fulfillments } from "./src/data/fulfillments.js"
 import { orders } from "./src/data/orders.js"
 import { transportCompanies, transportOrders } from "./src/data/transport.js"
-import { defaultSettings } from './src/contexts/settings-context.js';
+import { defaultSettings } from './src/contexts/settings-context.tsx';
 
 const DEFAULT_PORT = Number(process.env.PORT) || 3001;
 const MAX_PORT_RETRIES = 10;
