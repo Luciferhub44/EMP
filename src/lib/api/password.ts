@@ -1,21 +1,22 @@
 import crypto from 'crypto';
 
 export async function hashPassword(password: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const salt = crypto.randomBytes(16).toString('hex');
-    crypto.pbkdf2(password, salt, 1000, 64, 'sha512', (err, derivedKey) => {
-      if (err) reject(err);
-      resolve(salt + ':' + derivedKey.toString('hex'));
-    });
-  });
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto
+    .pbkdf2Sync(password, salt, 1000, 64, 'sha512')
+    .toString('hex');
+  return `${hash}:${salt}`;
 }
 
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  return new Promise((resolve, reject) => {
-    const [salt, key] = hash.split(':');
-    crypto.pbkdf2(password, salt, 1000, 64, 'sha512', (err, derivedKey) => {
-      if (err) reject(err);
-      resolve(key === derivedKey.toString('hex'));
-    });
-  });
+  try {
+    const [hashedPart, salt] = hash.split(':');
+    const verifyHash = crypto
+      .pbkdf2Sync(password, salt, 1000, 64, 'sha512')
+      .toString('hex');
+    return hashedPart === verifyHash;
+  } catch (error) {
+    console.error('Password verification failed:', error);
+    return false;
+  }
 } 
