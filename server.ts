@@ -353,6 +353,20 @@ async function initializeDatabase() {
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS sessions (
+        id TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS notifications (
+        id TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
     `);
 
     // Create default admin user from environment variables
@@ -498,16 +512,13 @@ async function initializeDatabase() {
 }
 
 // Wrapper function for database queries with error handling
-async function executeQuery(queryText: string, params: any[]): Promise<any> {
-  const client = await pool.connect();
+async function executeQuery(queryText: string, params: any[], client: any): Promise<any> {
   try {
     const result = await client.query(queryText, params);
     return result;
   } catch (error) {
     console.error('Database query error:', error);
     throw error;
-  } finally {
-    client.release();
   }
 }
 
@@ -517,7 +528,7 @@ app.post('/api/db/query', async (req, res) => {
   console.log('Received query:', { text, params });
 
   try {
-    const result = await executeQuery(text, params);
+    const result = await executeQuery(text, params, pool);
     console.log('Query success:', result.rows.length, 'rows');
     res.json(result.rows.map((row: DbRow) => row.data));
   } catch (err: unknown) {
@@ -548,7 +559,7 @@ app.post('/api/auth/verify', async (req, res) => {
 // Add this route to check employee data
 app.get('/api/debug/employees', async (req, res) => {
   try {
-    const result = await executeQuery('SELECT * FROM employees', []);
+    const result = await executeQuery('SELECT * FROM employees', [], pool);
     console.log('Current employees:', result.rows);
     res.json(result.rows.map((row: DbRow) => row.data));
   } catch (error) {
@@ -562,7 +573,8 @@ async function initializeAdminUser() {
   try {
     const adminResult = await executeQuery(
       'SELECT data FROM employees WHERE data->>\'id\' = $1',
-      ['ADMIN001']
+      ['ADMIN001'],
+      pool
     );
 
     if (adminResult.rows.length === 0) {
@@ -579,7 +591,8 @@ async function initializeAdminUser() {
 
       await executeQuery(
         'INSERT INTO employees (data) VALUES ($1)',
-        [JSON.stringify(adminUser)]
+        [JSON.stringify(adminUser)],
+        pool
       );
       console.log('Admin user initialized');
     }
@@ -597,7 +610,8 @@ app.post('/api/auth/login', async (req, res) => {
 
     const result = await executeQuery(
       'SELECT data FROM employees WHERE data->>\'agentId\' = $1',
-      [agentId]
+      [agentId],
+      pool
     );
 
     console.log('Query result:', result.rows); // Debug log
@@ -623,27 +637,29 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    // Create session token
-    const token = `session-${employee.id}-${Date.now()}`;
-    
-    // Store session
+    // Create session with proper ID
+    const sessionId = crypto.randomUUID();
+    const sessionData = {
+      id: sessionId,
+      employeeId: employee.id,
+      role: employee.role,
+      token: `session-${employee.id}-${Date.now()}`,
+      createdAt: new Date().toISOString()
+    };
+
     await executeQuery(
-      'INSERT INTO sessions (data) VALUES ($1)',
-      [JSON.stringify({
-        token,
-        employeeId: employee.id,
-        role: employee.role,
-        createdAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-      })]
+      'INSERT INTO sessions (id, data) VALUES ($1, $2)',
+      [sessionId, sessionData],
+      pool
     );
 
-    // Remove sensitive data
-    const { passwordHash, ...safeEmployee } = employee;
-
-    res.json({
-      user: safeEmployee,
-      token
+    res.json({ 
+      token: sessionData.token,
+      user: {
+        id: employee.id,
+        role: employee.role,
+        name: employee.name
+      }
     });
   } catch (error) {
     console.error('Login failed:', error);
@@ -662,7 +678,8 @@ app.get('/api/auth/session', async (req, res) => {
     // Verify session
     const sessionResult = await executeQuery(
       'SELECT data FROM sessions WHERE data->>\'token\' = $1',
-      [token]
+      [token],
+      pool
     );
 
     if (sessionResult.rows.length === 0) {
@@ -675,7 +692,8 @@ app.get('/api/auth/session', async (req, res) => {
     if (new Date(session.expiresAt) < new Date()) {
       await executeQuery(
         'DELETE FROM sessions WHERE data->>\'token\' = $1',
-        [token]
+        [token],
+        pool
       );
       return res.status(401).json({ message: 'Session expired' });
     }
@@ -683,7 +701,8 @@ app.get('/api/auth/session', async (req, res) => {
     // Get employee data
     const employeeResult = await executeQuery(
       'SELECT data FROM employees WHERE data->>\'id\' = $1',
-      [session.employeeId]
+      [session.employeeId],
+      pool
     );
 
     if (employeeResult.rows.length === 0) {
@@ -726,7 +745,8 @@ app.post('/api/employees', async (req, res) => {
 
     await executeQuery(
       `INSERT INTO employees (id, email, role, data) VALUES ($1, $2, $3, $4)`,
-      [newEmployee.id, newEmployee.email, newEmployee.role, newEmployee]
+      [newEmployee.id, newEmployee.email, newEmployee.role, newEmployee],
+      pool
     );
 
     const { passwordHash: _, ...safeEmployee } = newEmployee;
@@ -748,7 +768,8 @@ app.get('/api/notifications', async (req, res) => {
     const userId = token.replace('session-', '');
     const notificationsResult = await executeQuery(
       'SELECT data FROM notifications WHERE data->>\'userId\' = $1 ORDER BY data->>\'timestamp\' DESC',
-      [userId]
+      [userId],
+      pool
     );
 
     // If no notifications exist yet, return empty array
@@ -774,7 +795,8 @@ app.get('/api/settings', async (req, res) => {
     const userId = token.replace('session-', '');
     const settingsResult = await executeQuery(
       'SELECT data FROM employees WHERE data->>\'id\' = $1',
-      [userId]
+      [userId],
+      pool
     );
 
     if (settingsResult.rows.length === 0) {
@@ -803,7 +825,8 @@ app.put('/api/settings', async (req, res) => {
 
     await executeQuery(
       'UPDATE employees SET data = jsonb_set(data, \'{settings}\', $1::jsonb) WHERE data->>\'id\' = $2',
-      [JSON.stringify(newSettings), userId]
+      [JSON.stringify(newSettings), userId],
+      pool
     );
 
     res.json({ success: true, settings: newSettings });
@@ -821,7 +844,8 @@ app.get('/api/orders', async (req, res) => {
 
     const employeeResult = await executeQuery(
       'SELECT data FROM employees WHERE data->>\'id\' = $1',
-      [token.replace('session-', '')]
+      [token.replace('session-', '')],
+      pool
     );
 
     if (employeeResult.rows.length === 0) {
@@ -838,7 +862,7 @@ app.get('/api/orders', async (req, res) => {
     }
 
     query += ' ORDER BY data->>\'createdAt\' DESC';
-    const ordersResult = await executeQuery(query, params);
+    const ordersResult = await executeQuery(query, params, pool);
     res.json(ordersResult.rows.map((row: DbRow) => row.data));
   } catch (error) {
     console.error('Failed to fetch orders:', error);
@@ -859,7 +883,8 @@ app.get('/api/customers', async (req, res) => {
     // Get employee data to check permissions
     const employeeResult = await executeQuery(
       'SELECT data FROM employees WHERE data->>\'id\' = $1',
-      [token.replace('session-', '')]
+      [token.replace('session-', '')],
+      pool
     );
 
     if (employeeResult.rows.length === 0) {
@@ -867,7 +892,7 @@ app.get('/api/customers', async (req, res) => {
     }
 
     // Get customers from database
-    const customersResult = await executeQuery('SELECT data FROM customers ORDER BY data->>\'createdAt\' DESC', []);
+    const customersResult = await executeQuery('SELECT data FROM customers ORDER BY data->>\'createdAt\' DESC', [], pool);
     const customers = customersResult.rows.map((row: DbRow) => row.data);
 
     res.json(customers);
@@ -885,7 +910,7 @@ app.get('/api/products', async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const productsResult = await executeQuery('SELECT data FROM products ORDER BY data->>\'createdAt\' DESC', []);
+    const productsResult = await executeQuery('SELECT data FROM products ORDER BY data->>\'createdAt\' DESC', [], pool);
     const products = productsResult.rows.map((row: DbRow) => row.data);
     res.json(products);
   } catch (error) {
@@ -903,9 +928,9 @@ app.get('/api/dashboard', async (req, res) => {
     }
 
     const [orders, products, customers] = await Promise.all([
-      executeQuery('SELECT COUNT(*) FROM orders', []),
-      executeQuery('SELECT COUNT(*) FROM products', []),
-      executeQuery('SELECT COUNT(*) FROM customers', [])
+      executeQuery('SELECT COUNT(*) FROM orders', [], pool),
+      executeQuery('SELECT COUNT(*) FROM products', [], pool),
+      executeQuery('SELECT COUNT(*) FROM customers', [], pool)
     ]);
 
     res.json({
@@ -946,7 +971,8 @@ const isAdmin = async (req: any, res: any, next: any) => {
 
     const result = await executeQuery(
       'SELECT data FROM employees WHERE data->>\'id\' = $1',
-      [token.replace('session-', '')]
+      [token.replace('session-', '')],
+      pool
     );
 
     if (result.rows.length === 0 || result.rows[0].data.role !== 'admin') {
@@ -972,7 +998,8 @@ app.post('/api/employees/assign-order', async (req, res) => {
     // Check if employee exists
     const employeeResult = await executeQuery(
       'SELECT data FROM employees WHERE data->>\'id\' = $1',
-      [employeeId]
+      [employeeId],
+      pool
     );
 
     if (employeeResult.rows.length === 0) {
@@ -982,7 +1009,8 @@ app.post('/api/employees/assign-order', async (req, res) => {
     // Check if order exists
     const orderResult = await executeQuery(
       'SELECT data FROM orders WHERE data->>\'id\' = $1',
-      [orderId]
+      [orderId],
+      pool
     );
 
     if (orderResult.rows.length === 0) {
@@ -992,7 +1020,8 @@ app.post('/api/employees/assign-order', async (req, res) => {
     // Update order assignment
     await executeQuery(
       'UPDATE orders SET data = jsonb_set(data, \'{assignedTo}\', $1::jsonb) WHERE data->>\'id\' = $2',
-      [JSON.stringify(employeeId), orderId]
+      [JSON.stringify(employeeId), orderId],
+      pool
     );
 
     res.json({ success: true, message: 'Order assigned successfully' });
@@ -1007,7 +1036,8 @@ app.get('/api/employees', isAdmin, async (req, res) => {
   try {
     const employeesResult = await executeQuery(
       'SELECT data FROM employees ORDER BY data->>\'name\' ASC',
-      []
+      [],
+      pool
     );
 
     const employees = employeesResult.rows.map((row: DbRow) => {
@@ -1036,7 +1066,8 @@ app.put('/api/employees/:employeeId', async (req, res) => {
     // Check permissions
     const requesterResult = await executeQuery(
       'SELECT data FROM employees WHERE data->>\'id\' = $1',
-      [token.replace('session-', '')]
+      [token.replace('session-', '')],
+      pool
     );
 
     if (requesterResult.rows.length === 0) {
@@ -1056,7 +1087,8 @@ app.put('/api/employees/:employeeId', async (req, res) => {
 
     await executeQuery(
       'UPDATE employees SET data = data || $1::jsonb WHERE data->>\'id\' = $2',
-      [JSON.stringify(updates), employeeId]
+      [JSON.stringify(updates), employeeId],
+      pool
     );
 
     res.json({ success: true, message: 'Employee updated successfully' });
@@ -1076,7 +1108,8 @@ app.get('/api/orders/pending', async (req, res) => {
 
     const pendingOrdersResult = await executeQuery(
       'SELECT data FROM orders WHERE data->>\'status\' = $1 ORDER BY data->>\'createdAt\' DESC',
-      ['pending']
+      ['pending'],
+      pool
     );
     const pendingOrders = pendingOrdersResult.rows.map((row: DbRow) => row.data);
     res.json(pendingOrders);
@@ -1094,7 +1127,7 @@ app.get('/api/fulfillments', async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const fulfillmentsResult = await executeQuery('SELECT data FROM fulfillments ORDER BY data->>\'createdAt\' DESC', []);
+    const fulfillmentsResult = await executeQuery('SELECT data FROM fulfillments ORDER BY data->>\'createdAt\' DESC', [], pool);
     const fulfillments = fulfillmentsResult.rows.map((row: DbRow) => row.data);
     res.json(fulfillments);
   } catch (error) {
@@ -1111,7 +1144,7 @@ app.get('/api/transport/companies', async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const companiesResult = await executeQuery('SELECT data FROM transport_companies ORDER BY data->>\'name\' ASC', []);
+    const companiesResult = await executeQuery('SELECT data FROM transport_companies ORDER BY data->>\'name\' ASC', [], pool);
     const companies = companiesResult.rows.map((row: DbRow) => row.data);
     res.json(companies);
   } catch (error) {
@@ -1128,7 +1161,7 @@ app.get('/api/transport/orders', async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const transportOrdersResult = await executeQuery('SELECT data FROM transport_orders ORDER BY data->>\'createdAt\' DESC', []);
+    const transportOrdersResult = await executeQuery('SELECT data FROM transport_orders ORDER BY data->>\'createdAt\' DESC', [], pool);
     const transportOrders = transportOrdersResult.rows.map((row: DbRow) => row.data);
     res.json(transportOrders);
   } catch (error) {
@@ -1145,7 +1178,7 @@ app.get('/api/fulfillments/all', async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const fulfillmentsResult = await executeQuery('SELECT data FROM fulfillments ORDER BY data->>\'createdAt\' DESC', []);
+    const fulfillmentsResult = await executeQuery('SELECT data FROM fulfillments ORDER BY data->>\'createdAt\' DESC', [], pool);
     const fulfillments = fulfillmentsResult.rows.map((row: DbRow) => row.data);
     res.json(fulfillments);
   } catch (error) {
@@ -1165,7 +1198,8 @@ app.get('/api/fulfillments/:orderId', async (req, res) => {
     const { orderId } = req.params;
     const result = await executeQuery(
       'SELECT data FROM fulfillments WHERE data->>\'orderId\' = $1',
-      [orderId]
+      [orderId],
+      pool
     );
 
     if (result.rows.length === 0) {
@@ -1185,7 +1219,8 @@ app.get('/api/fulfillments/:orderId', async (req, res) => {
 
       await executeQuery(
         'INSERT INTO fulfillments (data) VALUES ($1)',
-        [JSON.stringify(newFulfillment)]
+        [JSON.stringify(newFulfillment)],
+        pool
       );
 
       return res.json(newFulfillment);
@@ -1281,7 +1316,8 @@ app.get('/api/warehouses/:warehouseId/inventory', async (req, res) => {
     const { warehouseId } = req.params;
     const employeeResult = await executeQuery(
       'SELECT data FROM employees WHERE data->>\'id\' = $1',
-      [token.replace('session-', '')]
+      [token.replace('session-', '')],
+      pool
     );
 
     if (employeeResult.rows.length === 0) {
@@ -1295,7 +1331,8 @@ app.get('/api/warehouses/:warehouseId/inventory', async (req, res) => {
 
     const inventoryResult = await executeQuery(
       'SELECT data FROM inventory WHERE data->>\'warehouseId\' = $1',
-      [warehouseId]
+      [warehouseId],
+      pool
     );
     res.json(inventoryResult.rows.map((row: DbRow) => row.data));
   } catch (error) {
@@ -1321,7 +1358,8 @@ app.post('/api/transport/quotes', isAdmin, async (req, res) => {
 
     await executeQuery(
       'INSERT INTO transport_quotes (data) VALUES ($1)',
-      [JSON.stringify(quote)]
+      [JSON.stringify(quote)],
+      pool
     );
     res.json(quote);
   } catch (error) {
@@ -1342,7 +1380,8 @@ app.post('/api/customers', isAdmin, async (req, res) => {
 
     await executeQuery(
       'INSERT INTO customers (data) VALUES ($1)',
-      [JSON.stringify(customer)]
+      [JSON.stringify(customer)],
+      pool
     );
     res.json(customer);
   } catch (error) {
@@ -1363,7 +1402,8 @@ app.put('/api/fulfillments/:fulfillmentId/status', async (req, res) => {
 
     const fulfillmentResult = await executeQuery(
       'SELECT data FROM fulfillments WHERE data->>\'id\' = $1',
-      [fulfillmentId]
+      [fulfillmentId],
+      pool
     );
 
     if (fulfillmentResult.rows.length === 0) {
@@ -1372,7 +1412,8 @@ app.put('/api/fulfillments/:fulfillmentId/status', async (req, res) => {
 
     await executeQuery(
       'UPDATE fulfillments SET data = jsonb_set(data, \'{status}\', $1::jsonb) WHERE data->>\'id\' = $2',
-      [JSON.stringify(status), fulfillmentId]
+      [JSON.stringify(status), fulfillmentId],
+      pool
     );
 
     res.json({ success: true, message: 'Fulfillment status updated' });
@@ -1391,7 +1432,8 @@ app.get('/api/dashboard/stats', async (req, res) => {
 
     const employeeResult = await executeQuery(
       'SELECT data FROM employees WHERE data->>\'id\' = $1',
-      [token.replace('session-', '')]
+      [token.replace('session-', '')],
+      pool
     );
 
     if (employeeResult.rows.length === 0) {
@@ -1404,9 +1446,9 @@ app.get('/api/dashboard/stats', async (req, res) => {
     if (employee.role === 'admin') {
       // Admin sees all stats
       const [orders, revenue, customers] = await Promise.all([
-        executeQuery('SELECT COUNT(*) FROM orders', []),
-        executeQuery('SELECT SUM((data->>\'total\')::numeric) FROM orders', []),
-        executeQuery('SELECT COUNT(*) FROM customers', [])
+        executeQuery('SELECT COUNT(*) FROM orders', [], pool),
+        executeQuery('SELECT SUM((data->>\'total\')::numeric) FROM orders', [], pool),
+        executeQuery('SELECT COUNT(*) FROM customers', [], pool)
       ]);
 
       stats = {
@@ -1418,7 +1460,8 @@ app.get('/api/dashboard/stats', async (req, res) => {
       // Employees see their assigned orders only
       const orders = await executeQuery(
         'SELECT COUNT(*) FROM orders WHERE data->>\'assignedTo\' = $1',
-        [employee.id]
+        [employee.id],
+        pool
       );
 
       stats = {
@@ -1447,7 +1490,8 @@ app.get('/api/inventory/total-stock/:productId', async (req, res) => {
 
     const stockResult = await executeQuery(
       'SELECT SUM((data->>\'quantity\')::integer) as total FROM inventory WHERE data->>\'productId\' = $1',
-      [productId]
+      [productId],
+      pool
     );
 
     res.json({ total: parseInt(stockResult.rows[0]?.total || '0') });
@@ -1470,7 +1514,8 @@ app.get('/api/inventory/needs-restock/:productId', async (req, res) => {
     // Get product details to check minimum stock level
     const productResult = await executeQuery(
       'SELECT data FROM products WHERE data->>\'id\' = $1',
-      [productId]
+      [productId],
+      pool
     );
 
     if (productResult.rows.length === 0) {
@@ -1483,7 +1528,8 @@ app.get('/api/inventory/needs-restock/:productId', async (req, res) => {
     // Get current total stock
     const stockResult = await executeQuery(
       'SELECT SUM((data->>\'quantity\')::integer) as total FROM inventory WHERE data->>\'productId\' = $1',
-      [productId]
+      [productId],
+      pool
     );
 
     const totalStock = parseInt(stockResult.rows[0]?.total || '0');
@@ -1506,7 +1552,8 @@ app.get('/api/inventory/warehouse-stock/:productId/:warehouseId', async (req, re
 
     const stockResult = await executeQuery(
       'SELECT data FROM inventory WHERE data->>\'productId\' = $1 AND data->>\'warehouseId\' = $2',
-      [productId, warehouseId]
+      [productId, warehouseId],
+      pool
     );
 
     if (stockResult.rows.length === 0) {
@@ -1536,7 +1583,8 @@ app.get('/api/inventory/restock-needed', async (req, res) => {
       LEFT JOIN inventory i ON i.data->>'productId' = p.data->>'id'
       GROUP BY p.data
       HAVING COALESCE(SUM((i.data->>'quantity')::integer), 0) < COALESCE((p.data->>'minStock')::integer, 10)`,
-      []
+      [],
+      pool
     );
 
     res.json(result.rows.map((row: DbRow) => row.data));
@@ -1557,7 +1605,8 @@ app.get('/api/employees/:employeeId', async (req, res) => {
     const { employeeId } = req.params;
     const employeeResult = await executeQuery(
       'SELECT data FROM employees WHERE data->>\'id\' = $1',
-      [employeeId]
+      [employeeId],
+      pool
     );
 
     if (employeeResult.rows.length === 0) {
@@ -1589,7 +1638,8 @@ app.put('/api/employees/:employeeId', async (req, res) => {
     // Check if employee exists
     const employeeResult = await executeQuery(
       'SELECT data FROM employees WHERE data->>\'id\' = $1',
-      [employeeId]
+      [employeeId],
+      pool
     );
 
     if (employeeResult.rows.length === 0) {
@@ -1599,7 +1649,8 @@ app.put('/api/employees/:employeeId', async (req, res) => {
     // Update employee data
     await executeQuery(
       'UPDATE employees SET data = data || $1::jsonb WHERE data->>\'id\' = $2',
-      [JSON.stringify(updates), employeeId]
+      [JSON.stringify(updates), employeeId],
+      pool
     );
 
     res.json({ success: true });
@@ -1663,7 +1714,8 @@ app.post('/api/employees/:employeeId/payments', isAdmin, async (req, res) => {
     // Store payment in database
     await executeQuery(
       'INSERT INTO payments (data) VALUES ($1)',
-      [JSON.stringify(newPayment)]
+      [JSON.stringify(newPayment)],
+      pool
     );
 
     res.json(newPayment);
@@ -1700,8 +1752,7 @@ app.put('/api/fulfillments/:orderId', async (req, res) => {
        )
        WHERE data->>'orderId' = $3
        RETURNING data`,
-      [JSON.stringify([historyEntry]), JSON.stringify(new Date().toISOString()), orderId]
-    );
+      [JSON.stringify([historyEntry]), JSON.stringify(new Date().toISOString()), orderId], pool);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Fulfillment not found' });
@@ -1741,11 +1792,12 @@ app.post('/api/products', async (req, res) => {
     // Insert into database
     await executeQuery(
       'INSERT INTO products (data) VALUES ($1)',
-      [JSON.stringify(productData)]
+      [JSON.stringify(productData)],
+      pool
     );
 
     // Create initial inventory records with 0 quantity for all warehouses
-    const warehousesResult = await executeQuery('SELECT data FROM warehouses', []);
+    const warehousesResult = await executeQuery('SELECT data FROM warehouses', [], pool);
     const warehouses = warehousesResult.rows.map((row: DbRow) => row.data);
 
     for (const warehouse of warehouses) {
@@ -1756,7 +1808,8 @@ app.post('/api/products', async (req, res) => {
           warehouseId: warehouse.id,
           quantity: 0,
           lastUpdated: new Date().toISOString()
-        })]
+        })],
+        pool
       );
     }
 
@@ -1776,7 +1829,7 @@ app.get('/api/product-categories', async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const result = await executeQuery('SELECT data FROM product_categories', []);
+    const result = await executeQuery('SELECT data FROM product_categories', [], pool);
     
     // If no categories exist, create default ones
     if (result.rows.length === 0) {
@@ -1804,7 +1857,8 @@ app.get('/api/product-categories', async (req, res) => {
       await Promise.all(defaultCategories.map(category =>
         executeQuery(
           'INSERT INTO product_categories (data) VALUES ($1)',
-          [JSON.stringify(category)]
+          [JSON.stringify(category)],
+          pool
         )
       ));
 
@@ -1856,7 +1910,8 @@ router.post('/api/payments/confirm', async (req: RequestWithFile, res: Response)
 
     await executeQuery(
       'INSERT INTO fulfillment_payments (data) VALUES ($1)',
-      [JSON.stringify(payment)]
+      [JSON.stringify(payment)],
+      pool
     );
 
     res.json(payment);
@@ -1881,7 +1936,8 @@ app.get('/api/customers/:customerId/orders', async (req, res) => {
     // Get all orders for the customer
     const ordersResult = await executeQuery(
       'SELECT data FROM orders WHERE data->>\'customerId\' = $1 ORDER BY data->>\'createdAt\' DESC',
-      [customerId]
+      [customerId],
+      pool
     );
 
     const orders = ordersResult.rows.map((row: DbRow) => row.data);
@@ -1906,7 +1962,8 @@ app.post('/api/orders/:orderId/accept-quote/:quoteId', async (req, res) => {
     // Check if quote exists
     const quoteResult = await executeQuery(
       'SELECT data FROM transport_quotes WHERE data->>\'id\' = $1 AND data->>\'orderId\' = $2',
-      [quoteId, orderId]
+      [quoteId, orderId],
+      pool
     );
 
     if (quoteResult.rows.length === 0) {
@@ -1918,13 +1975,15 @@ app.post('/api/orders/:orderId/accept-quote/:quoteId', async (req, res) => {
     // Update quote status
     await executeQuery(
       'UPDATE transport_quotes SET data = jsonb_set(data, \'{status}\', $1::jsonb) WHERE data->>\'id\' = $2',
-      [JSON.stringify('accepted'), quoteId]
+      [JSON.stringify('accepted'), quoteId],
+      pool
     );
 
     // Update order with transport details
     await executeQuery(
       'UPDATE orders SET data = jsonb_set(data, \'{transport}\', $1::jsonb) WHERE data->>\'id\' = $2',
-      [JSON.stringify({ quoteId, ...quote }), orderId]
+      [JSON.stringify({ quoteId, ...quote }), orderId],
+      pool
     );
 
     res.json({ success: true });
@@ -1942,14 +2001,16 @@ async function ensureRecordExists(
 ) {
   const result = await executeQuery(
     `SELECT data FROM ${table} WHERE data->>'${identifier.field}' = $1`,
-    [identifier.value]
+    [identifier.value],
+    pool
   );
 
   if (result.rows.length === 0) {
     const newRecord = createDefault(identifier.value);
     await executeQuery(
       `INSERT INTO ${table} (data) VALUES ($1)`,
-      [JSON.stringify(newRecord)]
+      [JSON.stringify(newRecord)],
+      pool
     );
     return newRecord;
   }
@@ -1971,7 +2032,8 @@ app.put('/api/orders/:orderId', async (req, res) => {
     // Check if order exists
     const orderResult = await executeQuery(
       'SELECT data FROM orders WHERE data->>\'id\' = $1',
-      [orderId]
+      [orderId],
+      pool
     );
 
     if (orderResult.rows.length === 0) {
@@ -1981,7 +2043,8 @@ app.put('/api/orders/:orderId', async (req, res) => {
     // Update order data
     await executeQuery(
       'UPDATE orders SET data = data || $1::jsonb WHERE data->>\'id\' = $2',
-      [JSON.stringify(updates), orderId]
+      [JSON.stringify(updates), orderId],
+      pool
     );
 
     // Add history entry
@@ -1994,7 +2057,8 @@ app.put('/api/orders/:orderId', async (req, res) => {
 
     await executeQuery(
       'UPDATE orders SET data = jsonb_set(data, \'{history}\', COALESCE(data->\'history\', \'[]\'::jsonb) || $1::jsonb) WHERE data->>\'id\' = $2',
-      [JSON.stringify([historyEntry]), orderId]
+      [JSON.stringify([historyEntry]), orderId],
+      pool
     );
 
     res.json({ success: true });
@@ -2025,7 +2089,8 @@ app.post('/api/orders', async (req, res) => {
 
     await executeQuery(
       'INSERT INTO orders (data) VALUES ($1)',
-      [JSON.stringify(order)]
+      [JSON.stringify(order)],
+      pool
     );
 
     // Create initial fulfillment
@@ -2047,7 +2112,8 @@ app.post('/api/orders', async (req, res) => {
 
     await executeQuery(
       'INSERT INTO fulfillments (data) VALUES ($1)',
-      [JSON.stringify(fulfillment)]
+      [JSON.stringify(fulfillment)],
+      pool
     );
 
     res.status(201).json(order);
@@ -2068,7 +2134,8 @@ app.put('/api/fulfillments/:orderId', async (req, res) => {
 
     const result = await executeQuery(
       'SELECT data FROM fulfillments WHERE data->>\'orderId\' = $1',
-      [orderId]
+      [orderId],
+      pool
     );
 
     if (result.rows.length === 0) {
@@ -2092,7 +2159,8 @@ app.put('/api/fulfillments/:orderId', async (req, res) => {
 
     await executeQuery(
       'UPDATE fulfillments SET data = $1 WHERE data->>\'orderId\' = $2',
-      [JSON.stringify(updatedFulfillment), orderId]
+      [JSON.stringify(updatedFulfillment), orderId],
+      pool
     );
 
     res.json(updatedFulfillment);
@@ -2106,18 +2174,19 @@ app.put('/api/fulfillments/:orderId', async (req, res) => {
 app.post('/api/init/employees', async (req, res) => {
   try {
     // Clear existing employees
-    await executeQuery('DELETE FROM employees', []);
+    await executeQuery('DELETE FROM employees', [], pool);
     
     // Insert initial employees
     for (const employee of employees) {
       await executeQuery(
         'INSERT INTO employees (data) VALUES ($1)',
-        [JSON.stringify(employee)]
+        [JSON.stringify(employee)],
+        pool
       );
     }
 
     // Clear existing sessions
-    await executeQuery('DELETE FROM sessions', []);
+    await executeQuery('DELETE FROM sessions', [], pool);
 
     res.json({ message: 'Employee data initialized successfully' });
   } catch (error) {
@@ -2134,7 +2203,7 @@ async function checkDatabaseTables() {
       SELECT table_name 
       FROM information_schema.tables 
       WHERE table_schema = 'public'
-    `, []);
+    `, [], pool);
 
     const requiredTables = ['employees', 'sessions'];
     const existingTables = tables.rows.map((row: any) => row.table_name);
@@ -2153,7 +2222,7 @@ async function checkDatabaseTables() {
           id SERIAL PRIMARY KEY,
           data JSONB NOT NULL
         )
-      `, []);
+      `, [], pool);
       console.log('Created employees table');
     }
 
@@ -2163,7 +2232,7 @@ async function checkDatabaseTables() {
           id SERIAL PRIMARY KEY,
           data JSONB NOT NULL
         )
-      `, []);
+      `, [], pool);
       console.log('Created sessions table');
     }
 
