@@ -235,35 +235,73 @@ async function findAvailablePort(startPort: number): Promise<number> {
   throw new Error('No available ports found');
 }
 
-// Update startServer function
-async function startServer() {
-  try {
-    await initializeDatabase();
-    const port = await findAvailablePort(DEFAULT_PORT);
-    
-    await initializeAdminUser();
-    app.listen(port, async () => {
-      console.log(`Server running on port ${port}`);
-      console.log(`Database initialized successfully`);
-    });
-  } catch (error) {
-    console.error('Failed to start server:', error);
-    process.exit(1);
+// Hardcoded employees data
+const INITIAL_EMPLOYEES = [
+  {
+    id: "EMP001",
+    agentId: "ADMIN001",
+    name: "Admin HQ",
+    email: "hq@sanyglobal.org",
+    role: "admin",
+    status: "active",
+    assignedOrders: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    passwordHash: "5b722b307fce6c944905d132691d5e4a2214b7fe92b738920eb3fce3a90420a19511c3010a0e7712b054daef5b57bad59ecbd93b3280f210578f547f4aed4d25:a72f47a6838bf4d0f539e366ee3e3e73", // "sany444global"
+    businessInfo: {
+      companyName: "Sany Global",
+      registrationNumber: "REG123",
+      taxId: "TAX123",
+      businessAddress: {
+        street: "123 Admin St",
+        city: "Admin City",
+        state: "AS",
+        postalCode: "12345",
+        country: "USA"
+      }
+    },
+    settings: {
+      theme: "light",
+      notifications: {
+        email: true,
+        push: true
+      },
+      language: "en"
+    }
+  },
+  {
+    id: "EMP002",
+    agentId: "AGENT48392",
+    name: "David PIERRE-JEAN",
+    email: "david.pierrejean@sanyglobal.org",
+    role: "employee",
+    status: "active",
+    assignedOrders: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    passwordHash: "5b722b307fce6c944905d132691d5e4a2214b7fe92b738920eb3fce3a90420a19511c3010a0e7712b054daef5b57bad59ecbd93b3280f210578f547f4aed4d25:a72f47a6838bf4d0f539e366ee3e3e73", // "sany2025global"
+    businessInfo: {
+      companyName: "Sany Equipment",
+      registrationNumber: "93-1671162",
+      taxId: "93-1671162",
+      businessAddress: {
+        street: "228 Park Ave S",
+        city: "New York",
+        state: "NY",
+        postalCode: "10003",
+        country: "USA"
+      }
+    },
+    settings: {
+      theme: "light",
+      notifications: {
+        email: true,
+        push: true
+      },
+      language: "en"
+    }
   }
-}
-
-// Handle pool errors
-pool.on('error', (err) => {
-  console.error('Unexpected error on idle client', err);
-  process.exit(-1);
-});
-
-// Handle process termination
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down gracefully');
-  pool.end();
-  process.exit(0);
-});
+];
 
 // Initialize database tables
 async function initializeDatabase() {
@@ -282,8 +320,7 @@ async function initializeDatabase() {
       CREATE TABLE IF NOT EXISTS employees (
         id TEXT PRIMARY KEY,
         data JSONB NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
@@ -291,14 +328,14 @@ async function initializeDatabase() {
     await client.query(`
       CREATE TABLE IF NOT EXISTS sessions (
         id TEXT PRIMARY KEY,
-        data JSONB NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        expires_at TIMESTAMPTZ NOT NULL
+        user_id TEXT REFERENCES employees(id),
+        expires_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
-    // Insert employee data
-    for (const employee of employees) {
+    // Insert hardcoded employees
+    for (const employee of INITIAL_EMPLOYEES) {
       await client.query(
         'INSERT INTO employees (id, data) VALUES ($1, $2)',
         [employee.id, employee]
@@ -306,7 +343,7 @@ async function initializeDatabase() {
     }
 
     await client.query('COMMIT');
-    console.log('Database initialized with employee data');
+    console.log('Database initialized with hardcoded employees');
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Database initialization failed:', error);
@@ -372,39 +409,6 @@ app.get('/api/debug/employees', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch employees' });
   }
 });
-
-// Initialize admin user if not exists
-async function initializeAdminUser() {
-  try {
-    const adminResult = await executeQuery(
-      'SELECT data FROM employees WHERE data->>\'id\' = $1',
-      ['ADMIN001'],
-      pool
-    );
-
-    if (adminResult.rows.length === 0) {
-      const adminUser = {
-        id: 'ADMIN001',
-        name: 'Admin HQ',
-        email: 'hq@sanyglobal.org',
-        role: 'admin',
-        status: 'active',
-        passwordHash: await bcrypt.hash('admin123', 10), // Change in production!
-        createdAt: new Date().toISOString(),
-        settings: defaultSettings
-      };
-
-      await executeQuery(
-        'INSERT INTO employees (id, data) VALUES ($1, $2)',
-        [adminUser.id, adminUser],
-        pool
-      );
-      console.log('Admin user initialized');
-    }
-  } catch (error) {
-    console.error('Failed to initialize admin user:', error);
-  }
-}
 
 // ============= Authentication =============
 // Login endpoint
@@ -1948,55 +1952,17 @@ app.post('/api/init/employees', async (req, res) => {
   }
 });
 
-// Add this near your other initialization code
-async function checkDatabaseTables() {
+// Start the server
+async function startServer() {
   try {
-    // Check if tables exist
-    const tables = await executeQuery(`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_schema = 'public'
-    `, [], pool);
-
-    const requiredTables = ['employees', 'sessions'];
-    const existingTables = tables.rows.map((row: any) => row.table_name);
-
-    console.log('Existing tables:', existingTables);
-
-    // Check which tables need to be created
-    const tablesToCreate = requiredTables.filter(table => !existingTables.includes(table));
-
-    console.log('Tables to create:', tablesToCreate);
-
-    // Create tables if they don't exist
-    if (!existingTables.includes('employees')) {
-      await executeQuery(`
-        CREATE TABLE IF NOT EXISTS employees (
-          id SERIAL PRIMARY KEY,
-          data JSONB NOT NULL
-        )
-      `, [], pool);
-      console.log('Created employees table');
-    }
-
-    if (!existingTables.includes('sessions')) {
-      await executeQuery(`
-        CREATE TABLE IF NOT EXISTS sessions (
-          id SERIAL PRIMARY KEY,
-          data JSONB NOT NULL
-        )
-      `, [], pool);
-      console.log('Created sessions table');
-    }
-
-    // Initialize admin user if not exists
-    await initializeAdminUser();
-
+    await initializeDatabase();
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
   } catch (error) {
-    console.error('Database initialization error:', error);
-    throw error;
+    console.error('Server startup failed:', error);
+    process.exit(1);
   }
 }
 
-// Start the server
-startServer().catch(console.error);
+startServer();
