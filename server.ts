@@ -701,23 +701,167 @@ app.get('/api/messages/threads', async (req, res) => {
   }
 });
 
-// Employees endpoint
-app.get('/api/employees', async (req, res) => {
+// Middleware for checking admin role
+const isAdmin = async (req: any, res: any, next: any) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const employeesResult = await executeQuery('SELECT data FROM employees ORDER BY data->>\'createdAt\' DESC', []);
+    const result = await executeQuery(
+      'SELECT data FROM employees WHERE data->>\'id\' = $1',
+      [token.replace('session-', '')]
+    );
+
+    if (result.rows.length === 0 || result.rows[0].data.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    next();
+  } catch (error) {
+    res.status(500).json({ error: 'Authorization check failed' });
+  }
+};
+
+// Employee management endpoints
+app.post('/api/employees/:employeeId/assign-order', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { employeeId } = req.params;
+    const { orderId } = req.body;
+
+    // Check if requester is admin or the employee themselves
+    const requesterResult = await executeQuery(
+      'SELECT data FROM employees WHERE data->>\'id\' = $1',
+      [token.replace('session-', '')]
+    );
+
+    if (requesterResult.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid session' });
+    }
+
+    const requester = requesterResult.rows[0].data;
+    if (requester.role !== 'admin' && requester.id !== employeeId) {
+      return res.status(403).json({ error: 'Insufficient permissions' });
+    }
+
+    // Verify employee exists
+    const employeeResult = await executeQuery(
+      'SELECT data FROM employees WHERE data->>\'id\' = $1',
+      [employeeId]
+    );
+
+    if (employeeResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Employee not found' });
+    }
+
+    // Verify order exists and is unassigned
+    const orderResult = await executeQuery(
+      'SELECT data FROM orders WHERE data->>\'id\' = $1',
+      [orderId]
+    );
+
+    if (orderResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const order = orderResult.rows[0].data;
+    if (order.assignedTo) {
+      return res.status(400).json({ error: 'Order already assigned' });
+    }
+
+    // Update order assignment
+    await executeQuery(
+      'UPDATE orders SET data = jsonb_set(data, \'{assignedTo}\', $1::jsonb) WHERE data->>\'id\' = $2',
+      [JSON.stringify(employeeId), orderId]
+    );
+
+    // Create notification for the employee
+    await executeQuery(
+      'INSERT INTO notifications (data) VALUES ($1)',
+      [JSON.stringify({
+        id: `not-${Date.now()}`,
+        userId: employeeId,
+        type: 'ORDER_ASSIGNED',
+        message: `Order ${orderId} has been assigned to you`,
+        timestamp: new Date().toISOString(),
+        isRead: false
+      })]
+    );
+
+    res.json({ success: true, message: 'Order assigned successfully' });
+  } catch (error) {
+    console.error('Failed to assign order:', error);
+    res.status(500).json({ error: 'Failed to assign order' });
+  }
+});
+
+// Get all employees (admin only)
+app.get('/api/employees', isAdmin, async (req, res) => {
+  try {
+    const employeesResult = await executeQuery(
+      'SELECT data FROM employees ORDER BY data->>\'name\' ASC',
+      []
+    );
+
     const employees = employeesResult.rows.map((row: DbRow) => {
       const { passwordHash, ...safeEmployee } = row.data;
       return safeEmployee;
     });
+
     res.json(employees);
   } catch (error) {
     console.error('Failed to fetch employees:', error);
     res.status(500).json({ error: 'Failed to fetch employees' });
+  }
+});
+
+// Update employee (admin or self only)
+app.put('/api/employees/:employeeId', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { employeeId } = req.params;
+    const updates = req.body;
+
+    // Check permissions
+    const requesterResult = await executeQuery(
+      'SELECT data FROM employees WHERE data->>\'id\' = $1',
+      [token.replace('session-', '')]
+    );
+
+    if (requesterResult.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid session' });
+    }
+
+    const requester = requesterResult.rows[0].data;
+    if (requester.role !== 'admin' && requester.id !== employeeId) {
+      return res.status(403).json({ error: 'Insufficient permissions' });
+    }
+
+    // Prevent non-admins from updating role or status
+    if (requester.role !== 'admin') {
+      delete updates.role;
+      delete updates.status;
+    }
+
+    await executeQuery(
+      'UPDATE employees SET data = data || $1::jsonb WHERE data->>\'id\' = $2',
+      [JSON.stringify(updates), employeeId]
+    );
+
+    res.json({ success: true, message: 'Employee updated successfully' });
+  } catch (error) {
+    console.error('Failed to update employee:', error);
+    res.status(500).json({ error: 'Failed to update employee' });
   }
 });
 
@@ -877,55 +1021,6 @@ app.get('/api/orders/:orderId', async (req, res) => {
   } catch (error) {
     console.error('Failed to fetch order:', error);
     res.status(500).json({ error: 'Failed to fetch order' });
-  }
-});
-
-// Assign order to employee
-app.post('/api/employees/:employeeId/assign-order', async (req, res) => {
-  try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const { employeeId } = req.params;
-    const { orderId } = req.body;
-
-    // Verify employee exists
-    const employeeResult = await executeQuery(
-      'SELECT data FROM employees WHERE data->>\'id\' = $1',
-      [employeeId]
-    );
-
-    if (employeeResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Employee not found' });
-    }
-
-    // Verify order exists and is unassigned
-    const orderResult = await executeQuery(
-      'SELECT data FROM orders WHERE data->>\'id\' = $1',
-      [orderId]
-    );
-
-    if (orderResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Order not found' });
-    }
-
-    const order = orderResult.rows[0].data;
-    if (order.assignedTo) {
-      return res.status(400).json({ error: 'Order already assigned' });
-    }
-
-    // Update order assignment
-    await executeQuery(
-      'UPDATE orders SET data = jsonb_set(data, \'{assignedTo}\', $1::jsonb) WHERE data->>\'id\' = $2',
-      [JSON.stringify(employeeId), orderId]
-    );
-
-    res.json({ success: true, message: 'Order assigned successfully' });
-  } catch (error) {
-    console.error('Failed to assign order:', error);
-    res.status(500).json({ error: 'Failed to assign order' });
   }
 });
 
