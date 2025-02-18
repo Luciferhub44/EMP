@@ -432,13 +432,12 @@ const schema = {
 async function initializeDatabase() {
   const client = await pool.connect();
   try {
+    // Drop and create database outside transaction
+    await client.query('DROP DATABASE IF EXISTS empdb');
+    await client.query('CREATE DATABASE empdb');
+    
+    // Start transaction for table creation
     await client.query('BEGIN');
-
-    // Drop and recreate database
-    await client.query(`
-      DROP DATABASE IF EXISTS empdb;
-      CREATE DATABASE empdb;
-    `);
 
     // Create tables and indexes
     for (const [tableName, tableSchema] of Object.entries(schema.tables)) {
@@ -451,7 +450,7 @@ async function initializeDatabase() {
       await client.query(indexSchema);
     }
 
-    // Insert initial employees
+    // Insert initial data
     console.log('Inserting initial data...');
     const initialEmployees = [
       {
