@@ -8,7 +8,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { useDbStorage } from "@/hooks/use-db-storage"
 
 interface TourStep {
   title: string
@@ -45,7 +44,10 @@ const tourSteps: TourStep[] = [
 ]
 
 export function TourGuide() {
-  const [showTour, setShowTour] = useDbStorage("show-tour", true)
+  const [showTour, setShowTour] = useState(() => {
+    const stored = localStorage.getItem("show-tour")
+    return stored === null ? true : JSON.parse(stored)
+  })
   const [currentStep, setCurrentStep] = useState(0)
 
   const handleNext = () => {
@@ -53,11 +55,13 @@ export function TourGuide() {
       setCurrentStep(prev => prev + 1)
     } else {
       setShowTour(false)
+      localStorage.setItem("show-tour", "false")
     }
   }
 
   const handleSkip = () => {
     setShowTour(false)
+    localStorage.setItem("show-tour", "false")
   }
 
   if (!showTour) return null
