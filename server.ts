@@ -2,7 +2,7 @@ import pkg from 'pg';
 const { Pool } = pkg;
 
 import express, { Router, Request, Response } from 'express';
-import * as path from 'path';
+import path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import cors from 'cors';
