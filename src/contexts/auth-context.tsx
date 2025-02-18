@@ -1,6 +1,5 @@
 import type { Employee } from "@/types/employee"
 import { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react"
-import { authService } from "@/lib/services/auth"
 
 interface AuthContextType {
   user: Employee | null
@@ -18,7 +17,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const initAuth = async () => {
+    const validateSession = async () => {
       try {
         const token = localStorage.getItem("auth_token")
         if (!token) {
@@ -26,8 +25,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return
         }
 
-        const { user } = await authService.validateSession()
-        setUser(user)
+        const response = await fetch('/api/auth/session', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+
+        if (response.ok) {
+          const { user } = await response.json()
+          setUser(user)
+        } else {
+          localStorage.removeItem("auth_token")
+        }
       } catch (error) {
         console.error("Auth initialization failed:", error)
         setError("Failed to initialize authentication")
@@ -37,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    initAuth()
+    validateSession()
   }, [])
 
   const login = async (agentId: string, password: string) => {
@@ -45,8 +54,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true)
       setError(null)
 
-      const { token, user } = await authService.login(agentId, password)
-      
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          agentId: agentId.toUpperCase(),
+          password
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Invalid credentials')
+      }
+
+      const { token, user } = await response.json()
       localStorage.setItem("auth_token", token)
       setUser(user)
     } catch (error) {
@@ -60,7 +83,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     try {
-      await authService.logout()
+      const token = localStorage.getItem("auth_token")
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
     } catch (error) {
       console.error("Logout failed:", error)
     } finally {
