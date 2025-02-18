@@ -13,8 +13,10 @@ import { customers } from "./src/data/customers.js"
 import { fulfillments } from "./src/data/fulfillments.js"
 import { orders } from "./src/data/orders.js"
 import { transportCompanies, transportOrders } from "./src/data/transport.js"
+import { defaultSettings } from './src/contexts/settings-context.js';
 
-const DEFAULT_PORT = process.env.PORT || 3001;
+const DEFAULT_PORT = Number(process.env.PORT) || 3001;
+const MAX_PORT_RETRIES = 10;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -95,11 +97,42 @@ app.get('*', (req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`API available at http://localhost:${PORT}/api`);
-  console.log(`Frontend available at http://localhost:${PORT}`);
-});
+async function findAvailablePort(startPort: number): Promise<number> {
+  for (let port = startPort; port < startPort + MAX_PORT_RETRIES; port++) {
+    try {
+      await new Promise((resolve, reject) => {
+        const server = app.listen(port, () => {
+          server.close();
+          resolve(port);
+        });
+        server.on('error', reject);
+      });
+      return port;
+    } catch (error) {
+      if (port === startPort + MAX_PORT_RETRIES - 1) {
+        throw error;
+      }
+      continue;
+    }
+  }
+  throw new Error('No available ports found');
+}
+
+// Update startServer function
+async function startServer() {
+  try {
+    await initializeDatabase();
+    const port = await findAvailablePort(DEFAULT_PORT);
+    
+    app.listen(port, () => {
+      console.log(`Server running on port ${port}`);
+      console.log(`Database connected successfully`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
 
 // Handle pool errors
 pool.on('error', (err) => {
@@ -466,22 +499,79 @@ app.post('/api/employees', async (req, res) => {
   }
 });
 
-// Start server function
-async function startServer() {
+// Settings endpoint
+app.get('/api/settings', async (req, res) => {
   try {
-    // Initialize database first
-    await initializeDatabase();
-    
-    // Start the server
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-      console.log(`Database connected successfully`);
-    });
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const result = await executeQuery(
+      'SELECT data FROM employees WHERE data->>\'id\' = $1',
+      [token.replace('session-', '')]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Settings not found' });
+    }
+
+    const employee = result.rows[0].data;
+    res.json(employee.settings || defaultSettings);
   } catch (error) {
-    console.error('Failed to start server:', error);
-    process.exit(1);
+    console.error('Failed to fetch settings:', error);
+    res.status(500).json({ error: 'Failed to fetch settings' });
   }
-}
+});
+
+// Notifications endpoint
+app.get('/api/notifications', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const result = await executeQuery(
+      'SELECT data FROM employees WHERE data->>\'id\' = $1',
+      [token.replace('session-', '')]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json(result.rows[0].data.notifications || []);
+  } catch (error) {
+    console.error('Failed to fetch notifications:', error);
+    res.status(500).json({ error: 'Failed to fetch notifications' });
+  }
+});
+
+// Session validation endpoint
+app.get('/api/auth/session', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const result = await executeQuery(
+      'SELECT data FROM employees WHERE data->>\'id\' = $1',
+      [token.replace('session-', '')]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid session' });
+    }
+
+    const { passwordHash, ...safeEmployee } = result.rows[0].data;
+    res.json({ user: safeEmployee });
+  } catch (error) {
+    console.error('Session validation failed:', error);
+    res.status(500).json({ error: 'Session validation failed' });
+  }
+});
 
 // Start the server
 startServer().catch(console.error);

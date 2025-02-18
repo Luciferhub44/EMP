@@ -31,7 +31,7 @@ interface SettingsContextType {
 
 const SettingsContext = React.createContext<SettingsContextType | undefined>(undefined)
 
-const defaultSettings: UserSettings = {
+export const defaultSettings: UserSettings = {
   notifications: {
     email: true,
     orders: true,
