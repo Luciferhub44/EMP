@@ -3,7 +3,6 @@ const { Pool } = pkg;
 
 import express, { Router, Request, Response } from 'express';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import cors from 'cors';
 import { warehouses } from "./src/data/warehouses.js"
@@ -126,18 +125,10 @@ interface RequestWithFile extends Request {
   file?: Express.Multer.File;
 }
 
-const DEFAULT_PORT = Number(process.env.PORT) || 3001;
-const MAX_PORT_RETRIES = 10;
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 const app = express();
-const PORT = DEFAULT_PORT;
+const PORT = Number(process.env.PORT) || 3001;
+const MAX_PORT_RETRIES = 10;
 
-// Add these near the top of the file
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'hq@sanyglobal.org';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'sany444global';
-const ADMIN_ID = 'ADMIN001';
 
 // Helper function for password hashing
 async function hashPassword(password: string): Promise<string> {
@@ -170,7 +161,7 @@ async function verifyPassword(password: string, storedHash: string): Promise<boo
 // Middleware
 app.use(express.json());
 app.use(cors());
-app.use(express.static(path.join(__dirname, '../dist')));
+app.use(express.static(path.join(__dirname, 'dist')));
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -210,7 +201,7 @@ app.get('*', (req, res, next) => {
     next();
     return;
   }
-  res.sendFile(path.join(__dirname, '../dist/index.html'));
+  res.sendFile(path.join(__dirname, 'dist/index.html'));
 });
 
 // Start server
