@@ -141,24 +141,30 @@ const ADMIN_ID = 'ADMIN001';
 
 // Helper function for password hashing
 async function hashPassword(password: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const salt = crypto.randomBytes(16).toString('hex');
-    crypto.pbkdf2(password, salt, 1000, 64, 'sha512', (err, derivedKey) => {
-      if (err) reject(err);
-      resolve(salt + ':' + derivedKey.toString('hex'));
-    });
-  });
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto
+    .pbkdf2Sync(password, salt, 1000, 64, 'sha512')
+    .toString('hex');
+  return `${hash}:${salt}`;
 }
 
 // Helper function for password verification
-async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  return new Promise((resolve, reject) => {
-    const [salt, key] = hash.split(':');
-    crypto.pbkdf2(password, salt, 1000, 64, 'sha512', (err, derivedKey) => {
-      if (err) reject(err);
-      resolve(key === derivedKey.toString('hex'));
-    });
-  });
+async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
+  try {
+    // Split the stored hash into salt and hash parts
+    const [hashedPart, salt] = storedHash.split(':');
+    
+    // Hash the provided password with the same salt
+    const hash = crypto
+      .pbkdf2Sync(password, salt, 1000, 64, 'sha512')
+      .toString('hex');
+    
+    // Compare the hashes
+    return hash === hashedPart;
+  } catch (error) {
+    console.error('Password verification failed:', error);
+    return false;
+  }
 }
 
 // Middleware
