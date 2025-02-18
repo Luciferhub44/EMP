@@ -19,7 +19,7 @@ import multer from 'multer';
 
 // ES Module path resolution
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DIST_DIR = path.join(__dirname, '..', 'dist', 'client');
+const DIST_DIR = path.join(__dirname, '..', 'dist');
 
 // Interfaces
 interface DbRow {
@@ -180,7 +180,9 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 // Configure database pool
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  ssl: process.env.NODE_ENV === 'production' ? {
+    rejectUnauthorized: false
+  } : false,
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
@@ -206,7 +208,7 @@ app.get('*', (req, res, next) => {
     next();
     return;
   }
-  res.sendFile(path.join(__dirname, 'dist/index.html'));
+  res.sendFile(path.join(DIST_DIR, 'index.html'));
 });
 
 // Start server
@@ -1937,6 +1939,9 @@ app.post('/api/init/employees', async (req, res) => {
 async function startServer() {
   try {
     await initializeDatabase();
+    await pool.connect();
+    console.log('Database connected');
+    
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
