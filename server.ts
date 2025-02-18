@@ -1862,5 +1862,46 @@ app.get('/api/customers/:customerId/orders', async (req, res) => {
   }
 });
 
+// Add endpoint for accepting transport quotes
+app.post('/api/orders/:orderId/accept-quote/:quoteId', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { orderId, quoteId } = req.params;
+
+    // Check if quote exists
+    const quoteResult = await executeQuery(
+      'SELECT data FROM transport_quotes WHERE data->>\'id\' = $1 AND data->>\'orderId\' = $2',
+      [quoteId, orderId]
+    );
+
+    if (quoteResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Quote not found' });
+    }
+
+    const quote = quoteResult.rows[0].data;
+
+    // Update quote status
+    await executeQuery(
+      'UPDATE transport_quotes SET data = jsonb_set(data, \'{status}\', $1::jsonb) WHERE data->>\'id\' = $2',
+      [JSON.stringify('accepted'), quoteId]
+    );
+
+    // Update order with transport details
+    await executeQuery(
+      'UPDATE orders SET data = jsonb_set(data, \'{transport}\', $1::jsonb) WHERE data->>\'id\' = $2',
+      [JSON.stringify({ quoteId, ...quote }), orderId]
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Failed to accept transport quote:', error);
+    res.status(500).json({ error: 'Failed to accept transport quote' });
+  }
+});
+
 // Start the server
 startServer().catch(console.error);
