@@ -15,7 +15,9 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [
-      react(),
+      react({
+        plugins: [['@swc/plugin-react', { runtime: 'automatic' }]],
+      }),
       compression({
         algorithm: 'gzip',
         ext: '.gz',
@@ -34,7 +36,7 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
-      },
+      }
     },
 
     server: {
@@ -61,21 +63,16 @@ export default defineConfig(({ mode }) => {
       reportCompressedSize: false,
       rollupOptions: {
         output: {
-          manualChunks: (id) => {
-            if (id.includes('node_modules')) {
-              if (id.includes('react')) return 'vendor-react'
-              if (id.includes('@radix-ui')) return 'vendor-radix'
-              if (id.includes('recharts')) return 'vendor-charts'
-              if (id.includes('date-fns') || id.includes('lodash')) return 'vendor-utils'
-              return 'vendor'
-            }
+          manualChunks: {
+            'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+            'ui-vendor': ['@radix-ui/react-icons', '@radix-ui/react-slot', '@radix-ui/react-dialog'],
+            'utils-vendor': ['date-fns', 'lodash-es']
           },
           chunkFileNames: 'assets/js/[name]-[hash].js',
           entryFileNames: 'assets/js/[name]-[hash].js',
           assetFileNames: 'assets/[ext]/[name]-[hash].[ext]'
         }
-      },
-      chunkSizeWarningLimit: 1000
+      }
     },
 
     optimizeDeps: {
@@ -84,9 +81,9 @@ export default defineConfig(({ mode }) => {
         'react-dom',
         'react-router-dom',
         '@radix-ui/react-icons',
-        '@radix-ui/react-slot',
-        'date-fns'
-      ]
+        '@radix-ui/react-slot'
+      ],
+      exclude: ['@radix-ui/react-dialog']
     },
 
     css: {
