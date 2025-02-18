@@ -232,7 +232,7 @@ async function findAvailablePort(startPort: number): Promise<number> {
 // Update startServer function
 async function startServer() {
   try {
-    await initializeDatabase();
+    await checkDatabaseTables();
     const port = await findAvailablePort(DEFAULT_PORT);
     
     await initializeAdminUser();
@@ -587,20 +587,32 @@ async function initializeAdminUser() {
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { agentId, password } = req.body;
+    console.log('Login attempt for:', agentId); // Debug log
 
     const result = await executeQuery(
-      'SELECT data FROM employees WHERE data->>\'agentId\' = $1 AND data->>\'status\' = \'active\'',
+      'SELECT data FROM employees WHERE data->>\'agentId\' = $1',
       [agentId]
     );
+
+    console.log('Query result:', result.rows); // Debug log
 
     if (result.rows.length === 0) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     const employee = result.rows[0].data;
+    
+    // Debug log (without sensitive data)
+    console.log('Found employee:', { 
+      id: employee.id, 
+      agentId: employee.agentId, 
+      role: employee.role 
+    });
 
     // Verify password using stored hash
     const isValid = await verifyPassword(password, employee.passwordHash);
+    console.log('Password verification:', isValid); // Debug log
+
     if (!isValid) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
@@ -608,7 +620,7 @@ app.post('/api/auth/login', async (req, res) => {
     // Create session token
     const token = `session-${employee.id}-${Date.now()}`;
     
-    // Store session with role information
+    // Store session
     await executeQuery(
       'INSERT INTO sessions (data) VALUES ($1)',
       [JSON.stringify({
@@ -2107,6 +2119,56 @@ app.post('/api/init/employees', async (req, res) => {
     res.status(500).json({ error: 'Failed to initialize employee data' });
   }
 });
+
+// Add this near your other initialization code
+async function checkDatabaseTables() {
+  try {
+    // Check if tables exist
+    const tables = await executeQuery(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public'
+    `, []);
+
+    const requiredTables = ['employees', 'sessions'];
+    const existingTables = tables.rows.map((row: any) => row.table_name);
+
+    console.log('Existing tables:', existingTables);
+
+    // Check which tables need to be created
+    const tablesToCreate = requiredTables.filter(table => !existingTables.includes(table));
+
+    console.log('Tables to create:', tablesToCreate);
+
+    // Create tables if they don't exist
+    if (!existingTables.includes('employees')) {
+      await executeQuery(`
+        CREATE TABLE IF NOT EXISTS employees (
+          id SERIAL PRIMARY KEY,
+          data JSONB NOT NULL
+        )
+      `, []);
+      console.log('Created employees table');
+    }
+
+    if (!existingTables.includes('sessions')) {
+      await executeQuery(`
+        CREATE TABLE IF NOT EXISTS sessions (
+          id SERIAL PRIMARY KEY,
+          data JSONB NOT NULL
+        )
+      `, []);
+      console.log('Created sessions table');
+    }
+
+    // Initialize admin user if not exists
+    await initializeAdminUser();
+
+  } catch (error) {
+    console.error('Database initialization error:', error);
+    throw error;
+  }
+}
 
 // Start the server
 startServer().catch(console.error);
