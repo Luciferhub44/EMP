@@ -14,6 +14,7 @@ import { fulfillments } from "./src/data/fulfillments.js"
 import { orders } from "./src/data/orders.js"
 import { transportCompanies, transportOrders } from "./src/data/transport.js"
 import { defaultSettings } from './src/config/default-settings.js';
+import bcrypt from 'bcryptjs';
 
 interface DbRow {
   data: {
@@ -131,7 +132,8 @@ async function startServer() {
     await initializeDatabase();
     const port = await findAvailablePort(DEFAULT_PORT);
     
-    app.listen(port, () => {
+    await initializeAdminUser();
+    app.listen(port, async () => {
       console.log(`Server running on port ${port}`);
       console.log(`Database connected successfully`);
     });
@@ -439,10 +441,43 @@ app.get('/api/debug/employees', async (req, res) => {
   }
 });
 
-// Update the login endpoint to use agentId instead of email
+// Initialize admin user if not exists
+async function initializeAdminUser() {
+  try {
+    const adminResult = await executeQuery(
+      'SELECT data FROM employees WHERE data->>\'id\' = $1',
+      ['ADMIN001']
+    );
+
+    if (adminResult.rows.length === 0) {
+      const adminUser = {
+        id: 'ADMIN001',
+        name: 'Admin HQ',
+        email: 'hq@sanyglobal.org',
+        role: 'admin',
+        status: 'active',
+        passwordHash: await bcrypt.hash('admin123', 10), // Change in production!
+        createdAt: new Date().toISOString(),
+        settings: defaultSettings
+      };
+
+      await executeQuery(
+        'INSERT INTO employees (data) VALUES ($1)',
+        [JSON.stringify(adminUser)]
+      );
+      console.log('Admin user initialized');
+    }
+  } catch (error) {
+    console.error('Failed to initialize admin user:', error);
+  }
+}
+
+// Update the login endpoint
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { agentId, password } = req.body;
+    console.log('Login attempt:', { agentId });
+
     const result = await executeQuery(
       'SELECT data FROM employees WHERE data->>\'id\' = $1',
       [agentId]
@@ -453,13 +488,27 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const employee = result.rows[0].data;
-    // In production, use proper password hashing
-    if (password !== employee.passwordHash) {
+    
+    // For the admin user with plain password
+    if (agentId === 'ADMIN001' && password === 'admin123') {
+      const { passwordHash, ...safeEmployee } = employee;
+      return res.json({ 
+        user: safeEmployee,
+        token: `session-${safeEmployee.id}`
+      });
+    }
+
+    // For other users, use bcrypt
+    const isValidPassword = await bcrypt.compare(password, employee.passwordHash);
+    if (!isValidPassword) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     const { passwordHash, ...safeEmployee } = employee;
-    res.json({ user: safeEmployee });
+    res.json({ 
+      user: safeEmployee,
+      token: `session-${safeEmployee.id}`
+    });
   } catch (error) {
     console.error('Login failed:', error);
     res.status(500).json({ error: 'Login failed' });
