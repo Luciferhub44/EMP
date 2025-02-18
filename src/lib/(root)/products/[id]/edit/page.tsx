@@ -296,7 +296,7 @@ export default function EditProductPage() {
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
+                <span>Saving...</span>
               </>
             ) : (
               'Save Changes'
