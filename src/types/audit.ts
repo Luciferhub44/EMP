@@ -1,4 +1,4 @@
-import type { EmployeeRole } from "./employee"
+import type { EmployeeRole } from "./employee.js"
 
 export type AuditActionType = 
   | "login"
