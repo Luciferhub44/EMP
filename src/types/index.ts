@@ -1,4 +1,4 @@
-import { Address } from './orders.js'
+import { Address } from './orders'
 
 export type OrderStatus = 
   | "pending"

@@ -1,4 +1,4 @@
-import { Product } from "./products.js"
+import { Product } from "./products"
 
 export const OrderStatus = {
   pending: "pending",
