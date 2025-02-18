@@ -60,17 +60,19 @@ export default function ProductInventoryPage() {
         })
         if (!warehousesRes.ok) throw new Error('Failed to load warehouses')
         const warehousesData = await warehousesRes.json()
-        setWarehouses(warehousesData)
+        setWarehouses(warehousesData || [])
 
         // Load stocks for each warehouse
         const stocks: Record<string, number> = {}
-        for (const warehouse of warehousesData) {
-          const stockRes = await fetch(`/api/inventory/${id}/${warehouse.id}`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
-          })
-          if (stockRes.ok) {
-            const { quantity } = await stockRes.json()
-            stocks[warehouse.id] = quantity
+        if (warehousesData && Array.isArray(warehousesData)) {
+          for (const warehouse of warehousesData) {
+            const stockRes = await fetch(`/api/inventory/${id}/${warehouse.id}`, {
+              headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
+            })
+            if (stockRes.ok) {
+              const { quantity } = await stockRes.json()
+              stocks[warehouse.id] = quantity
+            }
           }
         }
         setWarehouseStocks(stocks)

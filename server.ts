@@ -1114,48 +1114,42 @@ app.get('/api/fulfillments/all', async (req, res) => {
 // Get fulfillment details
 app.get('/api/fulfillments/:orderId', async (req, res) => {
   try {
+    const { orderId } = req.params;
     const token = req.headers.authorization?.split(' ')[1];
+    
     if (!token) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { orderId } = req.params;
-
-    // Check if fulfillment exists
-    const fulfillmentResult = await executeQuery(
-      'SELECT data FROM fulfillments WHERE data->>\'orderId\' = $1',
+    const result = await executeQuery(
+      'SELECT data FROM fulfillments WHERE data->>.orderId = $1',
       [orderId]
     );
 
-    // If no fulfillment exists, create a default one
-    if (fulfillmentResult.rows.length === 0) {
-      const defaultFulfillment = {
-        id: `FUL-${orderId}`,
+    if (result.rows.length === 0) {
+      // If no fulfillment exists, create a new one
+      const fulfillment = {
+        id: `FUL-${crypto.randomBytes(8).toString('hex')}`,
         orderId,
         status: 'pending',
-        carrier: '',
-        trackingNumber: '',
-        notes: '',
-        history: [
-          {
-            status: 'pending',
-            timestamp: new Date().toISOString(),
-            note: 'Fulfillment created'
-          }
-        ],
+        history: [{
+          status: 'pending',
+          timestamp: new Date().toISOString(),
+          note: 'Fulfillment created'
+        }],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
 
       await executeQuery(
-        'INSERT INTO fulfillments (id, data) VALUES ($1, $2)',
-        [defaultFulfillment.id, defaultFulfillment]
+        'INSERT INTO fulfillments (data) VALUES ($1)',
+        [JSON.stringify(fulfillment)]
       );
 
-      return res.json(defaultFulfillment);
+      return res.json(fulfillment);
     }
 
-    res.json(fulfillmentResult.rows[0].data);
+    res.json(result.rows[0].data);
   } catch (error) {
     console.error('Failed to fetch fulfillment:', error);
     res.status(500).json({ error: 'Failed to fetch fulfillment' });
@@ -1876,6 +1870,31 @@ router.post('/api/payments/confirm', async (req: RequestWithFile, res: Response)
 });
 
 app.use(router);
+
+// Add this endpoint to handle customer orders
+app.get('/api/customers/:customerId/orders', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { customerId } = req.params;
+
+    // Get all orders for the customer
+    const ordersResult = await executeQuery(
+      'SELECT data FROM orders WHERE data->>\'customerId\' = $1 ORDER BY data->>\'createdAt\' DESC',
+      [customerId]
+    );
+
+    const orders = ordersResult.rows.map((row: DbRow) => row.data);
+    res.json(orders);
+    
+  } catch (error) {
+    console.error('Failed to fetch customer orders:', error);
+    res.status(500).json({ error: 'Failed to fetch customer orders' });
+  }
+});
 
 // Start the server
 startServer().catch(console.error);
