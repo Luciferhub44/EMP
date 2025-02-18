@@ -91,13 +91,15 @@ interface Inventory {
   lastUpdated: string;
 }
 
-interface Payment {
+export interface Payment {
   id: string;
   employeeId: string;
   amount: number;
   currency: string;
   status: 'pending' | 'completed' | 'failed';
   type: 'salary' | 'bonus' | 'commission';
+  description: string;
+  reference?: string;
   period: {
     start: string;
     end: string;
@@ -1077,18 +1079,18 @@ app.get('/api/fulfillments/all', async (req, res) => {
   }
 });
 
-// Get fulfillment details
+// Add endpoint to get fulfillment details
 app.get('/api/fulfillments/:orderId', async (req, res) => {
   try {
-    const { orderId } = req.params;
     const token = req.headers.authorization?.split(' ')[1];
-    
     if (!token) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
+    const { orderId } = req.params;
+
     const result = await executeQuery(
-      'SELECT data FROM fulfillments WHERE data->>.orderId = $1',
+      'SELECT data FROM fulfillments WHERE data->>\'orderId\' = $1',
       [orderId]
     );
 
@@ -1103,6 +1105,9 @@ app.get('/api/fulfillments/:orderId', async (req, res) => {
           timestamp: new Date().toISOString(),
           note: 'Fulfillment created'
         }],
+        trackingNumber: '',
+        carrier: '',
+        notes: '',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
@@ -1576,36 +1581,7 @@ app.get('/api/employees/:employeeId/payments', async (req, res) => {
     }
 
     // Generate sample payment history
-    const payments: Payment[] = [
-      {
-        id: `PAY-${employeeId}-1`,
-        employeeId,
-        amount: 5000,
-        currency: 'USD',
-        status: 'completed',
-        type: 'salary',
-        period: {
-          start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-          end: new Date().toISOString()
-        },
-        createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-        paidAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: `PAY-${employeeId}-2`,
-        employeeId,
-        amount: 1000,
-        currency: 'USD',
-        status: 'completed',
-        type: 'bonus',
-        period: {
-          start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-          end: new Date().toISOString()
-        },
-        createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
-        paidAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
-      }
-    ];
+    const payments: Payment[] = [];
 
     res.json(payments);
   } catch (error) {
@@ -1615,25 +1591,34 @@ app.get('/api/employees/:employeeId/payments', async (req, res) => {
 });
 
 // Process new payment
-app.post('/api/employees/:employeeId/payments', async (req, res) => {
+app.post('/api/employees/:employeeId/payments', isAdmin, async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token || !req.body.isAdmin) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
     const { employeeId } = req.params;
-    const payment = req.body;
+    const { type, amount, description, reference } = req.body;
 
-    // Add payment processing logic here
+    // Create new payment record
     const newPayment: Payment = {
       id: `PAY-${employeeId}-${Date.now()}`,
       employeeId,
-      ...payment,
+      amount,
+      description,
+      reference,
+      currency: 'USD',
       status: 'completed',
+      type,
+      period: {
+        start: new Date().toISOString(),
+        end: new Date().toISOString()
+      },
       createdAt: new Date().toISOString(),
       paidAt: new Date().toISOString()
     };
+
+    // Store payment in database
+    await executeQuery(
+      'INSERT INTO payments (data) VALUES ($1)',
+      [JSON.stringify(newPayment)]
+    );
 
     res.json(newPayment);
   } catch (error) {

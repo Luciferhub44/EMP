@@ -89,3 +89,20 @@ export interface EmployeeStats {
   averageOrderValue: number
   customerSatisfaction: number
 }
+
+export interface Payment {
+  id: string;
+  employeeId: string;
+  amount: number;
+  currency: string;
+  status: 'pending' | 'completed' | 'failed';
+  type: PaymentType;
+  description: string;
+  reference?: string;
+  period: {
+    start: string;
+    end: string;
+  };
+  createdAt: string;
+  paidAt: string;
+}
