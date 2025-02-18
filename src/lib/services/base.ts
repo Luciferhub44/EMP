@@ -23,22 +23,34 @@ export class BaseService {
     options: RequestInit = {}
   ): Promise<T> {
     try {
+      const token = localStorage.getItem('auth_token')
+      const headers = new Headers(options.headers)
+      
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`)
+      }
+      
+      headers.set('Content-Type', 'application/json')
+
       const response = await fetch(`/api${endpoint}`, {
         ...options,
-        headers: {
-          ...options.headers,
-          'Content-Type': 'application/json',
-        },
+        headers,
       })
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+      if (response.status === 401) {
+        localStorage.removeItem('auth_token')
+        window.location.href = '/sign-in'
+        throw new Error('Session expired')
       }
 
-      const data = await response.json()
-      return data as T
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || `HTTP error! status: ${response.status}`)
+      }
+
+      return await response.json() as T
     } catch (error) {
-      this.handleError(error, "Failed to fetch data")
+      this.handleError(error, "Request failed")
       throw error
     }
   }

@@ -1,12 +1,13 @@
 import type { Employee } from "@/types/employee"
 import { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react"
+import { authService } from "@/lib/services/auth"
 
 interface AuthContextType {
   user: Employee | null
   loading: boolean
   error: string | null
   login: (agentId: string, password: string) => Promise<void>
-  logout: () => void
+  logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -25,19 +26,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return
         }
 
-        const response = await fetch('/api/auth/session', {
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}` 
-          }
-        })
-
-        if (!response.ok) {
-          throw new Error('Session validation failed')
-        }
-
-        const data = await response.json()
-        setUser(data.user)
+        const { user } = await authService.validateSession()
+        setUser(user)
       } catch (error) {
         console.error("Auth initialization failed:", error)
         setError("Failed to initialize authentication")
@@ -55,25 +45,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true)
       setError(null)
 
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          agentId,
-          password
-        })
-      })
-
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.message || "Login failed")
-      }
-
-      setUser(data.user)
-      localStorage.setItem("auth_token", data.token)
+      const { token, user } = await authService.login(agentId, password)
       
+      localStorage.setItem("auth_token", token)
+      setUser(user)
     } catch (error) {
       console.error("Login failed:", error)
       setError(error instanceof Error ? error.message : "Login failed")
@@ -83,9 +58,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const logout = useCallback(() => {
-    setUser(null)
-    localStorage.removeItem("auth_token")
+  const logout = useCallback(async () => {
+    try {
+      await authService.logout()
+    } catch (error) {
+      console.error("Logout failed:", error)
+    } finally {
+      setUser(null)
+      localStorage.removeItem("auth_token")
+    }
   }, [])
 
   const value = useMemo(() => ({

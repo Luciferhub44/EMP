@@ -3,25 +3,48 @@ import { BaseService } from './base'
 
 class AuthService extends BaseService {
   async login(agentId: string, password: string) {
-    return this.post<{ token: string; user: Employee }>('/auth/login', {
-      agentId,
-      password
-    })
+    try {
+      return await this.post<{ token: string; user: Employee }>('/auth/login', {
+        agentId: agentId.toUpperCase(),
+        password
+      })
+    } catch (error) {
+      this.handleError(error, 'Invalid credentials')
+      throw error
+    }
   }
 
   async validateSession() {
-    return this.get<{ user: Employee }>('/auth/session')
+    try {
+      return await this.get<{ user: Employee }>('/auth/session')
+    } catch (error) {
+      this.handleError(error, 'Session validation failed')
+      throw error
+    }
   }
 
   async logout() {
-    return this.post('/auth/logout', {})
+    try {
+      await this.post('/auth/logout', {})
+      this.handleSuccess('Logged out successfully')
+    } catch (error) {
+      this.handleError(error, 'Logout failed')
+      throw error
+    }
   }
 
   async changePassword(oldPassword: string, newPassword: string) {
-    return this.post<{ message: string }>('/auth/change-password', {
-      oldPassword,
-      newPassword
-    })
+    try {
+      const result = await this.post<{ message: string }>('/auth/change-password', {
+        oldPassword,
+        newPassword
+      })
+      this.handleSuccess(result.message)
+      return result
+    } catch (error) {
+      this.handleError(error, 'Password change failed')
+      throw error
+    }
   }
 
   async getEmployeeById(id: string) {
