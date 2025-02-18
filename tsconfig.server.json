@@ -10,9 +10,10 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
+      "@/*": ["src/*"],
       "@data/*": ["src/data/*"]
     }
   },
-  "include": ["server.ts", "src/data/*"],
-  "exclude": ["node_modules"]
+  "include": ["server.ts", "src/data/*", "src/types/*"],
+  "exclude": ["node_modules", "dist"]
 } 

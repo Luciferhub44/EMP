@@ -29,7 +29,7 @@ export default defineConfig(({ mode }) => {
         gzipSize: true,
         brotliSize: true,
       })
-    ],
+    ].filter(Boolean),
 
     resolve: {
       alias: {
@@ -37,9 +37,23 @@ export default defineConfig(({ mode }) => {
       }
     },
 
+    build: {
+      outDir: "dist/client",
+      emptyOutDir: true,
+      sourcemap: !isProd,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+            'ui-vendor': ['@radix-ui/react-icons', '@radix-ui/react-slot'],
+            'utils-vendor': ['lodash-es']
+          }
+        }
+      }
+    },
+
     server: {
       port: 3000,
-      host: true,
       strictPort: true,
       proxy: {
         "/api": {
@@ -49,37 +63,15 @@ export default defineConfig(({ mode }) => {
           ws: true,
           configure: (proxy, _options) => {
             proxy.on('error', (err, _req, _res) => {
-              console.log('proxy error', err);
+              console.error('proxy error', err);
             });
             proxy.on('proxyReq', (proxyReq, req, _res) => {
-              console.log('Sending Request to the Target:', req.method, req.url);
+              console.log('Sending Request:', req.method, req.url);
             });
             proxy.on('proxyRes', (proxyRes, req, _res) => {
-              console.log('Received Response from the Target:', proxyRes.statusCode, req.url);
+              console.log('Received Response:', proxyRes.statusCode, req.url);
             });
           }
-        }
-      }
-    },
-
-    build: {
-      outDir: "dist",
-      sourcemap: false,
-      minify: 'esbuild',
-      target: 'esnext',
-      assetsDir: 'assets',
-      cssCodeSplit: true,
-      reportCompressedSize: false,
-      rollupOptions: {
-        output: {
-          manualChunks: {
-            'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-            'ui-vendor': ['@radix-ui/react-icons', '@radix-ui/react-slot', '@radix-ui/react-dialog'],
-            'utils-vendor': ['lodash-es']
-          },
-          chunkFileNames: 'assets/js/[name]-[hash].js',
-          entryFileNames: 'assets/js/[name]-[hash].js',
-          assetFileNames: 'assets/[ext]/[name]-[hash].[ext]'
         }
       }
     },
@@ -91,32 +83,7 @@ export default defineConfig(({ mode }) => {
         'react-router-dom',
         '@radix-ui/react-icons',
         '@radix-ui/react-slot'
-      ],
-      exclude: ['@radix-ui/react-dialog']
-    },
-
-    css: {
-      modules: {
-        localsConvention: 'camelCase'
-      },
-      preprocessorOptions: {
-        scss: {
-          additionalData: `@import "@/styles/variables.scss";`
-        }
-      },
-      devSourcemap: false
-    },
-
-    esbuild: {
-      jsxInject: `import React from 'react'`,
-      drop: isProd ? ['console', 'debugger'] : [],
-      pure: isProd ? ['console.log', 'console.info', 'console.debug', 'console.trace'] : []
-    },
-
-    preview: {
-      port: 3000,
-      host: true,
-      strictPort: true
+      ]
     }
   }
 })
