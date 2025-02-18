@@ -10,7 +10,6 @@ import { warehouses } from "./src/data/warehouses.js"
 import { products } from "./src/data/products.js"
 import { employees } from "./src/data/employees.js"
 import { customers } from "./src/data/customers.js"
-import { fulfillments } from "./src/data/fulfillments.js"
 import { orders } from "./src/data/orders.js"
 import { transportCompanies, transportOrders } from "./src/data/transport.js"
 import { defaultSettings } from './src/config/default-settings.js';
@@ -130,6 +129,7 @@ interface RequestWithFile extends Request {
   file?: Express.Multer.File;
 }
 
+const SCHEMA_VERSION = '1.0.0';
 const DEFAULT_PORT = Number(process.env.PORT) || 3001;
 const MAX_PORT_RETRIES = 10;
 const __filename = fileURLToPath(import.meta.url);
@@ -142,6 +142,96 @@ const PORT = DEFAULT_PORT;
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'hq@sanyglobal.org';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'sany444global';
 const ADMIN_ID = 'ADMIN001';
+
+// Define schema first
+const schema = {
+  tables: {
+    schema_versions: `
+      CREATE TABLE IF NOT EXISTS schema_versions (
+        version TEXT PRIMARY KEY,
+        applied_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      )
+    `,
+    employees: `
+      CREATE TABLE IF NOT EXISTS employees (
+        id TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT employees_data_check CHECK (
+          data ? 'id' AND
+          data ? 'agentId' AND
+          data ? 'email' AND
+          data ? 'name' AND
+          data ? 'status' AND
+          data ? 'role' AND
+          data ? 'passwordHash'
+        )
+      )
+    `,
+    sessions: `
+      CREATE TABLE IF NOT EXISTS sessions (
+        id TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        expires_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      )
+    `,
+    customers: `
+      CREATE TABLE IF NOT EXISTS customers (
+        id TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      )
+    `,
+    products: `
+      CREATE TABLE IF NOT EXISTS products (
+        id TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      )
+    `,
+    orders: `
+      CREATE TABLE IF NOT EXISTS orders (
+        id TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      )
+    `,
+    fulfillments: `
+      CREATE TABLE IF NOT EXISTS fulfillments (
+        id TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      )
+    `,
+    messages: `
+      CREATE TABLE IF NOT EXISTS messages (
+        id TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      )
+    `,
+    settings: `
+      CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      )
+    `
+  },
+  indices: {
+    employees_agent_id: "CREATE INDEX IF NOT EXISTS idx_employees_agent_id ON employees ((data->>'agentId'))",
+    employees_email: "CREATE INDEX IF NOT EXISTS idx_employees_email ON employees ((data->>'email'))",
+    orders_customer: "CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders ((data->>'customerId'))",
+    fulfillments_order: "CREATE INDEX IF NOT EXISTS idx_fulfillments_order ON fulfillments ((data->>'orderId'))",
+    messages_thread: "CREATE INDEX IF NOT EXISTS idx_messages_thread ON messages ((data->>'threadId'))"
+  }
+};
 
 // Database connection
 const pool = new Pool({
@@ -158,7 +248,7 @@ app.use(express.static(path.join(__dirname, '../dist')));
 const authRouter = Router();
 
 // Login endpoint
-authRouter.post('/login', async (req: Request, res: Response) => {
+authRouter.post('/sign-in', async (req: Request, res: Response) => {
   try {
     const { agentId, password } = req.body;
 
@@ -177,7 +267,7 @@ authRouter.post('/login', async (req: Request, res: Response) => {
     }
 
     const employee = result.rows[0].data;
-    const isValidPassword = await verifyPassword(password, employee.passwordHash);
+    const isValidPassword = await bcrypt.compare(password, employee.passwordHash);
 
     if (!isValidPassword) {
       return res.status(401).json({ message: 'Invalid credentials' });
@@ -188,24 +278,23 @@ authRouter.post('/login', async (req: Request, res: Response) => {
     }
 
     // Generate session token
-    const token = generateToken();
+    const token = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
     // Store session
     await pool.query(
-      'INSERT INTO sessions (id, data, expires_at) VALUES ($1, $2, $3)',
+      'INSERT INTO sessions (id, data) VALUES ($1, $2)',
       [
         token,
         {
           token,
           employeeId: employee.id,
           expiresAt: expiresAt.toISOString()
-        },
-        expiresAt
+        }
       ]
     );
 
-    // Remove password hash from response
+    // Remove sensitive data from response
     const { passwordHash, ...userWithoutPassword } = employee;
 
     res.json({
@@ -307,98 +396,12 @@ async function startServer() {
 // Start the server
 startServer();
 
-// Database Schema and Initialization
-const SCHEMA_VERSION = '1.0.0';
-
-// Update schema definitions
-const schema = {
-  tables: {
-    schema_versions: `
-      CREATE TABLE IF NOT EXISTS schema_versions (
-        version TEXT PRIMARY KEY,
-        applied_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      )
-    `,
-    employees: `
-      CREATE TABLE IF NOT EXISTS employees (
-        id TEXT PRIMARY KEY,
-        data JSONB NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT employees_data_check CHECK (
-          data ? 'id' AND
-          data ? 'agentId' AND
-          data ? 'email' AND
-          data ? 'name' AND
-          data ? 'status' AND
-          data ? 'role' AND
-          data ? 'passwordHash'
-        )
-      )
-    `,
-    sessions: `
-      CREATE TABLE IF NOT EXISTS sessions (
-        id TEXT PRIMARY KEY,
-        data JSONB NOT NULL,
-        expires_at TIMESTAMPTZ NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      )
-    `,
-    customers: `
-      CREATE TABLE IF NOT EXISTS customers (
-        id TEXT PRIMARY KEY,
-        data JSONB NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      )
-    `,
-    products: `
-      CREATE TABLE IF NOT EXISTS products (
-        id TEXT PRIMARY KEY,
-        data JSONB NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      )
-    `,
-    orders: `
-      CREATE TABLE IF NOT EXISTS orders (
-        id TEXT PRIMARY KEY,
-        data JSONB NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      )
-    `,
-    fulfillments: `
-      CREATE TABLE IF NOT EXISTS fulfillments (
-        id TEXT PRIMARY KEY,
-        data JSONB NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      )
-    `,
-    messages: `
-      CREATE TABLE IF NOT EXISTS messages (
-        id TEXT PRIMARY KEY,
-        data JSONB NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      )
-    `,
-    settings: `
-      CREATE TABLE IF NOT EXISTS settings (
-        key TEXT PRIMARY KEY,
-        data JSONB NOT NULL,
-        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      )
-    `
-  }
-};
-
-// Initialize database with default admin
+// Initialize database function
 async function initializeDatabase() {
   try {
     // Create tables
     for (const [name, query] of Object.entries(schema.tables)) {
-      await pool.query(query)
+      await pool.query(query);
     }
 
     // Check if admin exists
