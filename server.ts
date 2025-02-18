@@ -588,9 +588,8 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const { agentId, password } = req.body;
 
-    // Find employee by agentId
     const result = await executeQuery(
-      'SELECT data FROM employees WHERE data->>\'agentId\' = $1',
+      'SELECT data FROM employees WHERE data->>\'agentId\' = $1 AND data->>\'status\' = \'active\'',
       [agentId]
     );
 
@@ -600,7 +599,7 @@ app.post('/api/auth/login', async (req, res) => {
 
     const employee = result.rows[0].data;
 
-    // Verify password
+    // Verify password using stored hash
     const isValid = await verifyPassword(password, employee.passwordHash);
     if (!isValid) {
       return res.status(401).json({ message: 'Invalid credentials' });
@@ -609,14 +608,15 @@ app.post('/api/auth/login', async (req, res) => {
     // Create session token
     const token = `session-${employee.id}-${Date.now()}`;
     
-    // Store session
+    // Store session with role information
     await executeQuery(
       'INSERT INTO sessions (data) VALUES ($1)',
       [JSON.stringify({
         token,
         employeeId: employee.id,
+        role: employee.role,
         createdAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
       })]
     );
 
@@ -2081,6 +2081,30 @@ app.put('/api/fulfillments/:orderId', async (req, res) => {
   } catch (error) {
     console.error('Failed to update fulfillment:', error);
     res.status(500).json({ error: 'Failed to update fulfillment' });
+  }
+});
+
+// ============= Database Initialization =============
+app.post('/api/init/employees', async (req, res) => {
+  try {
+    // Clear existing employees
+    await executeQuery('DELETE FROM employees', []);
+    
+    // Insert initial employees
+    for (const employee of employees) {
+      await executeQuery(
+        'INSERT INTO employees (data) VALUES ($1)',
+        [JSON.stringify(employee)]
+      );
+    }
+
+    // Clear existing sessions
+    await executeQuery('DELETE FROM sessions', []);
+
+    res.json({ message: 'Employee data initialized successfully' });
+  } catch (error) {
+    console.error('Failed to initialize employee data:', error);
+    res.status(500).json({ error: 'Failed to initialize employee data' });
   }
 });
 
