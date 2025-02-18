@@ -859,5 +859,112 @@ app.get('/api/orders/:orderId', async (req, res) => {
   }
 });
 
+// Assign order to employee
+app.post('/api/employees/:employeeId/assign-order', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { employeeId } = req.params;
+    const { orderId } = req.body;
+
+    // Verify employee exists
+    const employeeResult = await executeQuery(
+      'SELECT data FROM employees WHERE data->>\'id\' = $1',
+      [employeeId]
+    );
+
+    if (employeeResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Employee not found' });
+    }
+
+    // Verify order exists and is unassigned
+    const orderResult = await executeQuery(
+      'SELECT data FROM orders WHERE data->>\'id\' = $1',
+      [orderId]
+    );
+
+    if (orderResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const order = orderResult.rows[0].data;
+    if (order.assignedTo) {
+      return res.status(400).json({ error: 'Order already assigned' });
+    }
+
+    // Update order assignment
+    await executeQuery(
+      'UPDATE orders SET data = jsonb_set(data, \'{assignedTo}\', $1::jsonb) WHERE data->>\'id\' = $2',
+      [JSON.stringify(employeeId), orderId]
+    );
+
+    res.json({ success: true, message: 'Order assigned successfully' });
+  } catch (error) {
+    console.error('Failed to assign order:', error);
+    res.status(500).json({ error: 'Failed to assign order' });
+  }
+});
+
+// Get single customer
+app.get('/api/customers/:customerId', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { customerId } = req.params;
+    const customerResult = await executeQuery(
+      'SELECT data FROM customers WHERE data->>\'id\' = $1',
+      [customerId]
+    );
+
+    if (customerResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Customer not found' });
+    }
+
+    res.json(customerResult.rows[0].data);
+  } catch (error) {
+    console.error('Failed to fetch customer:', error);
+    res.status(500).json({ error: 'Failed to fetch customer' });
+  }
+});
+
+// Get transport quotes for order
+app.get('/api/transport/quotes/:orderId', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { orderId } = req.params;
+    
+    // Get order details first
+    const orderResult = await executeQuery(
+      'SELECT data FROM orders WHERE data->>\'id\' = $1',
+      [orderId]
+    );
+
+    if (orderResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Get quotes for this order
+    const quotesResult = await executeQuery(
+      'SELECT data FROM transport_quotes WHERE data->>\'orderId\' = $1 ORDER BY (data->>\'price\')::numeric ASC',
+      [orderId]
+    );
+
+    res.json(quotesResult.rows.map((row: DbRow) => row.data));
+  } catch (error) {
+    console.error('Failed to fetch transport quotes:', error);
+    res.status(500).json({ error: 'Failed to fetch transport quotes' });
+  }
+});
+
 // Start the server
 startServer().catch(console.error);
