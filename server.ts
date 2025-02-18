@@ -1010,7 +1010,7 @@ app.get('/api/fulfillments/all', async (req, res) => {
   }
 });
 
-// Get fulfillment by order ID
+// Get fulfillment details
 app.get('/api/fulfillments/:orderId', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
@@ -1020,34 +1020,55 @@ app.get('/api/fulfillments/:orderId', async (req, res) => {
 
     const { orderId } = req.params;
 
-    // First check if order exists
-    const orderResult = await executeQuery(
-      'SELECT data FROM orders WHERE data->>\'id\' = $1',
-      [orderId]
-    );
-
-    if (orderResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Order not found' });
-    }
-
-    // Then get fulfillment
+    // Check if fulfillment exists
     const fulfillmentResult = await executeQuery(
       'SELECT data FROM fulfillments WHERE data->>\'orderId\' = $1',
       [orderId]
     );
 
-    // If no fulfillment exists yet, return a default structure
+    // If no fulfillment exists, create a default one
     if (fulfillmentResult.rows.length === 0) {
-      return res.json({
+      const defaultFulfillment = {
         id: `FUL-${orderId}`,
-        orderId: orderId,
+        orderId,
         status: 'pending',
+        carrier: '',
+        trackingNumber: '',
+        notes: '',
+        history: [
+          {
+            status: 'pending',
+            timestamp: new Date().toISOString(),
+            note: 'Fulfillment created'
+          }
+        ],
         createdAt: new Date().toISOString(),
-        items: orderResult.rows[0].data.items || []
-      });
+        updatedAt: new Date().toISOString()
+      };
+
+      await executeQuery(
+        'INSERT INTO fulfillments (data) VALUES ($1)',
+        [JSON.stringify(defaultFulfillment)]
+      );
+
+      return res.json(defaultFulfillment);
     }
 
-    res.json(fulfillmentResult.rows[0].data);
+    // Return existing fulfillment
+    const fulfillment = fulfillmentResult.rows[0].data;
+    
+    // Ensure history array exists
+    if (!fulfillment.history) {
+      fulfillment.history = [
+        {
+          status: fulfillment.status,
+          timestamp: fulfillment.createdAt,
+          note: 'Fulfillment initialized'
+        }
+      ];
+    }
+
+    res.json(fulfillment);
   } catch (error) {
     console.error('Failed to fetch fulfillment:', error);
     res.status(500).json({ error: 'Failed to fetch fulfillment' });
