@@ -1088,16 +1088,14 @@ app.get('/api/fulfillments/:orderId', async (req, res) => {
     }
 
     const { orderId } = req.params;
-
-    // Get fulfillment from database
     const result = await executeQuery(
       'SELECT data FROM fulfillments WHERE data->>\'orderId\' = $1',
       [orderId]
     );
 
     if (result.rows.length === 0) {
-      // Create new fulfillment if none exists
-      const fulfillment = {
+      // If no fulfillment exists, create one
+      const newFulfillment = {
         id: `FUL${String(Date.now()).slice(-6)}`,
         orderId,
         status: 'pending',
@@ -1106,19 +1104,16 @@ app.get('/api/fulfillments/:orderId', async (req, res) => {
           timestamp: new Date().toISOString(),
           note: 'Fulfillment created'
         }],
-        trackingNumber: '',
-        carrier: '',
-        notes: '',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
 
       await executeQuery(
         'INSERT INTO fulfillments (data) VALUES ($1)',
-        [JSON.stringify(fulfillment)]
+        [JSON.stringify(newFulfillment)]
       );
 
-      return res.json(fulfillment);
+      return res.json(newFulfillment);
     }
 
     res.json(result.rows[0].data);

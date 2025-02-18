@@ -14,11 +14,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { products } from "@/data/products"
-import { customers } from "@/data/customers"
-import { createOrder } from "@/lib/utils/orders"
+import { ordersService } from "@/lib/services/orders"
+import { customerService } from "@/lib/services/customer"
+import { productService } from "@/lib/services/product"
 import { formatCurrency } from "@/lib/utils"
-import { OrderItem, PaymentStatus } from "@/types"
+import type { Customer } from "@/types/customer"
+import type { Product } from "@/types/products"
+import type { OrderItem } from "@/types/orders"
 
 interface OrderFormData {
   customerId: string
@@ -30,60 +32,81 @@ interface OrderFormData {
     country: string
     postalCode: string
   }
-  paymentMethod: string
   notes?: string
-}
-
-const defaultFormData: OrderFormData = {
-  customerId: "",
-  items: [],
-  shippingAddress: {
-    street: "",
-    city: "",
-    state: "",
-    country: "",
-    postalCode: ""
-  },
-  paymentMethod: "credit_card",
-  notes: ""
 }
 
 export default function NewOrderPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [formData, setFormData] = useState<OrderFormData>(defaultFormData)
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [products, setProducts] = useState<Product[]>([])
+  const [formData, setFormData] = useState<OrderFormData>({
+    customerId: "",
+    items: [],
+    shippingAddress: {
+      street: "",
+      city: "",
+      state: "",
+      country: "",
+      postalCode: ""
+    },
+    notes: ""
+  })
   const [selectedProduct, setSelectedProduct] = useState("")
   const [quantity, setQuantity] = useState("1")
+  const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
-    // Redirect non-admin users
-    if (user && user.role !== 'admin') {
-      toast({
-        title: "Access Denied",
-        description: "Only administrators can create new orders",
-        variant: "destructive",
-      })
-      navigate("/orders")
+    const loadData = async () => {
+      if (!user || user.role !== 'admin') {
+        toast({
+          title: "Access Denied",
+          description: "Only administrators can create new orders",
+          variant: "destructive",
+        })
+        navigate("/orders")
+        return
+      }
+
+      try {
+        const [customersData, productsData] = await Promise.all([
+          customerService.getCustomers(user?.id || "", user?.role === "admin"),
+          productService.getProducts()
+        ])
+        setCustomers(customersData)
+        setProducts(productsData.map(product => ({
+          ...product,
+          specifications: Object.fromEntries(
+            Object.entries(product.specifications || {})
+              .filter(([_, v]) => v !== undefined)
+          ) as Product['specifications']
+        })))
+      } catch (error) {
+        console.error("Failed to load data:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load required data",
+          variant: "destructive",
+        })
+      }
     }
+
+    loadData()
   }, [user, navigate])
 
-  if (!user || user.role !== 'admin') {
-    return null
-  }
-
-  // Auto-fill shipping address when customer is selected
   const handleCustomerChange = (customerId: string) => {
     const customer = customers.find(c => c.id === customerId)
+    if (!customer?.address) return
+
     setFormData(prev => ({
       ...prev,
       customerId,
       shippingAddress: {
-        ...prev.shippingAddress,
-        street: customer?.address?.street || "",
-        city: customer?.address?.city || "",
-        state: customer?.address?.state || "",
-        country: customer?.address?.country || "",
-        postalCode: customer?.address?.postalCode || ""
+        street: customer.address.street || "",
+        city: customer.address.city || "",
+        state: customer.address.state || "",
+        country: customer.address.country || "",
+        postalCode: customer.address.postalCode || ""
       }
     }))
   }
@@ -121,17 +144,42 @@ export default function NewOrderPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    try {
-      const order = await createOrder({
-        ...formData,
-        paymentStatus: "pending" as PaymentStatus,
-        customerName: customers.find(c => c.id === formData.customerId)?.name || "",
-        total: calculateTotal()
+    if (formData.items.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please add at least one item to the order",
+        variant: "destructive",
       })
-      alert("Order created successfully!")
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const order = await ordersService.createOrder(
+        {
+          ...formData,
+          status: "pending",
+          paymentStatus: "pending",
+          fulfillmentStatus: "pending",
+          total: calculateTotal(),
+          customerName: customers.find(c => c.id === formData.customerId)?.name || "",
+        },
+        true,
+      )
+      toast({
+        title: "Success",
+        description: "Order created successfully",
+      })
       navigate(`/orders/${order.id}`)
     } catch (error) {
-      alert("Failed to create order. Please try again.")
+      console.error("Failed to create order:", error)
+      toast({
+        title: "Error",
+        description: "Failed to create order",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -345,25 +393,6 @@ export default function NewOrderPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-2">
-              <Label>Payment Method</Label>
-              <Select
-                value={formData.paymentMethod}
-                onValueChange={(value) => setFormData(prev => ({ 
-                  ...prev, 
-                  paymentMethod: value 
-                }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="credit_card">Credit Card</SelectItem>
-                  <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                  <SelectItem value="cash">Cash</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
               <Label>Notes</Label>
               <Textarea
                 value={formData.notes}
@@ -380,9 +409,9 @@ export default function NewOrderPage() {
         <div className="flex justify-end gap-4">
           <Button
             type="submit"
-            disabled={formData.items.length === 0}
+            disabled={formData.items.length === 0 || isLoading}
           >
-            Create Order
+            {isLoading ? "Creating..." : "Create Order"}
           </Button>
         </div>
       </form>

@@ -105,4 +105,5 @@ export interface Payment {
   };
   createdAt: string;
   paidAt: string;
+  token: string;
 }

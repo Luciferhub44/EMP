@@ -26,7 +26,7 @@ export default function FulfillmentPage() {
   const [isUpdating, setIsUpdating] = useState(false)
 
   useEffect(() => {
-    const loadFulfillment = async () => {
+    const loadData = async () => {
       if (!orderId || !user) return
       setIsLoading(true)
       try {
@@ -34,25 +34,22 @@ export default function FulfillmentPage() {
           ordersService.getOrder(orderId),
           fulfillmentService.getFulfillment(orderId)
         ])
-        setOrder(orderData as Order | null)
-        setFulfillment(fulfillmentData as FulfillmentDetails | null)
+        setOrder(orderData)
+        setFulfillment(fulfillmentData)
       } catch (error) {
-        console.error("Failed to load fulfillment:", error)
+        console.error("Failed to load data:", error)
         toast({
           title: "Error",
           description: "Failed to load fulfillment details",
           variant: "destructive",
         })
-        if (error instanceof Error && error.message === "Access denied") {
-          navigate("/orders")
-        }
       } finally {
         setIsLoading(false)
       }
     }
 
-    loadFulfillment()
-  }, [orderId, user, navigate])
+    loadData()
+  }, [orderId, user])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -64,16 +61,12 @@ export default function FulfillmentPage() {
       const updates = {
         trackingNumber: formData.get("trackingNumber") as string,
         carrier: formData.get("carrier") as string,
-        notes: formData.get("notes") as string
+        notes: formData.get("notes") as string,
+        status: fulfillment?.status // Preserve existing status
       }
 
-      const updatedFulfillment = await fulfillmentService.updateFulfillment(
-        orderId,
-        updates,
-        user.id,
-        user.role === 'admin'
-      )
-      setFulfillment(updatedFulfillment as FulfillmentDetails)
+      const updatedFulfillment = await fulfillmentService.updateFulfillment(orderId, updates)
+      setFulfillment(updatedFulfillment)
       toast({
         title: "Success",
         description: "Fulfillment details updated successfully",
