@@ -1,20 +1,9 @@
+import { baseService } from './base'
 import type { Product } from "@/types/products"
 
 export const productService = {
-  getProducts: async () => {
-    try {
-      const response = await fetch('/api/products', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        }
-      })
-      if (!response.ok) throw new Error('Failed to fetch products')
-      return response.json()
-    } catch (error) {
-      console.error("Failed to get products:", error)
-      return []
-    }
-  },
+  getProducts: () => 
+    baseService.handleRequest<Product[]>('/api/products'),
 
   getProduct: async (id: string) => {
     try {
@@ -31,18 +20,11 @@ export const productService = {
     }
   },
 
-  createProduct: async (productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const response = await fetch('/api/products', {
+  createProduct: (productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) =>
+    baseService.handleRequest<Product>('/api/products', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-      },
       body: JSON.stringify(productData)
-    })
-    if (!response.ok) throw new Error('Failed to create product')
-    return response.json()
-  },
+    }),
 
   updateProduct: async (id: string, updates: Partial<Omit<Product, 'id' | 'createdAt'>>) => {
     const response = await fetch(`/api/products/${id}`, {

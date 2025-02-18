@@ -1,4 +1,5 @@
-import { ChatMessage, ChatUser } from "@/types/chat"
+import { baseService } from './base'
+import type { ChatMessage, ChatUser } from "@/types/chat"
 import { chatWebSocket } from "./websocket"
 
 interface SendMessageParams {
@@ -8,6 +9,8 @@ interface SendMessageParams {
 
 class ChatService {
   private currentUser: ChatUser | null = null
+  private messageCallbacks: ((message: ChatMessage) => void)[] = []
+  private userStatusCallbacks: ((user: ChatUser) => void)[] = []
 
   constructor() {
     chatWebSocket.connect()
@@ -17,19 +20,10 @@ class ChatService {
 
   private async initializeCurrentUser() {
     try {
-      const response = await fetch('/api/auth/me', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        }
-      })
-      if (response.ok) {
-        const userData = await response.json()
-        this.currentUser = {
-          id: userData.id,
-          name: userData.name,
-          role: userData.role,
-          isOnline: true
-        }
+      const userData = await baseService.handleRequest<ChatUser>('/api/auth/me')
+      this.currentUser = {
+        ...userData,
+        isOnline: true
       }
     } catch (error) {
       console.error('Failed to initialize chat user:', error)
@@ -51,12 +45,8 @@ class ChatService {
 
   private async handleNewMessage(message: ChatMessage) {
     try {
-      await fetch('/api/chat/messages', {
+      await baseService.handleRequest<void>('/api/chat/messages', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        },
         body: JSON.stringify(message)
       })
       this.messageCallbacks.forEach(callback => callback(message))
@@ -67,12 +57,8 @@ class ChatService {
 
   private async handleUserStatus(user: ChatUser) {
     try {
-      await fetch(`/api/chat/users/${user.id}/status`, {
+      await baseService.handleRequest<void>(`/api/chat/users/${user.id}/status`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        },
         body: JSON.stringify({ isOnline: user.isOnline })
       })
       this.userStatusCallbacks.forEach(callback => callback(user))
@@ -80,9 +66,6 @@ class ChatService {
       console.error('Failed to update user status:', error)
     }
   }
-
-  private messageCallbacks: ((message: ChatMessage) => void)[] = []
-  private userStatusCallbacks: ((user: ChatUser) => void)[] = []
 
   onNewMessage(callback: (message: ChatMessage) => void) {
     this.messageCallbacks.push(callback)
@@ -110,17 +93,11 @@ class ChatService {
       message.attachments = await this.uploadFiles(attachments)
     }
 
-    // Send to server
-    await fetch('/api/chat/messages', {
+    await baseService.handleRequest<void>('/api/chat/messages', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-      },
       body: JSON.stringify(message)
     })
 
-    // Broadcast via WebSocket
     chatWebSocket.sendMessage({
       type: "new_message",
       data: message
@@ -133,19 +110,10 @@ class ChatService {
     const formData = new FormData()
     files.forEach(file => formData.append('files', file))
 
-    const response = await fetch('/api/chat/upload', {
+    return baseService.handleRequest<ChatMessage["attachments"]>('/api/chat/upload', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-      },
       body: formData
     })
-
-    if (!response.ok) {
-      throw new Error('Failed to upload files')
-    }
-
-    return response.json()
   }
 
   getCurrentUser(): ChatUser | null {

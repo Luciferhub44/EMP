@@ -14,69 +14,39 @@ class WebSocketService {
   async connect() {
     try {
       this.ws = new WebSocket(this.url)
-
-      this.ws.onopen = async () => {
-        console.log('WebSocket connected')
-        this.reconnectAttempts = 0
-        await this.updateConnectionStatus(true)
-        this.notifyStatusChange(true)
-      }
-
-      this.ws.onmessage = async (event) => {
-        const message = JSON.parse(event.data)
-        await this.storeMessage(message)
-        this.notifyMessageReceived(message)
-      }
-
-      this.ws.onclose = async () => {
-        console.log('WebSocket disconnected')
-        await this.updateConnectionStatus(false)
-        this.notifyStatusChange(false)
-        this.attemptReconnect()
-      }
-
-      this.ws.onerror = (error) => {
-        console.error('WebSocket error:', error)
-      }
+      this.setupEventListeners()
     } catch (error) {
       console.error('Failed to connect to WebSocket:', error)
+      this.attemptReconnect()
     }
   }
 
-  private async updateConnectionStatus(status: boolean) {
-    try {
-      await fetch('/api/websocket/status', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        },
-        body: JSON.stringify({
-          status,
-          timestamp: new Date().toISOString()
-        })
-      })
-    } catch (error) {
-      console.error('Failed to update connection status:', error)
-    }
-  }
+  private setupEventListeners() {
+    if (!this.ws) return
 
-  private async storeMessage(message: any) {
-    try {
-      await fetch('/api/websocket/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        },
-        body: JSON.stringify({
-          id: `msg-${Date.now()}`,
-          data: message,
-          timestamp: new Date().toISOString()
-        })
-      })
-    } catch (error) {
-      console.error('Failed to store message:', error)
+    this.ws.onopen = () => {
+      console.log('WebSocket connected')
+      this.reconnectAttempts = 0
+      this.notifyStatusChange(true)
+    }
+
+    this.ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data)
+        this.notifyMessageReceived(message)
+      } catch (error) {
+        console.error('Failed to parse WebSocket message:', error)
+      }
+    }
+
+    this.ws.onclose = () => {
+      console.log('WebSocket disconnected')
+      this.notifyStatusChange(false)
+      this.attemptReconnect()
+    }
+
+    this.ws.onerror = (error) => {
+      console.error('WebSocket error:', error)
     }
   }
 

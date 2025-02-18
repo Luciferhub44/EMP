@@ -1,68 +1,23 @@
+import { baseService } from './base'
 import type { Session } from "@/types/session"
 
 export const sessionService = {
-  createSession: async (userId: string, token: string): Promise<Session> => {
-    const response = await fetch('/api/sessions', {
+  createSession: (userId: string, token: string) =>
+    baseService.handleRequest<Session>('/api/sessions', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-      },
-      body: JSON.stringify({
-        userId,
-        token
-      })
+      body: JSON.stringify({ userId, token })
+    }),
+
+  getSession: (token: string) =>
+    baseService.handleRequest<Session | null>(`/api/sessions/${token}`),
+
+  deleteSession: (token: string) =>
+    baseService.handleRequest<void>(`/api/sessions/${token}`, {
+      method: 'DELETE'
+    }),
+
+  deleteAllUserSessions: (userId: string) =>
+    baseService.handleRequest<void>(`/api/sessions/user/${userId}`, {
+      method: 'DELETE'
     })
-
-    if (!response.ok) {
-      throw new Error('Failed to create session')
-    }
-
-    return response.json()
-  },
-
-  getSession: async (token: string): Promise<Session | null> => {
-    try {
-      const response = await fetch(`/api/sessions/${token}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        }
-      })
-
-      if (!response.ok) {
-        return null
-      }
-
-      return response.json()
-    } catch (error) {
-      console.error('Failed to get session:', error)
-      return null
-    }
-  },
-
-  deleteSession: async (token: string): Promise<void> => {
-    const response = await fetch(`/api/sessions/${token}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-      }
-    })
-
-    if (!response.ok) {
-      throw new Error('Failed to delete session')
-    }
-  },
-
-  deleteAllUserSessions: async (userId: string): Promise<void> => {
-    const response = await fetch(`/api/sessions/user/${userId}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-      }
-    })
-
-    if (!response.ok) {
-      throw new Error('Failed to delete user sessions')
-    }
-  }
 } 

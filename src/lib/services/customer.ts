@@ -1,52 +1,22 @@
+import { baseService } from './base'
 import type { Customer } from "@/types/customer"
 import type { Order } from "@/types/orders"
 
 export const customerService = {
   // Get customers based on user role and access
-  getCustomers: async (userId: string, isAdmin: boolean) => {
-    try {
-      const response = await fetch(`/api/customers?userId=${userId}&isAdmin=${isAdmin}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        }
-      })
-      if (!response.ok) throw new Error('Failed to fetch customers')
-      return response.json()
-    } catch (error) {
-      console.error("Failed to get customers:", error)
-      return []
-    }
-  },
+  getCustomers: (userId: string, isAdmin: boolean) => 
+    baseService.handleRequest<Customer[]>(`/api/customers?userId=${userId}&isAdmin=${isAdmin}`),
 
   // Get single customer with access check
-  getCustomer: async (id: string, userId: string = "", isAdmin: boolean = false) => {
-    try {
-      const response = await fetch(`/api/customers/${id}?userId=${userId}&isAdmin=${isAdmin}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        }
-      })
-      if (!response.ok) return null
-      return response.json()
-    } catch (error) {
-      console.error("Failed to get customer:", error)
-      return null
-    }
-  },
+  getCustomer: (id: string, userId: string = "", isAdmin: boolean = false) =>
+    baseService.handleRequest<Customer | null>(`/api/customers/${id}?userId=${userId}&isAdmin=${isAdmin}`),
 
   // Only admins can create/update customers
-  createCustomer: async (customerData: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const response = await fetch('/api/customers', {
+  createCustomer: (customerData: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>) =>
+    baseService.handleRequest<Customer>('/api/customers', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-      },
       body: JSON.stringify(customerData)
-    })
-    if (!response.ok) throw new Error('Failed to create customer')
-    return response.json()
-  },
+    }),
 
   updateCustomer: async (id: string, updates: Partial<Omit<Customer, 'id' | 'createdAt'>>) => {
     const response = await fetch(`/api/customers/${id}`, {

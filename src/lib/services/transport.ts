@@ -1,3 +1,4 @@
+import { baseService } from './base'
 import type { TransportQuote, ShippingCalculation, Order } from "@/types/orders"
 
 const WAREHOUSE_ADDRESS = {
@@ -9,7 +10,7 @@ const WAREHOUSE_ADDRESS = {
 }
 
 export const transportService = {
-  calculateShipping: (order: Order): ShippingCalculation => {
+  calculateShipping: (order: Order) => {
     if (!order.shipping?.address) {
       throw new Error("Shipping address is required")
     }
@@ -31,32 +32,19 @@ export const transportService = {
       0
     )
 
-    return {
-      origin: WAREHOUSE_ADDRESS,
-      destination: order.shipping.address,
-      items,
-      totalWeight,
-      totalValue,
-      requiresInsurance: totalValue > 1000
-    }
+    return baseService.handleRequest<ShippingCalculation>('/api/transport/calculate', {
+      method: 'POST',
+      body: JSON.stringify({
+        origin: WAREHOUSE_ADDRESS,
+        destination: order.shipping.address,
+        items,
+        totalWeight,
+        totalValue,
+        requiresInsurance: totalValue > 1000
+      })
+    })
   },
 
-  getQuotes: async (orderId: string): Promise<TransportQuote[]> => {
-    try {
-      const response = await fetch(`/api/transport/quotes/${orderId}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch transport quotes')
-      }
-
-      return response.json()
-    } catch (error) {
-      console.error("Failed to get transport quotes:", error)
-      throw error
-    }
-  }
+  getQuotes: (orderId: string) =>
+    baseService.handleRequest<TransportQuote[]>(`/api/transport/quotes/${orderId}`)
 } 

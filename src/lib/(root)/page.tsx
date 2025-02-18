@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { formatCurrency } from "@/lib/utils"
 import type { Order, FulfillmentDetails } from "@/types/orders"
 import { Loader2 } from "lucide-react"
+import { toast } from "@/components/ui/use-toast"
 
 export default function DashboardPage() {
   const navigate = useNavigate()
@@ -19,22 +20,20 @@ export default function DashboardPage() {
     const loadDashboardData = async () => {
       if (!user) return
       setIsLoading(true)
-      setError(null)
+      setError(null) // Reset error state
       try {
-        // Load orders based on user role
-        const orderResponse = await fetch(`/api/orders?userId=${user.id}&isAdmin=${user.role === 'admin'}`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-            'Accept': 'application/json'
-          }
-        })
-
-        if (!orderResponse.ok) {
-          throw new Error(`Failed to load orders: ${orderResponse.statusText}`)
+        const headers = {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}` // Add auth token if using one
         }
 
-        const orderData = await orderResponse.json()
-        setOrders(orderData)
+        const ordersData = await fetch('/api/orders', { headers }).then(res => {
+          if (!res.ok) throw new Error('Failed to fetch orders')
+          return res.json()
+        })
+
+        setOrders(ordersData)
 
         // Load fulfillments based on user role
         const fulfillmentResponse = await fetch(
@@ -57,7 +56,12 @@ export default function DashboardPage() {
         setFulfillments(fulfillmentData)
       } catch (error) {
         console.error("Failed to load dashboard data:", error)
-        setError(error instanceof Error ? error.message : 'An unknown error occurred')
+        toast({
+          title: "Error",
+          description: error instanceof Error ? error.message : "Failed to load dashboard data",
+          variant: "destructive",
+        })
+        setError(error instanceof Error ? error.message : 'Failed to load data')
       } finally {
         setIsLoading(false)
       }

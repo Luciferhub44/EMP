@@ -1,27 +1,7 @@
-import type { FulfillmentDetails, FulfillmentStatus, Order } from "@/types/orders"
-import { fulfillments } from "@/data/fulfillments"
+import type { FulfillmentDetails, FulfillmentStatus } from "@/types/orders"
 import { ordersService } from "./orders"
 import { employeeService } from "./employee"
-import { fulfillmentStore } from "@/lib/utils/fulfillment"
-
-interface FulfillmentData {
-  [orderId: string]: {
-    orderId: string;
-    status: string;
-    carrier?: string;
-    trackingNumber?: string;
-    estimatedDelivery?: string;
-    notes?: string;
-    history: {
-      status: string;
-      timestamp: string;
-      note?: string;
-    }[];
-  }
-}
-
-// Add type assertion to fulfillments
-const fulfillmentsMap: FulfillmentData = fulfillments as unknown as FulfillmentData;
+import { baseService } from './base'
 
 export const fulfillmentService = {
   // Check if employee has access to the fulfillment
@@ -31,7 +11,7 @@ export const fulfillmentService = {
 
     try {
       const assignedOrders = await employeeService.getAssignedOrders(userId)
-      return assignedOrders.some((order: Order) => order.id === orderId)
+      return assignedOrders.some(order => order.id === orderId)
     } catch (error) {
       console.error("Failed to check fulfillment access:", error)
       return false
@@ -41,43 +21,24 @@ export const fulfillmentService = {
   getOrderFulfillment: async (orderId: string, userId?: string, isAdmin?: boolean) => {
     // Check access first
     const hasAccess = await fulfillmentService.checkAccess(orderId, userId, isAdmin)
-    if (!hasAccess) {
-      throw new Error("Access denied")
-    }
+    if (!hasAccess) throw new Error("Access denied")
 
-    // Return existing fulfillment or create new one
-    const fulfillment = fulfillmentStore.get(orderId)
-    if (!fulfillment) {
-      return fulfillmentService.createFulfillment(orderId, userId, isAdmin)
-    }
-    return fulfillment
+    return baseService.handleRequest<FulfillmentDetails>(`/api/fulfillments/${orderId}`)
   },
 
   createFulfillment: async (orderId: string, userId?: string, isAdmin?: boolean) => {
     // Check access first
     const hasAccess = await fulfillmentService.checkAccess(orderId, userId, isAdmin)
-    if (!hasAccess) {
-      throw new Error("Access denied")
-    }
+    if (!hasAccess) throw new Error("Access denied")
 
-    // Check if order exists and user has access
+    // Check if order exists
     const order = await ordersService.getOrder(orderId, userId || '', isAdmin || false)
     if (!order) throw new Error("Order not found")
 
-    const fulfillment: FulfillmentDetails = {
-      orderId,
-      status: 'pending',
-      history: [
-        {
-          status: 'pending',
-          timestamp: new Date().toISOString(),
-          note: "Fulfillment created"
-        }
-      ]
-    }
-
-    fulfillmentsMap[orderId] = fulfillment
-    return fulfillment
+    return baseService.handleRequest<FulfillmentDetails>('/api/fulfillments', {
+      method: 'POST',
+      body: JSON.stringify({ orderId })
+    })
   },
 
   updateFulfillment: async (
@@ -88,39 +49,12 @@ export const fulfillmentService = {
   ) => {
     // Check access first
     const hasAccess = await fulfillmentService.checkAccess(orderId, userId, isAdmin)
-    if (!hasAccess) {
-      throw new Error("Access denied")
-    }
+    if (!hasAccess) throw new Error("Access denied")
 
-    // Verify user has access to the order
-    const order = await ordersService.getOrder(orderId, userId || '', isAdmin || false)
-    if (!order) throw new Error("Access denied")
-
-    const fulfillment = fulfillmentsMap[orderId]
-    if (!fulfillment) throw new Error("Fulfillment not found")
-
-    // Add status change to history if status is updated
-    if (updates.status && updates.status !== fulfillment.status) {
-      fulfillment.history.push({
-        status: updates.status,
-        timestamp: new Date().toISOString(),
-        note: updates.notes
-      })
-
-      // Also update the order's fulfillment status
-      await ordersService.updateOrder(orderId, {
-        fulfillmentStatus: updates.status
-      }, userId, isAdmin)
-    }
-
-    // Update the fulfillment
-    fulfillmentsMap[orderId] = {
-      ...fulfillment,
-      ...updates,
-      history: fulfillment.history // Preserve history
-    }
-
-    return fulfillmentsMap[orderId]
+    return baseService.handleRequest<FulfillmentDetails>(`/api/fulfillments/${orderId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates)
+    })
   },
 
   updateStatus: async (
@@ -175,10 +109,7 @@ export const fulfillmentService = {
   },
 
   markAsDelivered: async (orderId: string, userId?: string, isAdmin?: boolean) => {
-    const fulfillment = await fulfillmentService.getOrderFulfillment(orderId, userId, isAdmin)
-    if (!fulfillment) {
-      throw new Error("Fulfillment not found")
-    }
+    await fulfillmentService.getOrderFulfillment(orderId, userId, isAdmin)
     
     return fulfillmentService.updateStatus(
       orderId,
@@ -189,25 +120,17 @@ export const fulfillmentService = {
     )
   },
 
-  // Get all fulfillments for an employee
-  getEmployeeFulfillments: async (userId: string): Promise<FulfillmentDetails[]> => {
-    try {
-      const assignedOrders = await employeeService.getAssignedOrders(userId)
-      return assignedOrders
-        .map((order: Order) => fulfillmentsMap[order.id])
-        .filter(Boolean) // Remove undefined values
-    } catch (error) {
-      console.error("Failed to get employee fulfillments:", error)
-      return []
-    }
+  getEmployeeFulfillments: async (userId: string) => {
+    const assignedOrders = await employeeService.getAssignedOrders(userId)
+    return baseService.handleRequest<FulfillmentDetails[]>('/api/fulfillments/batch', {
+      method: 'POST',
+      body: JSON.stringify({ orderIds: assignedOrders.map(order => order.id) })
+    })
   },
 
-  getAllFulfillments: async (): Promise<FulfillmentDetails[]> => {
-    // Convert Map to array of fulfillment details
-    return Array.from(fulfillmentStore.values())
-  },
+  getAllFulfillments: () => 
+    baseService.handleRequest<FulfillmentDetails[]>('/api/fulfillments'),
 
-  getFulfillment: async (id: string): Promise<FulfillmentDetails | null> => {
-    return fulfillmentStore.get(id) || null
-  }
+  getFulfillment: (id: string) =>
+    baseService.handleRequest<FulfillmentDetails | null>(`/api/fulfillments/${id}`)
 } 

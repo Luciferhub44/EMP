@@ -1,3 +1,4 @@
+import { baseService } from './base'
 import type { 
   Order, 
   OrderStatus, 
@@ -5,20 +6,8 @@ import type {
 } from "@/types/orders"
 
 export const ordersService = {
-  getOrders: async (userId: string, isAdmin: boolean) => {
-    try {
-      const response = await fetch(`/api/orders?userId=${userId}&isAdmin=${isAdmin}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        }
-      })
-      if (!response.ok) throw new Error('Failed to fetch orders')
-      return response.json()
-    } catch (error) {
-      console.error("Failed to get orders:", error)
-      return []
-    }
-  },
+  getOrders: (userId: string, isAdmin: boolean) =>
+    baseService.handleRequest<Order[]>(`/api/orders?userId=${userId}&isAdmin=${isAdmin}`),
 
   getPendingOrders: async (userId: string, isAdmin: boolean) => {
     try {
@@ -146,17 +135,11 @@ export const ordersService = {
     return response.json()
   },
 
-  updateOrderStatus: async (orderId: string, status: OrderStatus): Promise<void> => {
-    const response = await fetch(`/api/orders/${orderId}/status`, {
+  updateOrderStatus: (orderId: string, status: OrderStatus) =>
+    baseService.handleRequest<void>(`/api/orders/${orderId}/status`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-      },
       body: JSON.stringify({ status })
-    })
-    if (!response.ok) throw new Error('Failed to update order status')
-  },
+    }),
 
   deleteOrder: async (orderId: string, isAdmin: boolean): Promise<void> => {
     if (!isAdmin) {
