@@ -3,6 +3,7 @@ const { Pool } = pkg;
 
 import express, { Router, Request, Response } from 'express';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import cors from 'cors';
 import { warehouses } from "./src/data/warehouses.js"
@@ -15,6 +16,10 @@ import { transportCompanies, transportOrders } from "./src/data/transport.js"
 import { defaultSettings } from './src/config/default-settings.js';
 import bcrypt from 'bcryptjs';
 import multer from 'multer';
+
+// ES Module path resolution
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const DIST_DIR = path.join(__dirname, '..', 'dist', 'client');
 
 // Interfaces
 interface DbRow {
@@ -161,7 +166,7 @@ async function verifyPassword(password: string, storedHash: string): Promise<boo
 // Middleware
 app.use(express.json());
 app.use(cors());
-app.use(express.static(path.join(__dirname, 'dist')));
+app.use(express.static(DIST_DIR));
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
