@@ -807,7 +807,7 @@ app.get('/api/fulfillments/all', async (req, res) => {
   }
 });
 
-// Get single fulfillment
+// Get fulfillment by order ID
 app.get('/api/fulfillments/:orderId', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
@@ -816,13 +816,32 @@ app.get('/api/fulfillments/:orderId', async (req, res) => {
     }
 
     const { orderId } = req.params;
+
+    // First check if order exists
+    const orderResult = await executeQuery(
+      'SELECT data FROM orders WHERE data->>\'id\' = $1',
+      [orderId]
+    );
+
+    if (orderResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Then get fulfillment
     const fulfillmentResult = await executeQuery(
       'SELECT data FROM fulfillments WHERE data->>\'orderId\' = $1',
       [orderId]
     );
 
+    // If no fulfillment exists yet, return a default structure
     if (fulfillmentResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Fulfillment not found' });
+      return res.json({
+        id: `FUL-${orderId}`,
+        orderId: orderId,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+        items: orderResult.rows[0].data.items || []
+      });
     }
 
     res.json(fulfillmentResult.rows[0].data);
