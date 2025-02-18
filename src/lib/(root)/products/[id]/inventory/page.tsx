@@ -11,60 +11,175 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { db } from "@/lib/api/db"
-import { updateStock, transferStock, getWarehouseStock } from "@/lib/utils/inventory"
-import { ArrowRight } from "lucide-react"
-import { Product, Warehouse } from "@/types"
+import { ArrowRight, Loader2 } from "lucide-react"
+import { toast } from "@/components/ui/use-toast"
+import { useAuth } from "@/contexts/auth-context"
+import type { Product, Warehouse } from "@/types"
 
 export default function ProductInventoryPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
+  
+  const [isLoading, setIsLoading] = React.useState(true)
+  const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [product, setProduct] = React.useState<Product | null>(null)
   const [warehouses, setWarehouses] = React.useState<Warehouse[]>([])
-  const [loading, setLoading] = React.useState(true)
-
-  const [selectedWarehouse, setSelectedWarehouse] = React.useState("")
-  const [quantity, setQuantity] = React.useState("")
+  const [warehouseStocks, setWarehouseStocks] = React.useState<Record<string, number>>({})
+  
+  const [updateData, setUpdateData] = React.useState({
+    warehouseId: "",
+    quantity: "",
+  })
+  
   const [transferData, setTransferData] = React.useState({
     fromWarehouse: "",
     toWarehouse: "",
     quantity: "",
   })
 
-  // Add state for warehouse stocks
-  const [warehouseStocks, setWarehouseStocks] = React.useState<Record<string, number>>({})
-
   React.useEffect(() => {
-    async function loadData() {
+    if (!user) {
+      navigate('/login')
+      return
+    }
+
+    const loadData = async () => {
       try {
-        // Load product
-        const { rows: [productRow] } = await db.query(
-          'SELECT data FROM products WHERE id = $1',
-          [id]
-        )
-        setProduct(productRow?.data || null)
+        // Load product details
+        const productRes = await fetch(`/api/products/${id}`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
+        })
+        if (!productRes.ok) throw new Error('Failed to load product')
+        const productData = await productRes.json()
+        setProduct(productData)
 
         // Load warehouses
-        const { rows: warehouseRows } = await db.query('SELECT data FROM warehouses')
-        setWarehouses(warehouseRows.map((row: { data: any }) => row.data))
+        const warehousesRes = await fetch('/api/warehouses', {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
+        })
+        if (!warehousesRes.ok) throw new Error('Failed to load warehouses')
+        const warehousesData = await warehousesRes.json()
+        setWarehouses(warehousesData)
 
-        // Load warehouse stocks
+        // Load stocks for each warehouse
         const stocks: Record<string, number> = {}
-        for (const warehouse of warehouseRows) {
-          stocks[warehouse.data.id] = await getWarehouseStock(id!, warehouse.data.id)
+        for (const warehouse of warehousesData) {
+          const stockRes = await fetch(`/api/inventory/${id}/${warehouse.id}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
+          })
+          if (stockRes.ok) {
+            const { quantity } = await stockRes.json()
+            stocks[warehouse.id] = quantity
+          }
         }
         setWarehouseStocks(stocks)
       } catch (error) {
         console.error('Failed to load data:', error)
+        toast({
+          title: "Error",
+          description: "Failed to load inventory data",
+          variant: "destructive",
+        })
       } finally {
-        setLoading(false)
+        setIsLoading(false)
       }
     }
-    loadData()
-  }, [id])
 
-  if (loading) {
-    return <div>Loading...</div>
+    loadData()
+  }, [id, user, navigate])
+
+  const handleUpdateStock = async () => {
+    if (!updateData.warehouseId || !updateData.quantity) return
+    
+    setIsSubmitting(true)
+    try {
+      const response = await fetch(`/api/inventory/${id}/${updateData.warehouseId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify({ quantity: parseInt(updateData.quantity) })
+      })
+
+      if (!response.ok) throw new Error('Failed to update stock')
+
+      const { quantity } = await response.json()
+      setWarehouseStocks(prev => ({
+        ...prev,
+        [updateData.warehouseId]: quantity
+      }))
+
+      toast({
+        title: "Success",
+        description: "Stock updated successfully",
+      })
+
+      setUpdateData({ warehouseId: "", quantity: "" })
+    } catch (error) {
+      console.error('Failed to update stock:', error)
+      toast({
+        title: "Error",
+        description: "Failed to update stock",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleTransferStock = async () => {
+    if (!transferData.fromWarehouse || !transferData.toWarehouse || !transferData.quantity) return
+    
+    setIsSubmitting(true)
+    try {
+      const response = await fetch(`/api/inventory/${id}/transfer`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify({
+          fromWarehouseId: transferData.fromWarehouse,
+          toWarehouseId: transferData.toWarehouse,
+          quantity: parseInt(transferData.quantity)
+        })
+      })
+
+      if (!response.ok) throw new Error('Failed to transfer stock')
+
+      const { fromQuantity, toQuantity } = await response.json()
+      setWarehouseStocks(prev => ({
+        ...prev,
+        [transferData.fromWarehouse]: fromQuantity,
+        [transferData.toWarehouse]: toQuantity
+      }))
+
+      toast({
+        title: "Success",
+        description: "Stock transferred successfully",
+      })
+
+      setTransferData({ fromWarehouse: "", toWarehouse: "", quantity: "" })
+    } catch (error) {
+      console.error('Failed to transfer stock:', error)
+      toast({
+        title: "Error",
+        description: "Failed to transfer stock",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[50vh]">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    )
   }
 
   if (!product) {
@@ -74,40 +189,6 @@ export default function ProductInventoryPage() {
         <Button onClick={() => navigate("/products")}>Back to Products</Button>
       </div>
     )
-  }
-
-  const handleUpdateStock = async () => {
-    try {
-      await updateStock({
-        productId: product.id,
-        warehouseId: selectedWarehouse,
-        quantity: parseInt(quantity),
-      })
-      alert("Stock updated successfully!")
-      setSelectedWarehouse("")
-      setQuantity("")
-    } catch (error) {
-      alert("Failed to update stock. Please try again.")
-    }
-  }
-
-  const handleTransferStock = async () => {
-    try {
-      await transferStock({
-        productId: product.id,
-        fromWarehouseId: transferData.fromWarehouse,
-        toWarehouseId: transferData.toWarehouse,
-        quantity: parseInt(transferData.quantity),
-      })
-      alert("Stock transferred successfully!")
-      setTransferData({
-        fromWarehouse: "",
-        toWarehouse: "",
-        quantity: "",
-      })
-    } catch (error) {
-      alert("Failed to transfer stock. Please try again.")
-    }
   }
 
   return (
@@ -134,8 +215,8 @@ export default function ProductInventoryPage() {
             <div className="grid gap-2">
               <Label>Warehouse</Label>
               <Select
-                value={selectedWarehouse}
-                onValueChange={setSelectedWarehouse}
+                value={updateData.warehouseId}
+                onValueChange={(value) => setUpdateData(prev => ({ ...prev, warehouseId: value }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select warehouse" />
@@ -143,26 +224,33 @@ export default function ProductInventoryPage() {
                 <SelectContent>
                   {warehouses.map((warehouse) => (
                     <SelectItem key={warehouse.id} value={warehouse.id}>
-                      {warehouse.name}
+                      {warehouse.name} ({warehouseStocks[warehouse.id] || 0} units)
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label>Quantity</Label>
+              <Label>New Quantity</Label>
               <Input
                 type="number"
                 min="0"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
+                value={updateData.quantity}
+                onChange={(e) => setUpdateData(prev => ({ ...prev, quantity: e.target.value }))}
               />
             </div>
             <Button
               onClick={handleUpdateStock}
-              disabled={!selectedWarehouse || !quantity}
+              disabled={isSubmitting || !updateData.warehouseId || !updateData.quantity}
             >
-              Update Stock
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                'Update Stock'
+              )}
             </Button>
           </CardContent>
         </Card>
@@ -177,9 +265,7 @@ export default function ProductInventoryPage() {
               <Label>From Warehouse</Label>
               <Select
                 value={transferData.fromWarehouse}
-                onValueChange={(value) => 
-                  setTransferData(prev => ({ ...prev, fromWarehouse: value }))
-                }
+                onValueChange={(value) => setTransferData(prev => ({ ...prev, fromWarehouse: value }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select source warehouse" />
@@ -200,9 +286,7 @@ export default function ProductInventoryPage() {
               <Label>To Warehouse</Label>
               <Select
                 value={transferData.toWarehouse}
-                onValueChange={(value) => 
-                  setTransferData(prev => ({ ...prev, toWarehouse: value }))
-                }
+                onValueChange={(value) => setTransferData(prev => ({ ...prev, toWarehouse: value }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select destination warehouse" />
@@ -214,7 +298,7 @@ export default function ProductInventoryPage() {
                       value={warehouse.id}
                       disabled={warehouse.id === transferData.fromWarehouse}
                     >
-                      {warehouse.name}
+                      {warehouse.name} ({warehouseStocks[warehouse.id] || 0} units)
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -225,25 +309,29 @@ export default function ProductInventoryPage() {
               <Input
                 type="number"
                 min="1"
-                max={transferData.fromWarehouse ? 
-                  warehouseStocks[transferData.fromWarehouse] || 0 : 
-                  undefined
-                }
+                max={transferData.fromWarehouse ? warehouseStocks[transferData.fromWarehouse] || 0 : undefined}
                 value={transferData.quantity}
-                onChange={(e) => 
-                  setTransferData(prev => ({ ...prev, quantity: e.target.value }))
-                }
+                onChange={(e) => setTransferData(prev => ({ ...prev, quantity: e.target.value }))}
               />
             </div>
             <Button
               onClick={handleTransferStock}
               disabled={
+                isSubmitting ||
                 !transferData.fromWarehouse ||
                 !transferData.toWarehouse ||
-                !transferData.quantity
+                !transferData.quantity ||
+                parseInt(transferData.quantity) > (warehouseStocks[transferData.fromWarehouse] || 0)
               }
             >
-              Transfer Stock
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Transferring...
+                </>
+              ) : (
+                'Transfer Stock'
+              )}
             </Button>
           </CardContent>
         </Card>

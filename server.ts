@@ -1707,5 +1707,109 @@ app.put('/api/fulfillments/:orderId', async (req, res) => {
   }
 });
 
+// Create new product
+app.post('/api/products', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const productData = {
+      id: `PRD-${Date.now()}`,
+      ...req.body,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      status: 'active'
+    };
+
+    // Validate required fields
+    const requiredFields = ['name', 'model', 'sku', 'price', 'category'];
+    for (const field of requiredFields) {
+      if (!productData[field]) {
+        return res.status(400).json({ error: `Missing required field: ${field}` });
+      }
+    }
+
+    // Insert into database
+    await executeQuery(
+      'INSERT INTO products (data) VALUES ($1)',
+      [JSON.stringify(productData)]
+    );
+
+    // Create initial inventory records with 0 quantity for all warehouses
+    const warehousesResult = await executeQuery('SELECT data FROM warehouses', []);
+    const warehouses = warehousesResult.rows.map(row => row.data);
+
+    for (const warehouse of warehouses) {
+      await executeQuery(
+        'INSERT INTO inventory (data) VALUES ($1)',
+        [JSON.stringify({
+          productId: productData.id,
+          warehouseId: warehouse.id,
+          quantity: 0,
+          lastUpdated: new Date().toISOString()
+        })]
+      );
+    }
+
+    // Return the created product
+    res.status(201).json(productData);
+  } catch (error) {
+    console.error('Failed to create product:', error);
+    res.status(500).json({ error: 'Failed to create product' });
+  }
+});
+
+// Get product categories
+app.get('/api/product-categories', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const result = await executeQuery('SELECT data FROM product_categories', []);
+    
+    // If no categories exist, create default ones
+    if (result.rows.length === 0) {
+      const defaultCategories = [
+        {
+          id: 'CAT-1',
+          name: 'Excavators',
+          subCategories: ['Mini', 'Medium', 'Large'],
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: 'CAT-2',
+          name: 'Loaders',
+          subCategories: ['Wheel', 'Track', 'Compact'],
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: 'CAT-3',
+          name: 'Cranes',
+          subCategories: ['Mobile', 'Tower', 'Crawler'],
+          createdAt: new Date().toISOString()
+        }
+      ];
+
+      await Promise.all(defaultCategories.map(category =>
+        executeQuery(
+          'INSERT INTO product_categories (data) VALUES ($1)',
+          [JSON.stringify(category)]
+        )
+      ));
+
+      return res.json(defaultCategories);
+    }
+
+    res.json(result.rows.map(row => row.data));
+  } catch (error) {
+    console.error('Failed to fetch product categories:', error);
+    res.status(500).json({ error: 'Failed to fetch product categories' });
+  }
+});
+
 // Start the server
 startServer().catch(console.error);

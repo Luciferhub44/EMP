@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
@@ -11,86 +12,123 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { createProduct } from "@/lib/utils/products"
-import { db } from "@/lib/api/db"
-import { ProductCategory } from "@/types"
 import { Loader2 } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
+import { toast } from "@/components/ui/use-toast"
+import type { ProductCategory } from "@/types"
 
-
-const defaultSpecifications = {
-  weight: "",
-  power: "",
-  engineType: "",
-  capacity: "",
-  dimensions: "",
-  operatingWeight: "",
+const defaultProduct = {
+  name: "",
+  model: "",
+  sku: "",
+  price: "",
+  description: "",
+  category: "",
+  subCategory: "",
+  specifications: {
+    weight: "",
+    dimensions: "",
+    power: "",
+    capacity: "",
+    engineType: "",
+    operatingWeight: "",
+  },
+  minStock: 5,
+  status: "active",
 }
 
 export default function NewProductPage() {
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const [isLoading, setIsLoading] = React.useState(false)
   const [categories, setCategories] = React.useState<ProductCategory[]>([])
-  const [loading, setLoading] = React.useState(true)
-  const [formData, setFormData] = React.useState({
-    name: "",
-    model: "",
-    sku: "",
-    price: "",
-    category: "",
-    subCategory: "",
-    specifications: { ...defaultSpecifications }
-  })
+  const [formData, setFormData] = React.useState(defaultProduct)
+  const [errors, setErrors] = React.useState<Record<string, string>>({})
 
   React.useEffect(() => {
-    async function loadCategories() {
+    if (!user) {
+      navigate('/login')
+      return
+    }
+
+    const loadCategories = async () => {
       try {
-        const { rows } = await db.query('SELECT data FROM product_categories')
-        setCategories(rows.map((row: { data: any }) => row.data))
+        const response = await fetch('/api/product-categories', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          }
+        })
+        if (!response.ok) throw new Error('Failed to load categories')
+        const data = await response.json()
+        setCategories(data)
       } catch (error) {
         console.error('Failed to load categories:', error)
-      } finally {
-        setLoading(false)
+        toast({
+          title: "Error",
+          description: "Failed to load product categories",
+          variant: "destructive",
+        })
       }
     }
     loadCategories()
-  }, [])
+  }, [user, navigate])
 
-  const selectedCategory = categories.find(c => c.name === formData.category)
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {}
+    
+    if (!formData.name.trim()) newErrors.name = "Name is required"
+    if (!formData.model.trim()) newErrors.model = "Model is required"
+    if (!formData.sku.trim()) newErrors.sku = "SKU is required"
+    if (!formData.price) newErrors.price = "Price is required"
+    if (!formData.category) newErrors.category = "Category is required"
+    
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!user || !validateForm()) return
+
+    setIsLoading(true)
     try {
-      const product = await createProduct({
-        ...formData,
-        price: parseFloat(formData.price),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        status: "active",
-        image: ""
+      const response = await fetch('/api/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify({
+          ...formData,
+          price: parseFloat(formData.price),
+          createdBy: user.id,
+        })
       })
-      alert("Product created successfully!")
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || 'Failed to create product')
+      }
+
+      const product = await response.json()
+      toast({
+        title: "Success",
+        description: "Product created successfully",
+      })
       navigate(`/products/${product.id}`)
     } catch (error) {
-      alert("Failed to create product. Please try again.")
+      console.error('Failed to create product:', error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create product",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  const handleSpecificationChange = (key: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      specifications: {
-        ...prev.specifications,
-        [key]: value
-      }
-    }))
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-[50vh]">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    )
-  }
+  const selectedCategory = categories.find(c => c.name === formData.category)
 
   return (
     <div className="space-y-6">
@@ -118,26 +156,48 @@ export default function NewProductPage() {
                 <Input
                   required
                   value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  onChange={(e) => setFormData(prev => ({ 
+                    ...prev, 
+                    name: e.target.value 
+                  }))}
+                  className={errors.name ? "border-red-500" : ""}
                 />
+                {errors.name && (
+                  <p className="text-sm text-red-500">{errors.name}</p>
+                )}
               </div>
               <div className="grid gap-2">
                 <Label>Model</Label>
                 <Input
                   required
                   value={formData.model}
-                  onChange={(e) => setFormData(prev => ({ ...prev, model: e.target.value }))}
+                  onChange={(e) => setFormData(prev => ({ 
+                    ...prev, 
+                    model: e.target.value 
+                  }))}
+                  className={errors.model ? "border-red-500" : ""}
                 />
+                {errors.model && (
+                  <p className="text-sm text-red-500">{errors.model}</p>
+                )}
               </div>
             </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>SKU</Label>
                 <Input
                   required
                   value={formData.sku}
-                  onChange={(e) => setFormData(prev => ({ ...prev, sku: e.target.value }))}
+                  onChange={(e) => setFormData(prev => ({ 
+                    ...prev, 
+                    sku: e.target.value 
+                  }))}
+                  className={errors.sku ? "border-red-500" : ""}
                 />
+                {errors.sku && (
+                  <p className="text-sm text-red-500">{errors.sku}</p>
+                )}
               </div>
               <div className="grid gap-2">
                 <Label>Price</Label>
@@ -147,10 +207,30 @@ export default function NewProductPage() {
                   min="0"
                   step="0.01"
                   value={formData.price}
-                  onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
+                  onChange={(e) => setFormData(prev => ({ 
+                    ...prev, 
+                    price: e.target.value 
+                  }))}
+                  className={errors.price ? "border-red-500" : ""}
                 />
+                {errors.price && (
+                  <p className="text-sm text-red-500">{errors.price}</p>
+                )}
               </div>
             </div>
+
+            <div className="grid gap-2">
+              <Label>Description</Label>
+              <Textarea
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ 
+                  ...prev, 
+                  description: e.target.value 
+                }))}
+                rows={4}
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Category</Label>
@@ -173,6 +253,9 @@ export default function NewProductPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                {errors.category && (
+                  <p className="text-sm text-red-500">{errors.category}</p>
+                )}
               </div>
               {selectedCategory?.subCategories && (
                 <div className="grid gap-2">
@@ -212,17 +295,34 @@ export default function NewProductPage() {
                   {key.replace(/([A-Z])/g, ' $1').trim()}
                 </Label>
                 <Input
-                  value={value.toString()}
-                  onChange={(e) => handleSpecificationChange(key, e.target.value)}
+                  value={value}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    specifications: {
+                      ...prev.specifications,
+                      [key]: e.target.value
+                    }
+                  }))}
+                  className={errors[key] ? "border-red-500" : ""}
                 />
+                {errors[key] && (
+                  <p className="text-sm text-red-500">{errors[key]}</p>
+                )}
               </div>
             ))}
           </CardContent>
         </Card>
 
         <div className="flex justify-end gap-4">
-          <Button type="submit">
-            Create Product
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              'Create Product'
+            )}
           </Button>
         </div>
       </form>
