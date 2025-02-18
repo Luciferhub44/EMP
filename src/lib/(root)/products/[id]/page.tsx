@@ -4,9 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { formatCurrency } from "@/lib/utils"
-import { db } from "@/lib/api/db"
+import { api } from "@/lib/api"
 import { Product, ProductStatus } from "@/types/products"
-import { getTotalStock, needsRestocking } from "@/lib/utils/inventory"
 import { Loader2 } from "lucide-react"
 
 export default function ProductPage() {
@@ -20,19 +19,10 @@ export default function ProductPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        // Load product
-        const { rows: [productRow] } = await db.query(
-          'SELECT data FROM products WHERE id = $1',
-          [id]
-        )
-        
-        if (productRow) {
-          setProduct(productRow.data)
-          const stock = await getTotalStock(productRow.data.id)
-          const needsRestock = await needsRestocking(productRow.data.id)
-          setTotalStockCount(stock)
-          setIsRestocking(needsRestock)
-        }
+        const response = await api.get<{ product: Product, stock: number, needsRestock: boolean }>(`/products/${id}`)
+        setProduct(response.product)
+        setTotalStockCount(response.stock)
+        setIsRestocking(response.needsRestock)
       } catch (error) {
         console.error('Failed to load product:', error)
       } finally {

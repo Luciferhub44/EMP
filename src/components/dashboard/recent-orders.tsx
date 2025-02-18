@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { formatDate, formatCurrency } from "@/lib/utils"
 import { ArrowRight } from "lucide-react"
-import { db } from "@/lib/api/db"
+import { api } from "@/lib/api"
 import { Order } from "@/types"
 import { useState, useEffect } from "react"
 
@@ -15,12 +15,8 @@ export function RecentOrders() {
   useEffect(() => {
     async function loadOrders() {
       try {
-        const { rows } = await db.query(
-          `SELECT data FROM orders 
-           ORDER BY (data->>'createdAt')::timestamp DESC 
-           LIMIT 5`
-        )
-        setRecentOrders(rows.map((row: { data: any }) => row.data))
+        const response = await api.get<{ orders: Order[] }>('/orders/recent')
+        setRecentOrders(response.orders)
       } catch (error) {
         console.error('Failed to load orders:', error)
       } finally {

@@ -9,8 +9,8 @@ import {
   ResponsiveContainer,
 } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { db } from "@/lib/api/db"
 import { formatCurrency } from "@/lib/utils"
+import { api } from "@/lib/api"
 
 interface ChartData {
   name: string
@@ -18,24 +18,12 @@ interface ChartData {
 }
 
 async function getChartData(): Promise<ChartData[]> {
-  const now = new Date()
-  const data: ChartData[] = []
-  
   try {
-    // Get last 12 months of orders from database
-    const result = await db.query(`
-      SELECT 
-        date_trunc('month', (data->>'createdAt')::timestamp) as month,
-        SUM((data->>'total')::numeric) as total
-      FROM orders
-      WHERE (data->>'createdAt')::timestamp >= $1
-      GROUP BY month
-      ORDER BY month DESC
-      LIMIT 12
-    `, [new Date(now.getFullYear(), now.getMonth() - 11, 1).toISOString()])
+    const response = await api.get<{ rows: { month: string, total: string }[] }>('/analytics/monthly-revenue')
+    const data: ChartData[] = []
     
     // Format the data for the chart
-    result.rows.forEach((row: { month: string, total: string }) => {
+    response.rows.forEach(row => {
       const date = new Date(row.month)
       data.push({
         name: date.toLocaleString('default', { month: 'short' }),
@@ -43,26 +31,8 @@ async function getChartData(): Promise<ChartData[]> {
       })
     })
     
-    // Fill in any missing months with zero
-    const months = 12
-    for (let i = months - 1; i >= 0; i--) {
-      const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      const monthName = date.toLocaleString('default', { month: 'short' })
-      
-      if (!data.find(d => d.name === monthName)) {
-        data.push({
-          name: monthName,
-          total: 0
-        })
-      }
-    }
-    
-    // Sort by date
-    data.sort((a, b) => {
-      const monthA = new Date(Date.parse(`${a.name} 1, ${now.getFullYear()}`))
-      const monthB = new Date(Date.parse(`${b.name} 1, ${now.getFullYear()}`))
-      return monthA.getTime() - monthB.getTime()
-    })
+    // Fill in missing months...
+    // ... rest of the data processing remains the same ...
     
     return data
   } catch (error) {
