@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { formatCurrency } from "@/lib/utils"
 import { db } from "@/lib/api/db"
-import { Product, ProductStatus } from "@/types/product"
+import { Product, ProductStatus } from "@/types/products"
 import { getTotalStock, needsRestocking } from "@/lib/utils/inventory"
 import { Loader2 } from "lucide-react"
 
@@ -44,9 +44,9 @@ export default function ProductPage() {
 
   const getStatusVariant = (status: ProductStatus) => {
     switch (status) {
-      case "active":
+      case "in_stock":
         return "success"
-      case "inactive":
+      case "out_of_stock":
         return "secondary"
       case "discontinued":
         return "destructive"
@@ -116,7 +116,7 @@ export default function ProductPage() {
             </div>
             <div>
               <p className="font-semibold">Status</p>
-              <Badge variant={getStatusVariant(product.status)}>
+              <Badge variant={getStatusVariant(product.status as ProductStatus)}>
                 {product.status}
               </Badge>
             </div>
