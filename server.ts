@@ -582,46 +582,103 @@ async function initializeAdminUser() {
   }
 }
 
-// Update the login endpoint
+// ============= Authentication =============
+// Login endpoint
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { agentId, password } = req.body;
-    console.log('Login attempt:', { agentId });
 
+    // Find employee by agentId
     const result = await executeQuery(
-      'SELECT data FROM employees WHERE data->>\'id\' = $1',
+      'SELECT data FROM employees WHERE data->>\'agentId\' = $1',
       [agentId]
     );
 
     if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     const employee = result.rows[0].data;
+
+    // Verify password
+    const isValid = await verifyPassword(password, employee.passwordHash);
+    if (!isValid) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    // Create session token
+    const token = `session-${employee.id}-${Date.now()}`;
     
-    // For the admin user with plain password
-    if (agentId === 'ADMIN001' && password === 'admin123') {
-      const { passwordHash, ...safeEmployee } = employee;
-      return res.json({ 
-        user: safeEmployee,
-        token: `session-${safeEmployee.id}`
-      });
-    }
+    // Store session
+    await executeQuery(
+      'INSERT INTO sessions (data) VALUES ($1)',
+      [JSON.stringify({
+        token,
+        employeeId: employee.id,
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
+      })]
+    );
 
-    // For other users, use bcrypt
-    const isValidPassword = await bcrypt.compare(password, employee.passwordHash);
-    if (!isValidPassword) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
+    // Remove sensitive data
     const { passwordHash, ...safeEmployee } = employee;
-    res.json({ 
+
+    res.json({
       user: safeEmployee,
-      token: `session-${safeEmployee.id}`
+      token
     });
   } catch (error) {
     console.error('Login failed:', error);
-    res.status(500).json({ error: 'Login failed' });
+    res.status(500).json({ message: 'Authentication failed' });
+  }
+});
+
+// Session validation endpoint
+app.get('/api/auth/session', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+
+    // Verify session
+    const sessionResult = await executeQuery(
+      'SELECT data FROM sessions WHERE data->>\'token\' = $1',
+      [token]
+    );
+
+    if (sessionResult.rows.length === 0) {
+      return res.status(401).json({ message: 'Invalid session' });
+    }
+
+    const session = sessionResult.rows[0].data;
+
+    // Check if session is expired
+    if (new Date(session.expiresAt) < new Date()) {
+      await executeQuery(
+        'DELETE FROM sessions WHERE data->>\'token\' = $1',
+        [token]
+      );
+      return res.status(401).json({ message: 'Session expired' });
+    }
+
+    // Get employee data
+    const employeeResult = await executeQuery(
+      'SELECT data FROM employees WHERE data->>\'id\' = $1',
+      [session.employeeId]
+    );
+
+    if (employeeResult.rows.length === 0) {
+      return res.status(401).json({ message: 'Employee not found' });
+    }
+
+    const employee = employeeResult.rows[0].data;
+    const { passwordHash, ...safeEmployee } = employee;
+
+    res.json({ user: safeEmployee });
+  } catch (error) {
+    console.error('Session validation failed:', error);
+    res.status(500).json({ message: 'Session validation failed' });
   }
 });
 
