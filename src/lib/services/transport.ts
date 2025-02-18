@@ -1,4 +1,4 @@
-import { baseService } from './base'
+import { BaseService } from './base'
 import type { TransportQuote, ShippingCalculation, Order } from "@/types/orders"
 
 const WAREHOUSE_ADDRESS = {
@@ -9,8 +9,8 @@ const WAREHOUSE_ADDRESS = {
   country: "USA"
 }
 
-export const transportService = {
-  calculateShipping: (order: Order) => {
+class TransportService extends BaseService {
+  async calculateShipping(order: Order) {
     if (!order.shipping?.address) {
       throw new Error("Shipping address is required")
     }
@@ -32,19 +32,19 @@ export const transportService = {
       0
     )
 
-    return baseService.handleRequest<ShippingCalculation>('/api/transport/calculate', {
-      method: 'POST',
-      body: JSON.stringify({
-        origin: WAREHOUSE_ADDRESS,
-        destination: order.shipping.address,
-        items,
-        totalWeight,
-        totalValue,
-        requiresInsurance: totalValue > 1000
-      })
+    return this.post<ShippingCalculation>('/transport/calculate', {
+      origin: WAREHOUSE_ADDRESS,
+      destination: order.shipping.address,
+      items,
+      totalWeight,
+      totalValue,
+      requiresInsurance: totalValue > 1000
     })
-  },
+  }
 
-  getQuotes: (orderId: string) =>
-    baseService.handleRequest<TransportQuote[]>(`/api/transport/quotes/${orderId}`)
-} 
+  async getQuotes(orderId: string) {
+    return this.get<TransportQuote[]>(`/transport/quotes/${orderId}`)
+  }
+}
+
+export const transportService = new TransportService() 

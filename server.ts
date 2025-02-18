@@ -27,6 +27,7 @@ interface Employee {
   name: string;
   email: string;
   status: 'active' | 'inactive';
+  role: 'admin' | 'employee';
   passwordHash: string;
   settings?: any;
 }
@@ -330,6 +331,7 @@ const schema = {
           data ? 'email' AND
           data ? 'name' AND
           data ? 'status' AND
+          data ? 'role' AND
           data ? 'passwordHash'
         )
       )
@@ -449,6 +451,7 @@ async function initializeDatabase() {
         name: "Admin HQ",
         email: "hq@sanyglobal.org",
         status: "active",
+        role: "admin",
         passwordHash: await hashPassword(ADMIN_PASSWORD)
       }
     ];

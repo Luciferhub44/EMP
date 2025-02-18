@@ -1,118 +1,36 @@
-import { baseService } from './base'
-import type { 
-  Order, 
-  OrderStatus, 
-  TransportQuote 
-} from "@/types/orders"
+import type { Order, OrderStatus, TransportQuote } from "@/types/orders"
+import { BaseService } from './base'
 
-export const ordersService = {
-  getOrders: (userId: string, isAdmin: boolean) =>
-    baseService.handleRequest<Order[]>(`/api/orders?userId=${userId}&isAdmin=${isAdmin}`),
+class OrdersService extends BaseService {
+  async getOrders(userId: string, isAdmin: boolean) {
+    return this.get<Order[]>(`/orders?userId=${userId}&isAdmin=${isAdmin}`)
+  }
 
-  getPendingOrders: async (userId: string, isAdmin: boolean) => {
-    try {
-      const response = await fetch(`/api/orders/pending?userId=${userId}&isAdmin=${isAdmin}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        }
-      })
-      if (!response.ok) throw new Error('Failed to fetch pending orders')
-      return response.json()
-    } catch (error) {
-      console.error("Failed to get pending orders:", error)
-      return []
-    }
-  },
+  async getPendingOrders(userId: string, isAdmin: boolean) {
+    return this.get<Order[]>(`/orders/pending?userId=${userId}&isAdmin=${isAdmin}`)
+  }
 
-  getOrder: async (id: string, userId?: string, isAdmin?: boolean) => {
-    try {
-      const response = await fetch(`/api/orders/${id}?userId=${userId}&isAdmin=${isAdmin}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        }
-      })
-      if (!response.ok) return null
-      return response.json()
-    } catch (error) {
-      console.error("Failed to get order:", error)
-      return null
-    }
-  },
+  async getOrder(id: string, userId?: string, isAdmin?: boolean) {
+    return this.get<Order | null>(`/orders/${id}?userId=${userId}&isAdmin=${isAdmin}`)
+  }
 
-  updateOrder: async (id: string, updates: Partial<Order>, userId?: string, isAdmin?: boolean) => {
-    const response = await fetch(`/api/orders/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-      },
-      body: JSON.stringify({ updates, userId, isAdmin })
-    })
-    if (!response.ok) throw new Error('Failed to update order')
-    return response.json()
-  },
+  async updateOrder(id: string, updates: Partial<Order>, userId?: string, isAdmin?: boolean) {
+    return this.put<Order>(`/orders/${id}`, { updates, userId, isAdmin })
+  }
 
-  getTransportQuotes: async (orderId: string): Promise<TransportQuote[]> => {
-    // Mock transport quotes - in real app, would call shipping APIs
-    return [
-      {
-        id: "TQ001",
-        orderId,
-        provider: "FastShip",
-        method: "Express",
-        cost: 149.99,
-        estimatedDays: 2,
-        distance: 500,
-        weightBased: false,
-        insurance: {
-          included: false,
-          coverage: 1000
-        },
-        validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: "TQ002",
-        orderId,
-        provider: "EcoShip",
-        method: "Standard",
-        cost: 129.99,
-        estimatedDays: 5,
-        distance: 500,
-        weightBased: false,
-        insurance: {
-          included: false,
-          coverage: 1000
-        },
-        validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: "TQ003",
-        orderId,
-        provider: "BulkFreight",
-        method: "Economy",
-        cost: 199.99,
-        estimatedDays: 7,
-        distance: 500,
-        weightBased: true,
-        insurance: {
-          included: false,
-          coverage: 1000
-        },
-        validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-      }
-    ]
-  },
+  async getTransportQuotes(orderId: string): Promise<TransportQuote[]> {
+    return this.get<TransportQuote[]>(`/orders/${orderId}/transport-quotes`)
+  }
 
-  acceptTransportQuote: async (orderId: string, quoteId: string) => {
-    const order = await ordersService.getOrder(orderId)
+  async acceptTransportQuote(orderId: string, quoteId: string) {
+    const order = await this.getOrder(orderId)
     if (!order) throw new Error("Order not found")
 
-    const quotes = await ordersService.getTransportQuotes(orderId)
+    const quotes = await this.getTransportQuotes(orderId)
     const quote = quotes.find(q => q.id === quoteId)
     if (!quote) throw new Error("Quote not found")
 
-    // Update order with shipping details
-    return ordersService.updateOrder(orderId, {
+    return this.updateOrder(orderId, {
       shipping: {
         carrier: quote.provider,
         estimatedDelivery: new Date(
@@ -120,38 +38,20 @@ export const ordersService = {
         ).toISOString()
       }
     })
-  },
-
-  createOrder: async (orderData: Partial<Order>, isAdmin: boolean) => {
-    const response = await fetch('/api/orders', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-      },
-      body: JSON.stringify({ orderData, isAdmin })
-    })
-    if (!response.ok) throw new Error('Failed to create order')
-    return response.json()
-  },
-
-  updateOrderStatus: (orderId: string, status: OrderStatus) =>
-    baseService.handleRequest<void>(`/api/orders/${orderId}/status`, {
-      method: 'PUT',
-      body: JSON.stringify({ status })
-    }),
-
-  deleteOrder: async (orderId: string, isAdmin: boolean): Promise<void> => {
-    if (!isAdmin) {
-      throw new Error("Only administrators can delete orders")
-    }
-    
-    const response = await fetch(`/api/orders/${orderId}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-      }
-    })
-    if (!response.ok) throw new Error('Failed to delete order')
   }
-} 
+
+  async createOrder(orderData: Partial<Order>, isAdmin: boolean) {
+    return this.post<Order>('/orders', { orderData, isAdmin })
+  }
+
+  async updateOrderStatus(orderId: string, status: OrderStatus) {
+    return this.put<void>(`/orders/${orderId}/status`, { status })
+  }
+
+  async deleteOrder(orderId: string, isAdmin: boolean) {
+    if (!isAdmin) throw new Error("Only administrators can delete orders")
+    return this.delete<void>(`/orders/${orderId}`)
+  }
+}
+
+export const ordersService = new OrdersService() 

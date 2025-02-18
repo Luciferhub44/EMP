@@ -1,23 +1,22 @@
-import { baseService } from './base'
+import { BaseService } from './base'
 import type { Session } from "@/types/session"
 
-export const sessionService = {
-  createSession: (userId: string, token: string) =>
-    baseService.handleRequest<Session>('/api/sessions', {
-      method: 'POST',
-      body: JSON.stringify({ userId, token })
-    }),
+class SessionService extends BaseService {
+  async createSession(userId: string, token: string) {
+    return this.post<Session>('/sessions', { userId, token })
+  }
 
-  getSession: (token: string) =>
-    baseService.handleRequest<Session | null>(`/api/sessions/${token}`),
+  async getSession(token: string) {
+    return this.get<Session | null>(`/sessions/${token}`)
+  }
 
-  deleteSession: (token: string) =>
-    baseService.handleRequest<void>(`/api/sessions/${token}`, {
-      method: 'DELETE'
-    }),
+  async deleteSession(token: string) {
+    return this.delete<void>(`/sessions/${token}`)
+  }
 
-  deleteAllUserSessions: (userId: string) =>
-    baseService.handleRequest<void>(`/api/sessions/user/${userId}`, {
-      method: 'DELETE'
-    })
-} 
+  async deleteAllUserSessions(userId: string) {
+    return this.delete<void>(`/sessions/user/${userId}`)
+  }
+}
+
+export const sessionService = new SessionService() 

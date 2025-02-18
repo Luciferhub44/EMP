@@ -1,49 +1,69 @@
-interface RequestOptions extends RequestInit {
-  skipAuth?: boolean;
-}
+import { toast } from "@/components/ui/use-toast"
 
-// Create a new base service configuration
-export const baseService = {
-  async handleRequest<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+export class BaseService {
+  protected handleError(error: unknown, customMessage?: string) {
+    console.error(error)
+    toast({
+      title: "Error",
+      description: customMessage || "An unexpected error occurred",
+      variant: "destructive",
+    })
+    throw error
+  }
+
+  protected handleSuccess(message: string) {
+    toast({
+      title: "Success",
+      description: message,
+    })
+  }
+
+  protected async fetchWithAuth<T>(
+    endpoint: string, 
+    options: RequestInit = {}
+  ): Promise<T> {
     try {
-      const { skipAuth = false, ...fetchOptions } = options;
-      
-      const headers = new Headers(fetchOptions.headers);
-      if (!skipAuth) {
-        const token = localStorage.getItem('auth_token');
-        if (token) {
-          headers.set('Authorization', `Bearer ${token}`);
-        }
-      }
-      headers.set('Content-Type', 'application/json');
-
-      const response = await fetch(endpoint, {
-        ...fetchOptions,
-        headers
-      });
+      const response = await fetch(`/api${endpoint}`, {
+        ...options,
+        headers: {
+          ...options.headers,
+          'Content-Type': 'application/json',
+        },
+      })
 
       if (!response.ok) {
-        // Try to get error message from response
-        let errorMessage = 'Request failed';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorData.error || errorMessage;
-        } catch {
-          errorMessage = `${response.status}: ${response.statusText}`;
-        }
-        throw new Error(errorMessage);
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
 
-      // Handle empty responses
-      const contentType = response.headers.get('content-type');
-      if (contentType?.includes('application/json')) {
-        return response.json();
-      }
-      return {} as T;
-
+      const data = await response.json()
+      return data as T
     } catch (error) {
-      console.error(`API request failed: ${endpoint}`, error);
-      throw error;
+      this.handleError(error, "Failed to fetch data")
+      throw error
     }
+  }
+
+  protected async post<T>(endpoint: string, data: unknown): Promise<T> {
+    return this.fetchWithAuth<T>(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  protected async put<T>(endpoint: string, data: unknown): Promise<T> {
+    return this.fetchWithAuth<T>(endpoint, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  }
+
+  protected async delete<T>(endpoint: string): Promise<T> {
+    return this.fetchWithAuth<T>(endpoint, {
+      method: 'DELETE',
+    })
+  }
+
+  protected async get<T>(endpoint: string): Promise<T> {
+    return this.fetchWithAuth<T>(endpoint)
   }
 } 

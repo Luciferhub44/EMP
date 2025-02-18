@@ -1,70 +1,48 @@
-import { baseService } from './base'
+import { BaseService } from './base'
 import type { Customer } from "@/types/customer"
 import type { Order } from "@/types/orders"
 
-export const customerService = {
-  // Get customers based on user role and access
-  getCustomers: (userId: string, isAdmin: boolean) => 
-    baseService.handleRequest<Customer[]>(`/api/customers?userId=${userId}&isAdmin=${isAdmin}`),
+interface CustomerStats {
+  totalOrders: number
+  totalSpent: number
+  averageOrderValue: number
+  lastOrderDate: string | null
+}
 
-  // Get single customer with access check
-  getCustomer: (id: string, userId: string = "", isAdmin: boolean = false) =>
-    baseService.handleRequest<Customer | null>(`/api/customers/${id}?userId=${userId}&isAdmin=${isAdmin}`),
+class CustomerService extends BaseService {
+  async getCustomers(userId: string, isAdmin: boolean) {
+    return this.get<Customer[]>(`/customers?userId=${userId}&isAdmin=${isAdmin}`)
+  }
 
-  // Only admins can create/update customers
-  createCustomer: (customerData: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>) =>
-    baseService.handleRequest<Customer>('/api/customers', {
-      method: 'POST',
-      body: JSON.stringify(customerData)
-    }),
+  async getCustomer(id: string, userId: string = "", isAdmin: boolean = false) {
+    return this.get<Customer | null>(`/customers/${id}?userId=${userId}&isAdmin=${isAdmin}`)
+  }
 
-  updateCustomer: async (id: string, updates: Partial<Omit<Customer, 'id' | 'createdAt'>>) => {
-    const response = await fetch(`/api/customers/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-      },
-      body: JSON.stringify(updates)
-    })
-    if (!response.ok) throw new Error('Failed to update customer')
-    return response.json()
-  },
+  async createCustomer(customerData: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>) {
+    return this.post<Customer>('/customers', customerData)
+  }
 
-  getCustomerOrders: async (customerId: string) => {
-    const response = await fetch(`/api/customers/${customerId}/orders`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-      }
-    })
-    if (!response.ok) return []
-    const orders = await response.json()
-    return orders.sort((a: Order, b: Order) => 
+  async updateCustomer(id: string, updates: Partial<Omit<Customer, 'id' | 'createdAt'>>) {
+    return this.put<Customer>(`/customers/${id}`, updates)
+  }
+
+  async getCustomerOrders(customerId: string) {
+    const orders = await this.get<Order[]>(`/customers/${customerId}/orders`)
+    return orders.sort((a, b) => 
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     )
-  },
+  }
 
-  getCustomerStats: async (customerId: string) => {
-    const response = await fetch(`/api/customers/${customerId}/stats`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-      }
-    })
-    if (!response.ok) throw new Error('Failed to fetch customer stats')
-    return response.json()
-  },
+  async getCustomerStats(customerId: string) {
+    return this.get<CustomerStats>(`/customers/${customerId}/stats`)
+  }
 
-  deleteCustomer: async (customerId: string, isAdmin: boolean): Promise<void> => {
+  async deleteCustomer(customerId: string, isAdmin: boolean) {
     if (!isAdmin) {
       throw new Error("Only administrators can delete customers")
     }
-    
-    const response = await fetch(`/api/customers/${customerId}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-      }
-    })
-    if (!response.ok) throw new Error('Failed to delete customer')
+    return this.delete<void>(`/customers/${customerId}`)
   }
-} 
+}
+
+export const customerService = new CustomerService() 

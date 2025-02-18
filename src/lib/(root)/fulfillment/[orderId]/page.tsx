@@ -32,7 +32,7 @@ export default function FulfillmentPage() {
       try {
         const [orderData, fulfillmentData] = await Promise.all([
           ordersService.getOrder(orderId),
-          fulfillmentService.getFulfillment(orderId)
+          fulfillmentService.getOrderFulfillment(orderId, user.id, user.role === 'admin')
         ])
         setOrder(orderData)
         setFulfillment(fulfillmentData)

@@ -1,32 +1,42 @@
 import type { Employee } from "@/types/employee"
-import { baseService } from './base'
+import { BaseService } from './base'
 
-export const authService = {
-  login: async (agentId: string, password: string) =>
-    baseService.handleRequest<Employee>('/api/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ agentId, password })
-    }),
+class AuthService extends BaseService {
+  async login(agentId: string, password: string) {
+    return this.post<{ token: string; user: Employee }>('/auth/login', {
+      agentId,
+      password
+    })
+  }
 
-  getEmployeeById: async (id: string) =>
-    baseService.handleRequest<Employee | null>(`/api/employees/${id}`),
+  async validateSession() {
+    return this.get<{ user: Employee }>('/auth/session')
+  }
 
-  register: async (
+  async logout() {
+    return this.post('/auth/logout', {})
+  }
+
+  async changePassword(oldPassword: string, newPassword: string) {
+    return this.post<{ message: string }>('/auth/change-password', {
+      oldPassword,
+      newPassword
+    })
+  }
+
+  async getEmployeeById(id: string) {
+    return this.get<Employee | null>(`/employees/${id}`)
+  }
+
+  async register(
     userData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt' | 'passwordHash'> & { password: string },
     isAdmin: boolean
-  ) => {
+  ) {
     if (!isAdmin) {
       throw new Error("Only administrators can register new employees")
     }
-    return baseService.handleRequest<Employee>('/api/auth/register', {
-      method: 'POST',
-      body: JSON.stringify(userData)
-    })
-  },
+    return this.post<Employee>('/auth/register', userData)
+  }
+}
 
-  changePassword: async (employeeId: string, oldPassword: string, newPassword: string) =>
-    baseService.handleRequest<Employee>(`/api/auth/change-password`, {
-      method: 'POST',
-      body: JSON.stringify({ employeeId, oldPassword, newPassword })
-    })
-} 
+export const authService = new AuthService() 

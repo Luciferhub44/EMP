@@ -1,55 +1,27 @@
-import { baseService } from './base'
 import type { Product } from "@/types/products"
+import { BaseService } from './base'
 
-export const productService = {
-  getProducts: () => 
-    baseService.handleRequest<Product[]>('/api/products'),
-
-  getProduct: async (id: string) => {
-    try {
-      const response = await fetch(`/api/products/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        }
-      })
-      if (!response.ok) throw new Error('Product not found')
-      return response.json()
-    } catch (error) {
-      console.error("Failed to get product:", error)
-      return null
-    }
-  },
-
-  createProduct: (productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) =>
-    baseService.handleRequest<Product>('/api/products', {
-      method: 'POST',
-      body: JSON.stringify(productData)
-    }),
-
-  updateProduct: async (id: string, updates: Partial<Omit<Product, 'id' | 'createdAt'>>) => {
-    const response = await fetch(`/api/products/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-      },
-      body: JSON.stringify(updates)
-    })
-    if (!response.ok) throw new Error('Failed to update product')
-    return response.json()
-  },
-
-  deleteProduct: async (productId: string, isAdmin: boolean): Promise<void> => {
-    if (!isAdmin) {
-      throw new Error("Only administrators can delete products")
-    }
-    
-    const response = await fetch(`/api/products/${productId}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-      }
-    })
-    if (!response.ok) throw new Error('Failed to delete product')
+class ProductService extends BaseService {
+  async getProducts() {
+    return this.get<Product[]>('/products')
   }
-} 
+
+  async getProduct(id: string) {
+    return this.get<Product | null>(`/products/${id}`)
+  }
+
+  async createProduct(productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) {
+    return this.post<Product>('/products', productData)
+  }
+
+  async updateProduct(id: string, updates: Partial<Omit<Product, 'id' | 'createdAt'>>) {
+    return this.put<Product>(`/products/${id}`, updates)
+  }
+
+  async deleteProduct(productId: string, isAdmin: boolean) {
+    if (!isAdmin) throw new Error("Only administrators can delete products")
+    return this.delete<void>(`/products/${productId}`)
+  }
+}
+
+export const productService = new ProductService() 

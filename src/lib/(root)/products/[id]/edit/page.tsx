@@ -45,14 +45,14 @@ export default function EditProductPage() {
         const productData = await productService.getProduct(id!)
         setProduct(productData)
         setFormData({
-          name: productData.name,
-          model: productData.model,
-          sku: productData.sku,
-          price: productData.price,
-          category: productData.category,
-          subCategory: productData.subCategory,
-          status: productData.status,
-          specifications: { ...productData.specifications }
+          name: productData?.name,
+          model: productData?.model,
+          sku: productData?.sku,
+          price: productData?.price,
+          category: productData?.category,
+          subCategory: productData?.subCategory,
+          status: productData?.status,
+          specifications: { ...productData?.specifications }
         })
 
         // Load categories

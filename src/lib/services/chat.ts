@@ -1,18 +1,14 @@
-import { baseService } from './base'
+import { BaseService } from './base'
 import type { ChatMessage, ChatUser } from "@/types/chat"
 import { chatWebSocket } from "./websocket"
 
-interface SendMessageParams {
-  content: string
-  attachments?: File[]
-}
-
-class ChatService {
+class ChatService extends BaseService {
   private currentUser: ChatUser | null = null
   private messageCallbacks: ((message: ChatMessage) => void)[] = []
   private userStatusCallbacks: ((user: ChatUser) => void)[] = []
 
   constructor() {
+    super()
     chatWebSocket.connect()
     this.setupWebSocketListeners()
     this.initializeCurrentUser()
@@ -20,13 +16,13 @@ class ChatService {
 
   private async initializeCurrentUser() {
     try {
-      const userData = await baseService.handleRequest<ChatUser>('/api/auth/me')
+      const userData = await this.get<ChatUser>('/auth/me')
       this.currentUser = {
         ...userData,
         isOnline: true
       }
     } catch (error) {
-      console.error('Failed to initialize chat user:', error)
+      this.handleError(error, 'Failed to initialize chat user')
     }
   }
 
@@ -45,25 +41,19 @@ class ChatService {
 
   private async handleNewMessage(message: ChatMessage) {
     try {
-      await baseService.handleRequest<void>('/api/chat/messages', {
-        method: 'POST',
-        body: JSON.stringify(message)
-      })
+      await this.post<void>('/chat/messages', message)
       this.messageCallbacks.forEach(callback => callback(message))
     } catch (error) {
-      console.error('Failed to handle new message:', error)
+      this.handleError(error, 'Failed to handle new message')
     }
   }
 
   private async handleUserStatus(user: ChatUser) {
     try {
-      await baseService.handleRequest<void>(`/api/chat/users/${user.id}/status`, {
-        method: 'PUT',
-        body: JSON.stringify({ isOnline: user.isOnline })
-      })
+      await this.put<void>(`/chat/users/${user.id}/status`, { isOnline: user.isOnline })
       this.userStatusCallbacks.forEach(callback => callback(user))
     } catch (error) {
-      console.error('Failed to update user status:', error)
+      this.handleError(error, 'Failed to update user status')
     }
   }
 
@@ -75,7 +65,7 @@ class ChatService {
     this.userStatusCallbacks.push(callback)
   }
 
-  async sendMessage({ content, attachments }: SendMessageParams): Promise<ChatMessage> {
+  async sendMessage(content: string, attachments?: File[]): Promise<ChatMessage> {
     if (!this.currentUser) {
       throw new Error('User not initialized')
     }
@@ -84,20 +74,16 @@ class ChatService {
       id: `msg-${Date.now()}`,
       userId: this.currentUser.id,
       userName: this.currentUser.name,
-      userRole: this.currentUser.role,
       content,
       timestamp: new Date().toISOString(),
+      userRole: this.currentUser.role,
     }
 
     if (attachments?.length) {
       message.attachments = await this.uploadFiles(attachments)
     }
 
-    await baseService.handleRequest<void>('/api/chat/messages', {
-      method: 'POST',
-      body: JSON.stringify(message)
-    })
-
+    await this.post<void>('/chat/messages', message)
     chatWebSocket.sendMessage({
       type: "new_message",
       data: message
@@ -110,10 +96,7 @@ class ChatService {
     const formData = new FormData()
     files.forEach(file => formData.append('files', file))
 
-    return baseService.handleRequest<ChatMessage["attachments"]>('/api/chat/upload', {
-      method: 'POST',
-      body: formData
-    })
+    return this.post<ChatMessage["attachments"]>('/chat/upload', formData)
   }
 
   getCurrentUser(): ChatUser | null {

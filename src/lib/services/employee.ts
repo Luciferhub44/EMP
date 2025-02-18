@@ -1,74 +1,63 @@
-import { baseService } from './base'
+import { BaseService } from './base'
 import type { Employee, EmployeeCredentials, PaymentHistory, PaymentType } from "@/types/employee"
 import type { Order } from "@/types/orders"
 
-export const employeeService = {
+class EmployeeService extends BaseService {
   // Authentication
-  login: (credentials: EmployeeCredentials) =>
-    baseService.handleRequest<Employee>('/api/auth/login', {
-      method: 'POST',
-      body: JSON.stringify(credentials)
-    }),
+  async login(credentials: EmployeeCredentials) {
+    return this.post<Employee>('/auth/login', credentials)
+  }
 
   // Employee management (admin only)
-  createEmployee: (
+  async createEmployee(
     employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt' | 'passwordHash'> & { password: string },
     isAdmin: boolean
-  ) => {
+  ) {
     if (!isAdmin) throw new Error("Only administrators can create employees")
-    return baseService.handleRequest<Employee>('/api/employees', {
-      method: 'POST',
-      body: JSON.stringify(employeeData)
-    })
-  },
+    return this.post<Employee>('/employees', employeeData)
+  }
 
-  getEmployees: () => 
-    baseService.handleRequest<Employee[]>('/api/employees'),
+  async getEmployees() {
+    return this.get<Employee[]>('/employees')
+  }
 
-  getEmployee: (id: string) =>
-    baseService.handleRequest<Employee | null>(`/api/employees/${id}`),
+  async getEmployee(id: string) {
+    return this.get<Employee | null>(`/employees/${id}`)
+  }
 
-  getEmployeeByAgentId: (agentId: string) =>
-    baseService.handleRequest<Employee | null>(`/api/employees/agent/${agentId}`),
+  async getEmployeeByAgentId(agentId: string) {
+    return this.get<Employee | null>(`/employees/agent/${agentId}`)
+  }
 
-  updateEmployee: (
+  async updateEmployee(
     id: string,
     updates: Partial<Omit<Employee, 'id' | 'createdAt'>>,
     isAdmin: boolean
-  ) => {
+  ) {
     if (!isAdmin) throw new Error("Only administrators can update employees")
-    return baseService.handleRequest<Employee>(`/api/employees/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(updates)
-    })
-  },
+    return this.put<Employee>(`/employees/${id}`, updates)
+  }
 
-  resetPassword: (agentId: string, newPassword: string) =>
-    baseService.handleRequest<void>(`/api/employees/${agentId}/reset-password`, {
-      method: 'POST',
-      body: JSON.stringify({ newPassword })
-    }),
+  async resetPassword(agentId: string, newPassword: string) {
+    return this.post<void>(`/employees/${agentId}/reset-password`, { newPassword })
+  }
 
   // Orders management
-  getAssignedOrders: (employeeId: string) =>
-    baseService.handleRequest<Order[]>(`/api/employees/${employeeId}/assigned-orders`),
+  async getAssignedOrders(employeeId: string) {
+    return this.get<Order[]>(`/employees/${employeeId}/assigned-orders`)
+  }
 
-  assignOrder: (orderId: string, employeeId: string) =>
-    baseService.handleRequest('/api/employees/assign-order', {
-      method: 'POST',
-      body: JSON.stringify({ orderId, employeeId })
-    }),
+  async assignOrder(orderId: string, employeeId: string) {
+    return this.post<void>(`/employees/assign-order`, { orderId, employeeId })
+  }
 
-  unassignOrder: (employeeId: string, orderId: string, isAdmin: boolean) => {
+  async unassignOrder(employeeId: string, orderId: string, isAdmin: boolean) {
     if (!isAdmin) throw new Error("Only administrators can unassign orders")
-    return baseService.handleRequest<void>(`/api/employees/${employeeId}/unassign-order`, {
-      method: 'POST',
-      body: JSON.stringify({ orderId })
-    })
-  },
+    return this.post<void>(`/employees/${employeeId}/unassign-order`, { orderId })
+  }
 
   // Payment management
-  issuePayment: (
+  async issuePayment(
     employeeId: string,
     paymentData: {
       type: PaymentType
@@ -78,34 +67,29 @@ export const employeeService = {
     },
     issuerId: string,
     isAdmin: boolean
-  ) => {
+  ) {
     if (!isAdmin) throw new Error("Only administrators can issue payments")
-    return baseService.handleRequest<PaymentHistory>(`/api/employees/${employeeId}/payments`, {
-      method: 'POST',
-      body: JSON.stringify({ ...paymentData, issuerId })
-    })
-  },
-
-  calculateCommission: (employeeId: string, orderAmount: number) =>
-    baseService.handleRequest<{ commission: number }>(`/api/employees/${employeeId}/calculate-commission`, {
-      method: 'POST',
-      body: JSON.stringify({ orderAmount })
-    }).then(data => data.commission),
-
-  getPaymentHistory: (employeeId: string, requesterId: string, isAdmin: boolean) =>
-    baseService.handleRequest<PaymentHistory[]>(
-      `/api/employees/${employeeId}/payments?requesterId=${requesterId}&isAdmin=${isAdmin}`
-    ),
-
-  getEmployeesDuePayment: (isAdmin: boolean) => {
-    if (!isAdmin) throw new Error("Only administrators can view payment due information")
-    return baseService.handleRequest<Employee[]>('/api/employees/due-payment')
-  },
-
-  deleteEmployee: (employeeId: string, isAdmin: boolean) => {
-    if (!isAdmin) throw new Error("Only administrators can delete employees")
-    return baseService.handleRequest<void>(`/api/employees/${employeeId}`, {
-      method: 'DELETE'
-    })
+    return this.post<PaymentHistory>(`/employees/${employeeId}/payments`, { ...paymentData, issuerId })
   }
-} 
+
+  async calculateCommission(employeeId: string, orderAmount: number) {
+    return this.post<{ commission: number }>(`/employees/${employeeId}/calculate-commission`, { orderAmount })
+      .then(data => data.commission)
+  }
+
+  async getPaymentHistory(employeeId: string, requesterId: string, isAdmin: boolean) {
+    return this.get<PaymentHistory[]>(`/employees/${employeeId}/payments?requesterId=${requesterId}&isAdmin=${isAdmin}`)
+  }
+
+  async getEmployeesDuePayment(isAdmin: boolean) {
+    if (!isAdmin) throw new Error("Only administrators can view payment due information")
+    return this.get<Employee[]>('/employees/due-payment')
+  }
+
+  async deleteEmployee(employeeId: string, isAdmin: boolean) {
+    if (!isAdmin) throw new Error("Only administrators can delete employees")
+    return this.delete<void>(`/employees/${employeeId}`)
+  }
+}
+
+export const employeeService = new EmployeeService() 
