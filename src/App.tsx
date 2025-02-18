@@ -55,6 +55,60 @@ function ErrorFallback({ error }: { error: Error }) {
   )
 }
 
+// Define API routes that match server endpoints
+const API_ROUTES = {
+  auth: {
+    signIn: '/api/auth/sign-in',
+    signOut: '/api/auth/sign-out',
+    session: '/api/auth/session'
+  },
+  employees: {
+    list: '/api/employees',
+    details: (id: string) => `/api/employees/${id}`,
+    create: '/api/employees',
+    update: (id: string) => `/api/employees/${id}`,
+    delete: (id: string) => `/api/employees/${id}`
+  },
+  customers: {
+    list: '/api/customers',
+    details: (id: string) => `/api/customers/${id}`,
+    create: '/api/customers',
+    update: (id: string) => `/api/customers/${id}`,
+    delete: (id: string) => `/api/customers/${id}`
+  },
+  products: {
+    list: '/api/products',
+    details: (id: string) => `/api/products/${id}`,
+    create: '/api/products',
+    update: (id: string) => `/api/products/${id}`,
+    delete: (id: string) => `/api/products/${id}`,
+    inventory: (id: string) => `/api/products/${id}/inventory`
+  },
+  orders: {
+    list: '/api/orders',
+    details: (id: string) => `/api/orders/${id}`,
+    create: '/api/orders',
+    update: (id: string) => `/api/orders/${id}`,
+    delete: (id: string) => `/api/orders/${id}`,
+    status: (id: string) => `/api/orders/${id}/status`
+  },
+  fulfillment: {
+    list: '/api/fulfillment',
+    details: (orderId: string) => `/api/fulfillment/${orderId}`,
+    create: '/api/fulfillment',
+    update: (orderId: string) => `/api/fulfillment/${orderId}`,
+    payment: (id: string) => `/api/fulfillment/payment/${id}`
+  },
+  messages: {
+    list: '/api/messages',
+    thread: (id: string) => `/api/messages/thread/${id}`,
+    create: '/api/messages',
+    update: (id: string) => `/api/messages/${id}`
+  }
+}
+
+export { API_ROUTES }
+
 export default function App() {
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
@@ -73,128 +127,59 @@ export default function App() {
 
                       {/* Protected routes */}
                       <Route element={<RootLayout />}>
-                        <Route path="/" element={
-                          <ProtectedRoute>
-                            <HomePage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/analytics" element={
-                          <ProtectedRoute>
-                            <AnalyticsPage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/customers" element={
-                          <ProtectedRoute>
-                            <CustomersPage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/customers/:id" element={
-                          <ProtectedRoute>
-                            <CustomerDetailsPage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/products" element={
-                          <ProtectedRoute>
-                            <ProductsPage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/products/new" element={
-                          <AdminRoute>
-                            <NewProductPage />
-                          </AdminRoute>
-                        } />
-                        <Route path="/products/:id" element={
-                          <ProtectedRoute>
-                            <ProductDetailsPage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/products/:id/inventory" element={
-                          <ProtectedRoute>
-                            <ProductInventoryPage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/products/:id/edit" element={
-                          <AdminRoute>
-                            <EditProductPage />
-                          </AdminRoute>
-                        } />
-                        <Route path="/orders" element={
-                          <ProtectedRoute>
-                            <OrdersPage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/orders/new" element={
-                          <ProtectedRoute>
-                            <NewOrderPage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/orders/:id" element={
-                          <ProtectedRoute>
-                            <OrderDetailsPage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/fulfillment" element={
-                          <ProtectedRoute>
-                            <FulfillmentPage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/fulfillment/:orderId" element={
-                          <ProtectedRoute>
-                            <FulfillmentDetailsPage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/fulfillment/payment/:fulfillmentId" element={
-                          <ProtectedRoute>
-                            <PaymentPage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/reports" element={
-                          <ProtectedRoute>
-                            <ReportsPage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/messages" element={
-                          <ProtectedRoute>
-                            <MessagesPage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/messages/:threadId" element={
-                          <ProtectedRoute>
-                            <ThreadPage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/settings" element={
-                          <ProtectedRoute>
-                            <SettingsPage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/settings/profile" element={
-                          <ProtectedRoute>
-                            <ProfilePage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/inbox" element={<InboxPage />} />
-                        {/* Admin only routes */}
-                        <Route path="/employees" element={
-                          <ProtectedRoute requireAdmin>
-                            <EmployeesPage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/employees/:id" element={
-                          <AdminRoute>
-                            <EmployeeDetailsPage />
-                          </AdminRoute>
-                        } />
-                        <Route path="/customers/new" element={
-                          <AdminRoute>
-                            <CustomerNewPage />
-                          </AdminRoute>
-                        } />
-                        <Route path="/customers/:id/edit" element={
-                          <AdminRoute>
-                            <CustomerEditPage />
-                          </AdminRoute>
-                        } />
+                        {/* Dashboard */}
+                        <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
+                        <Route path="/analytics" element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
+
+                        {/* Customers */}
+                        <Route path="/customers">
+                          <Route index element={<ProtectedRoute><CustomersPage /></ProtectedRoute>} />
+                          <Route path="new" element={<AdminRoute><CustomerNewPage /></AdminRoute>} />
+                          <Route path=":id" element={<ProtectedRoute><CustomerDetailsPage /></ProtectedRoute>} />
+                          <Route path=":id/edit" element={<AdminRoute><CustomerEditPage /></AdminRoute>} />
+                        </Route>
+
+                        {/* Products */}
+                        <Route path="/products">
+                          <Route index element={<ProtectedRoute><ProductsPage /></ProtectedRoute>} />
+                          <Route path="new" element={<AdminRoute><NewProductPage /></AdminRoute>} />
+                          <Route path=":id">
+                            <Route index element={<ProtectedRoute><ProductDetailsPage /></ProtectedRoute>} />
+                            <Route path="inventory" element={<ProtectedRoute><ProductInventoryPage /></ProtectedRoute>} />
+                            <Route path="edit" element={<AdminRoute><EditProductPage /></AdminRoute>} />
+                          </Route>
+                        </Route>
+
+                        {/* Orders & Fulfillment */}
+                        <Route path="/orders">
+                          <Route index element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
+                          <Route path="new" element={<ProtectedRoute><NewOrderPage /></ProtectedRoute>} />
+                          <Route path=":id" element={<ProtectedRoute><OrderDetailsPage /></ProtectedRoute>} />
+                        </Route>
+
+                        <Route path="/fulfillment">
+                          <Route index element={<ProtectedRoute><FulfillmentPage /></ProtectedRoute>} />
+                          <Route path=":orderId" element={<ProtectedRoute><FulfillmentDetailsPage /></ProtectedRoute>} />
+                          <Route path="payment/:fulfillmentId" element={<ProtectedRoute><PaymentPage /></ProtectedRoute>} />
+                        </Route>
+
+                        {/* Other routes */}
+                        <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
+                        <Route path="/messages">
+                          <Route index element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
+                          <Route path=":threadId" element={<ProtectedRoute><ThreadPage /></ProtectedRoute>} />
+                        </Route>
+                        <Route path="/settings">
+                          <Route index element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+                          <Route path="profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+                        </Route>
+                        <Route path="/inbox" element={<ProtectedRoute><InboxPage /></ProtectedRoute>} />
+
+                        {/* Admin routes */}
+                        <Route path="/employees">
+                          <Route index element={<AdminRoute><EmployeesPage /></AdminRoute>} />
+                          <Route path=":id" element={<AdminRoute><EmployeeDetailsPage /></AdminRoute>} />
+                        </Route>
                       </Route>
                     </Routes>
                     <Toaster />

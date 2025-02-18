@@ -310,7 +310,7 @@ startServer();
 // Database Schema and Initialization
 const SCHEMA_VERSION = '1.0.0';
 
-// Complete schema definitions with JSONB constraints
+// Update schema definitions
 const schema = {
   tables: {
     schema_versions: `
@@ -340,41 +340,8 @@ const schema = {
       CREATE TABLE IF NOT EXISTS sessions (
         id TEXT PRIMARY KEY,
         data JSONB NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         expires_at TIMESTAMPTZ NOT NULL,
-        CONSTRAINT sessions_data_check CHECK (
-          data ? 'token' AND
-          data ? 'employeeId' AND
-          data ? 'expiresAt'
-        )
-      )
-    `,
-    orders: `
-      CREATE TABLE IF NOT EXISTS orders (
-        id TEXT PRIMARY KEY,
-        data JSONB NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT orders_data_check CHECK (
-          data ? 'id' AND
-          data ? 'customerId' AND
-          data ? 'status' AND
-          data ? 'items' AND
-          data ? 'totalAmount'
-        )
-      )
-    `,
-    products: `
-      CREATE TABLE IF NOT EXISTS products (
-        id TEXT PRIMARY KEY,
-        data JSONB NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT products_data_check CHECK (
-          data ? 'id' AND
-          data ? 'name' AND
-          data ? 'price'
-        )
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       )
     `,
     customers: `
@@ -382,95 +349,95 @@ const schema = {
         id TEXT PRIMARY KEY,
         data JSONB NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT customers_data_check CHECK (
-          data ? 'id' AND
-          data ? 'name' AND
-          data ? 'email'
-        )
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      )
+    `,
+    products: `
+      CREATE TABLE IF NOT EXISTS products (
+        id TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      )
+    `,
+    orders: `
+      CREATE TABLE IF NOT EXISTS orders (
+        id TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      )
+    `,
+    fulfillments: `
+      CREATE TABLE IF NOT EXISTS fulfillments (
+        id TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      )
+    `,
+    messages: `
+      CREATE TABLE IF NOT EXISTS messages (
+        id TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      )
+    `,
+    settings: `
+      CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       )
     `
-  },
-  indexes: {
-    employees_agent_id: `CREATE INDEX IF NOT EXISTS idx_employees_agent_id ON employees ((data->>'agentId'))`,
-    employees_email: `CREATE INDEX IF NOT EXISTS idx_employees_email ON employees ((data->>'email'))`,
-    sessions_token: `CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions ((data->>'token'))`,
-    orders_customer: `CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders ((data->>'customerId'))`,
-    orders_status: `CREATE INDEX IF NOT EXISTS idx_orders_status ON orders ((data->>'status'))`,
-    products_name: `CREATE INDEX IF NOT EXISTS idx_products_name ON products ((data->>'name'))`,
-    customers_email: `CREATE INDEX IF NOT EXISTS idx_customers_email ON customers ((data->>'email'))`
   }
 };
 
-// Database initialization
+// Initialize database with default admin
 async function initializeDatabase() {
-  const client = await pool.connect();
   try {
-    // Drop everything in the current database
-    await client.query(`
-      DO $$ DECLARE
-        r RECORD;
-      BEGIN
-        -- Drop all tables
-        FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP
-          EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(r.tablename) || ' CASCADE';
-        END LOOP;
-        
-        -- Drop all sequences
-        FOR r IN (SELECT sequencename FROM pg_sequences WHERE schemaname = 'public') LOOP
-          EXECUTE 'DROP SEQUENCE IF EXISTS ' || quote_ident(r.sequencename) || ' CASCADE';
-        END LOOP;
-        
-        -- Drop all views
-        FOR r IN (SELECT viewname FROM pg_views WHERE schemaname = 'public') LOOP
-          EXECUTE 'DROP VIEW IF EXISTS ' || quote_ident(r.viewname) || ' CASCADE';
-        END LOOP;
-      END $$;
-    `);
-
-    // Start transaction for new schema creation
-    await client.query('BEGIN');
-
-    // Create tables and indexes
-    for (const [tableName, tableSchema] of Object.entries(schema.tables)) {
-      console.log(`Creating table: ${tableName}`);
-      await client.query(tableSchema);
+    // Create tables
+    for (const [name, query] of Object.entries(schema.tables)) {
+      await pool.query(query)
     }
 
-    for (const [indexName, indexSchema] of Object.entries(schema.indexes)) {
-      console.log(`Creating index: ${indexName}`);
-      await client.query(indexSchema);
-    }
+    // Check if admin exists
+    const adminResult = await pool.query(
+      `SELECT data FROM employees WHERE data->>'agentId' = $1`,
+      [ADMIN_ID]
+    )
 
-    // Insert initial data
-    console.log('Inserting initial data...');
-    const initialEmployees = [
-      {
-        id: "EMP001",
-        agentId: "ADMIN001",
-        name: "Admin HQ",
-        email: "hq@sanyglobal.org",
-        status: "active",
-        role: "admin",
-        passwordHash: await hashPassword(ADMIN_PASSWORD)
-      }
-    ];
-
-    for (const employee of initialEmployees) {
-      await client.query(
+    if (adminResult.rows.length === 0) {
+      // Create admin user
+      const adminHash = await bcrypt.hash(ADMIN_PASSWORD, 10)
+      await pool.query(
         'INSERT INTO employees (id, data) VALUES ($1, $2)',
-        [employee.id, employee]
-      );
+        [
+          ADMIN_ID,
+          {
+            id: ADMIN_ID,
+            agentId: ADMIN_ID,
+            name: 'Admin HQ',
+            email: ADMIN_EMAIL,
+            status: 'active',
+            role: 'admin',
+            passwordHash: adminHash,
+            settings: defaultSettings
+          }
+        ]
+      )
     }
 
-    await client.query('COMMIT');
-    console.log('Database initialization complete');
+    // Record schema version
+    await pool.query(
+      'INSERT INTO schema_versions (version) VALUES ($1) ON CONFLICT DO NOTHING',
+      [SCHEMA_VERSION]
+    )
+
+    console.log('Database initialized successfully')
   } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('Database initialization failed:', error);
-    throw error;
-  } finally {
-    client.release();
+    console.error('Database initialization failed:', error)
+    throw error
   }
 }
 

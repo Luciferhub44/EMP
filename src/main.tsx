@@ -16,8 +16,8 @@ const init = async () => {
     
     while (retries < maxRetries && !connected) {
       try {
-        const response = await fetch('/api/db/test')
-        if (!response.ok) throw new Error('API test failed')
+        const response = await fetch('/api/health')
+        if (!response.ok) throw new Error('API health check failed')
         const data = await response.json()
         console.log('API connection test:', data)
         connected = true
@@ -28,7 +28,7 @@ const init = async () => {
           throw new Error('Failed to connect to API after multiple attempts')
         }
         // Wait before retrying
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        await new Promise(resolve => setTimeout(resolve, 1000 * retries)) // Exponential backoff
       }
     }
 
