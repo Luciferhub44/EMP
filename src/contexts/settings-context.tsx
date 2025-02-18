@@ -1,4 +1,5 @@
 import * as React from "react"
+import { defaultSettings } from '@/config/default-settings'
 
 interface UserSettings {
   notifications: {
@@ -31,28 +32,8 @@ interface SettingsContextType {
 
 const SettingsContext = React.createContext<SettingsContextType | undefined>(undefined)
 
-export const defaultSettings: UserSettings = {
-  notifications: {
-    email: true,
-    orders: true,
-    chat: true
-  },
-  appearance: {
-    theme: "system",
-    compactMode: false
-  },
-  security: {
-    twoFactorEnabled: false
-  },
-  profile: {
-    name: "John Admin",
-    email: "john@example.com",
-    company: "Construction Co."
-  }
-}
-
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
-  const [settings, setSettings] = React.useState<UserSettings>(defaultSettings)
+  const [settings, setSettings] = React.useState<UserSettings>(defaultSettings as UserSettings)
   const [isLoading, setIsLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
