@@ -46,14 +46,15 @@ export default defineConfig(({ mode }) => {
           target: env.VITE_API_URL || "http://127.0.0.1:3001",
           changeOrigin: true,
           secure: isProd,
-          ws: true
+          ws: true,
+          rewrite: (path) => path.replace(/^\/api/, '')
         }
       }
     },
 
     build: {
       outDir: "dist",
-      sourcemap: false,
+      sourcemap: !isProd,
       minify: 'esbuild',
       target: 'esnext',
       assetsDir: 'assets',
