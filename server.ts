@@ -1337,5 +1337,116 @@ app.get('/api/dashboard/stats', async (req, res) => {
   }
 });
 
+// Get total stock for a product
+app.get('/api/inventory/total-stock/:productId', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { productId } = req.params;
+
+    const stockResult = await executeQuery(
+      'SELECT SUM((data->>\'quantity\')::integer) as total FROM inventory WHERE data->>\'productId\' = $1',
+      [productId]
+    );
+
+    res.json({ total: parseInt(stockResult.rows[0]?.total || '0') });
+  } catch (error) {
+    console.error('Failed to fetch total stock:', error);
+    res.status(500).json({ error: 'Failed to fetch total stock' });
+  }
+});
+
+// Check if product needs restocking
+app.get('/api/inventory/needs-restock/:productId', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { productId } = req.params;
+
+    // Get product details to check minimum stock level
+    const productResult = await executeQuery(
+      'SELECT data FROM products WHERE data->>\'id\' = $1',
+      [productId]
+    );
+
+    if (productResult.rows.length === 0) {
+      return res.json({ needsRestock: false });
+    }
+
+    const product = productResult.rows[0].data;
+    const minStock = product.minStock || 10; // Default minimum stock level
+
+    // Get current total stock
+    const stockResult = await executeQuery(
+      'SELECT SUM((data->>\'quantity\')::integer) as total FROM inventory WHERE data->>\'productId\' = $1',
+      [productId]
+    );
+
+    const totalStock = parseInt(stockResult.rows[0]?.total || '0');
+    res.json({ needsRestock: totalStock < minStock });
+  } catch (error) {
+    console.error('Failed to check restock status:', error);
+    res.status(500).json({ error: 'Failed to check restock status' });
+  }
+});
+
+// Get warehouse stock for a product
+app.get('/api/inventory/warehouse-stock/:productId/:warehouseId', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { productId, warehouseId } = req.params;
+
+    const stockResult = await executeQuery(
+      'SELECT data FROM inventory WHERE data->>\'productId\' = $1 AND data->>\'warehouseId\' = $2',
+      [productId, warehouseId]
+    );
+
+    if (stockResult.rows.length === 0) {
+      return res.json({ quantity: 0 });
+    }
+
+    res.json({ quantity: parseInt(stockResult.rows[0].data.quantity || '0') });
+  } catch (error) {
+    console.error('Failed to fetch warehouse stock:', error);
+    res.status(500).json({ error: 'Failed to fetch warehouse stock' });
+  }
+});
+
+// Get products that need restocking
+app.get('/api/inventory/restock-needed', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Get all products with their total stock
+    const result = await executeQuery(`
+      SELECT 
+        p.data as product,
+        COALESCE(SUM((i.data->>'quantity')::integer), 0) as total_stock
+      FROM products p
+      LEFT JOIN inventory i ON i.data->>'productId' = p.data->>'id'
+      GROUP BY p.data
+      HAVING COALESCE(SUM((i.data->>'quantity')::integer), 0) < COALESCE((p.data->>'minStock')::integer, 10)
+    `, []);
+
+    res.json(result.rows.map(row => row.product));
+  } catch (error) {
+    console.error('Failed to fetch restock needed products:', error);
+    res.status(500).json({ error: 'Failed to fetch restock needed products' });
+  }
+});
+
 // Start the server
 startServer().catch(console.error);
