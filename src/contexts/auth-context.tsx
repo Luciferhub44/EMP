@@ -54,10 +54,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true)
       setError(null)
 
-      // Log the attempt
-      console.log('Login attempt:', { agentId })
-
-      // Use the server's login endpoint
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -71,14 +67,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error || "Login failed")
+        throw new Error(error.message || "Login failed")
       }
 
-      const { user: userData } = await response.json()
-      console.log('Login successful:', userData)
-
+      const { user: userData, token } = await response.json()
       setUser(userData)
-      localStorage.setItem("auth_token", "session-" + userData.id)
+      localStorage.setItem("auth_token", token)
       
     } catch (error) {
       console.error("Login failed:", error)

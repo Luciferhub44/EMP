@@ -3,6 +3,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useAuth } from "@/contexts/auth-context"
 import { toast } from "@/components/ui/use-toast"
 
@@ -11,7 +18,8 @@ export default function SignInPage() {
   const [loading, setLoading] = useState(false)
   const [credentials, setCredentials] = useState({
     agentId: "",
-    password: ""
+    password: "",
+    role: "employee" as "employee" | "admin"
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -20,6 +28,10 @@ export default function SignInPage() {
 
     try {
       await login(credentials.agentId, credentials.password)
+      toast({
+        title: "Welcome",
+        description: `Successfully signed in as ${credentials.role}`,
+      })
     } catch (error) {
       toast({
         title: "Authentication Failed",
@@ -42,6 +54,23 @@ export default function SignInPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="role">Role</Label>
+              <Select
+                value={credentials.role}
+                onValueChange={(value: "employee" | "admin") => 
+                  setCredentials(prev => ({ ...prev, role: value }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select your role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="employee">Employee</SelectItem>
+                  <SelectItem value="admin">Administrator</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="agentId">Agent ID</Label>
               <Input
