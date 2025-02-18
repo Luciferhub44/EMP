@@ -573,5 +573,215 @@ app.get('/api/auth/session', async (req, res) => {
   }
 });
 
+// Orders endpoint
+app.get('/api/orders', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Get employee data to check permissions
+    const employeeResult = await executeQuery(
+      'SELECT data FROM employees WHERE data->>\'id\' = $1',
+      [token.replace('session-', '')]
+    );
+
+    if (employeeResult.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid session' });
+    }
+
+    // Get orders from database
+    const ordersResult = await executeQuery('SELECT data FROM orders ORDER BY data->>\'createdAt\' DESC', []);
+    const orders = ordersResult.rows.map(row => row.data);
+
+    res.json(orders);
+  } catch (error) {
+    console.error('Failed to fetch orders:', error);
+    res.status(500).json({ error: 'Failed to fetch orders' });
+  }
+});
+
+// Customers endpoint
+app.get('/api/customers', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { userId, isAdmin } = req.query;
+
+    // Get employee data to check permissions
+    const employeeResult = await executeQuery(
+      'SELECT data FROM employees WHERE data->>\'id\' = $1',
+      [token.replace('session-', '')]
+    );
+
+    if (employeeResult.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid session' });
+    }
+
+    // Get customers from database
+    const customersResult = await executeQuery('SELECT data FROM customers ORDER BY data->>\'createdAt\' DESC', []);
+    const customers = customersResult.rows.map(row => row.data);
+
+    res.json(customers);
+  } catch (error) {
+    console.error('Failed to fetch customers:', error);
+    res.status(500).json({ error: 'Failed to fetch customers' });
+  }
+});
+
+// Products endpoint
+app.get('/api/products', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const productsResult = await executeQuery('SELECT data FROM products ORDER BY data->>\'createdAt\' DESC', []);
+    const products = productsResult.rows.map(row => row.data);
+    res.json(products);
+  } catch (error) {
+    console.error('Failed to fetch products:', error);
+    res.status(500).json({ error: 'Failed to fetch products' });
+  }
+});
+
+// Dashboard data endpoint
+app.get('/api/dashboard', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const [orders, products, customers] = await Promise.all([
+      executeQuery('SELECT COUNT(*) FROM orders', []),
+      executeQuery('SELECT COUNT(*) FROM products', []),
+      executeQuery('SELECT COUNT(*) FROM customers', [])
+    ]);
+
+    res.json({
+      totalOrders: parseInt(orders.rows[0].count),
+      totalProducts: parseInt(products.rows[0].count),
+      totalCustomers: parseInt(customers.rows[0].count),
+      recentActivity: []
+    });
+  } catch (error) {
+    console.error('Failed to fetch dashboard data:', error);
+    res.status(500).json({ error: 'Failed to fetch dashboard data' });
+  }
+});
+
+// Messages/Threads endpoint
+app.get('/api/messages/threads', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Placeholder for messages - you'll need to create a messages table
+    res.json([]);
+  } catch (error) {
+    console.error('Failed to fetch message threads:', error);
+    res.status(500).json({ error: 'Failed to fetch message threads' });
+  }
+});
+
+// Employees endpoint
+app.get('/api/employees', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const employeesResult = await executeQuery('SELECT data FROM employees ORDER BY data->>\'createdAt\' DESC', []);
+    const employees = employeesResult.rows.map(row => {
+      const { passwordHash, ...safeEmployee } = row.data;
+      return safeEmployee;
+    });
+    res.json(employees);
+  } catch (error) {
+    console.error('Failed to fetch employees:', error);
+    res.status(500).json({ error: 'Failed to fetch employees' });
+  }
+});
+
+// Pending orders endpoint
+app.get('/api/orders/pending', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const pendingOrdersResult = await executeQuery(
+      'SELECT data FROM orders WHERE data->>\'status\' = $1 ORDER BY data->>\'createdAt\' DESC',
+      ['pending']
+    );
+    const pendingOrders = pendingOrdersResult.rows.map(row => row.data);
+    res.json(pendingOrders);
+  } catch (error) {
+    console.error('Failed to fetch pending orders:', error);
+    res.status(500).json({ error: 'Failed to fetch pending orders' });
+  }
+});
+
+// Fulfillments endpoint
+app.get('/api/fulfillments', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const fulfillmentsResult = await executeQuery('SELECT data FROM fulfillments ORDER BY data->>\'createdAt\' DESC', []);
+    const fulfillments = fulfillmentsResult.rows.map(row => row.data);
+    res.json(fulfillments);
+  } catch (error) {
+    console.error('Failed to fetch fulfillments:', error);
+    res.status(500).json({ error: 'Failed to fetch fulfillments' });
+  }
+});
+
+// Transport companies endpoint
+app.get('/api/transport/companies', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const companiesResult = await executeQuery('SELECT data FROM transport_companies ORDER BY data->>\'name\' ASC', []);
+    const companies = companiesResult.rows.map(row => row.data);
+    res.json(companies);
+  } catch (error) {
+    console.error('Failed to fetch transport companies:', error);
+    res.status(500).json({ error: 'Failed to fetch transport companies' });
+  }
+});
+
+// Transport orders endpoint
+app.get('/api/transport/orders', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const transportOrdersResult = await executeQuery('SELECT data FROM transport_orders ORDER BY data->>\'createdAt\' DESC', []);
+    const transportOrders = transportOrdersResult.rows.map(row => row.data);
+    res.json(transportOrders);
+  } catch (error) {
+    console.error('Failed to fetch transport orders:', error);
+    res.status(500).json({ error: 'Failed to fetch transport orders' });
+  }
+});
+
 // Start the server
 startServer().catch(console.error);
