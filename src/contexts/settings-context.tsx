@@ -26,6 +26,7 @@ interface SettingsContextType {
   updateProfile: (profile: Partial<UserSettings['profile']>) => Promise<void>
   updatePassword: (currentPassword: string, newPassword: string) => Promise<void>
   isLoading: boolean
+  error: string | null
 }
 
 const SettingsContext = React.createContext<SettingsContextType | undefined>(undefined)
@@ -53,6 +54,31 @@ const defaultSettings: UserSettings = {
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = React.useState<UserSettings>(defaultSettings)
   const [isLoading, setIsLoading] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
+
+  React.useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch('/api/settings', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          }
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch settings')
+        }
+
+        const data = await response.json()
+        setSettings(data)
+      } catch (error) {
+        console.error('Failed to fetch settings:', error)
+        setError('Failed to load settings')
+      }
+    }
+
+    fetchSettings()
+  }, [])
 
   const updateSettings = React.useCallback(async (newSettings: Partial<UserSettings>) => {
     setIsLoading(true)
@@ -108,7 +134,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         updateSettings,
         updateProfile,
         updatePassword,
-        isLoading
+        isLoading,
+        error
       }}
     >
       {children}

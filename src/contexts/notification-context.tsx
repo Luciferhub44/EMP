@@ -8,49 +8,38 @@ interface NotificationContextType {
   markAsRead: (notificationId: string) => void
   markAllAsRead: () => void
   clearAll: () => void
+  error: string | null
 }
 
 const NotificationContext = React.createContext<NotificationContextType | undefined>(undefined)
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
-  const [notifications, setNotifications] = React.useState<Notification[]>([
-    {
-      id: "not-1",
-      type: "order",
-      title: "New Order Received",
-      message: "Order #ORD-001 has been placed and is awaiting confirmation.",
-      isRead: false,
-      timestamp: new Date(Date.now() - 3600000).toISOString(),
-      actionUrl: "/orders/ORD-001",
-      metadata: {
-        orderId: "ORD-001"
-      }
-    },
-    {
-      id: "not-2",
-      type: "inventory",
-      title: "Low Stock Alert",
-      message: "Mini Excavator (EX-001) stock is below minimum threshold.",
-      isRead: true,
-      timestamp: new Date(Date.now() - 7200000).toISOString(),
-      actionUrl: "/products/EX-001/inventory",
-      metadata: {
-        productId: "EX-001"
-      }
-    },
-    {
-      id: "not-3",
-      type: "payment",
-      title: "Payment Received",
-      message: "Payment of $32,000 received for Order #ORD-001",
-      isRead: false,
-      timestamp: new Date(Date.now() - 10800000).toISOString(),
-      metadata: {
-        orderId: "ORD-001",
-        amount: 32000
+  const [notifications, setNotifications] = React.useState<Notification[]>([])
+  const [error, setError] = React.useState<string | null>(null)
+
+  React.useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const response = await fetch('/api/notifications', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          }
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch notifications')
+        }
+
+        const data = await response.json()
+        setNotifications(data)
+      } catch (error) {
+        console.error('Failed to fetch notifications:', error)
+        setError('Failed to load notifications')
       }
     }
-  ])
+
+    fetchNotifications()
+  }, [])
 
   const unreadCount = notifications.filter(n => !n.isRead).length
 
@@ -91,6 +80,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         markAsRead,
         markAllAsRead,
         clearAll,
+        error
       }}
     >
       {children}

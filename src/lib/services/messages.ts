@@ -3,16 +3,28 @@ import { baseService } from './base'
 
 export const messagesService = {
   // Get threads for a user
-  getThreads: (userId: string, isAdmin: boolean) =>
-    baseService.handleRequest<ChatThread[]>(`/api/messages/threads?userId=${userId}&isAdmin=${isAdmin}`, {
-      method: 'GET'
-    }),
+  getThreads: async (userId: string, isAdmin: boolean) => {
+    try {
+      return await baseService.handleRequest<ChatThread[]>(`/api/messages/threads?userId=${userId}&isAdmin=${isAdmin}`, {
+        method: 'GET'
+      })
+    } catch (error) {
+      console.error('Failed to fetch threads:', error)
+      return []
+    }
+  },
 
   // Get messages for a thread
-  getMessages: (threadId: string, userId: string, isAdmin: boolean) =>
-    baseService.handleRequest<Message[]>(`/api/messages/threads/${threadId}?userId=${userId}&isAdmin=${isAdmin}`, {
-      method: 'GET'
-    }),
+  getMessages: async (threadId: string, userId: string, isAdmin: boolean) => {
+    try {
+      return await baseService.handleRequest<Message[]>(`/api/messages/threads/${threadId}?userId=${userId}&isAdmin=${isAdmin}`, {
+        method: 'GET'
+      })
+    } catch (error) {
+      console.error('Failed to fetch messages:', error)
+      return []
+    }
+  },
 
   // Start a new thread
   startThread: (
@@ -68,8 +80,14 @@ export const messagesService = {
     return baseService.handleRequest<AdminChatIdentity[]>('/api/messages/admin/identities')
   },
 
-  getThread: (threadId: string, userId: string, isAdmin: boolean) =>
-    baseService.handleRequest<ChatThread>(`/api/messages/threads/${threadId}?userId=${userId}&isAdmin=${isAdmin}`, {
-      method: 'GET'
-    })
+  getThread: async (threadId: string, userId: string, isAdmin: boolean) => {
+    try {
+      return await baseService.handleRequest<ChatThread>(`/api/messages/threads/${threadId}?userId=${userId}&isAdmin=${isAdmin}`, {
+        method: 'GET'
+      })
+    } catch (error) {
+      console.error('Failed to fetch thread:', error)
+      throw new Error('Failed to fetch thread')
+    }
+  }
 } 

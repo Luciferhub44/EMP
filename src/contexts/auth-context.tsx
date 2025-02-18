@@ -20,18 +20,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const initAuth = async () => {
       try {
         const token = localStorage.getItem("auth_token")
-        if (token) {
-          // Verify session
-          const response = await fetch('/api/auth/session', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          })
-          if (response.ok) {
-            const data = await response.json()
-            setUser(data.user)
-          } else {
-            localStorage.removeItem("auth_token")
-          }
+        if (!token) {
+          setLoading(false)
+          return
         }
+
+        const response = await fetch('/api/auth/session', {
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}` 
+          }
+        })
+
+        if (!response.ok) {
+          throw new Error('Session validation failed')
+        }
+
+        const data = await response.json()
+        setUser(data.user)
       } catch (error) {
         console.error("Auth initialization failed:", error)
         setError("Failed to initialize authentication")

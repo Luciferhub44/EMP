@@ -41,12 +41,21 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const testConnection = async () => {
       try {
-        const response = await fetch('/api/db/test')
+        const response = await fetch('/api/db/test', {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          }
+        })
+        
+        if (!response.ok) {
+          throw new Error('Database connection test failed')
+        }
+
         const data = await response.json()
         setIsConnected(data.success)
         setError(null)
       } catch (error) {
-        console.warn('Database connection failed:', error)
         setIsConnected(false)
         setError('Database connection failed')
       }
