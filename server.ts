@@ -339,7 +339,7 @@ startServer();
 // Database Schema and Initialization
 const SCHEMA_VERSION = '1.0.0';
 
-// Schema definitions with only what we need for now
+// Complete schema definitions with JSONB constraints
 const schema = {
   tables: {
     schema_versions: `
@@ -353,7 +353,13 @@ const schema = {
         id TEXT PRIMARY KEY,
         data JSONB NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT employees_data_check CHECK (
+          data ? 'id' AND
+          data ? 'email' AND
+          data ? 'name' AND
+          data ? 'role'
+        )
       )
     `,
     sessions: `
@@ -361,19 +367,64 @@ const schema = {
         id TEXT PRIMARY KEY,
         data JSONB NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        expires_at TIMESTAMPTZ NOT NULL
+        expires_at TIMESTAMPTZ NOT NULL,
+        CONSTRAINT sessions_data_check CHECK (
+          data ? 'token' AND
+          data ? 'employeeId' AND
+          data ? 'expiresAt'
+        )
+      )
+    `,
+    orders: `
+      CREATE TABLE IF NOT EXISTS orders (
+        id TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT orders_data_check CHECK (
+          data ? 'id' AND
+          data ? 'customerId' AND
+          data ? 'status' AND
+          data ? 'items' AND
+          data ? 'totalAmount'
+        )
+      )
+    `,
+    products: `
+      CREATE TABLE IF NOT EXISTS products (
+        id TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT products_data_check CHECK (
+          data ? 'id' AND
+          data ? 'name' AND
+          data ? 'price'
+        )
+      )
+    `,
+    customers: `
+      CREATE TABLE IF NOT EXISTS customers (
+        id TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT customers_data_check CHECK (
+          data ? 'id' AND
+          data ? 'name' AND
+          data ? 'email'
+        )
       )
     `
   },
   indexes: {
-    employees_agent_id: `
-      CREATE INDEX IF NOT EXISTS idx_employees_agent_id 
-      ON employees ((data->>'agentId'))
-    `,
-    sessions_token: `
-      CREATE INDEX IF NOT EXISTS idx_sessions_token 
-      ON sessions ((data->>'token'))
-    `
+    employees_agent_id: `CREATE INDEX IF NOT EXISTS idx_employees_agent_id ON employees ((data->>'agentId'))`,
+    employees_email: `CREATE INDEX IF NOT EXISTS idx_employees_email ON employees ((data->>'email'))`,
+    sessions_token: `CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions ((data->>'token'))`,
+    orders_customer: `CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders ((data->>'customerId'))`,
+    orders_status: `CREATE INDEX IF NOT EXISTS idx_orders_status ON orders ((data->>'status'))`,
+    products_name: `CREATE INDEX IF NOT EXISTS idx_products_name ON products ((data->>'name'))`,
+    customers_email: `CREATE INDEX IF NOT EXISTS idx_customers_email ON customers ((data->>'email'))`
   }
 };
 
