@@ -506,32 +506,7 @@ app.post('/api/employees', async (req, res) => {
   }
 });
 
-// Settings endpoint
-app.get('/api/settings', async (req, res) => {
-  try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const result = await executeQuery(
-      'SELECT data FROM employees WHERE data->>\'id\' = $1',
-      [token.replace('session-', '')]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Settings not found' });
-    }
-
-    const employee = result.rows[0].data;
-    res.json(employee.settings || defaultSettings);
-  } catch (error) {
-    console.error('Failed to fetch settings:', error);
-    res.status(500).json({ error: 'Failed to fetch settings' });
-  }
-});
-
-// Notifications endpoint
+// Get user notifications
 app.get('/api/notifications', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
@@ -539,44 +514,71 @@ app.get('/api/notifications', async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const result = await executeQuery(
-      'SELECT data FROM employees WHERE data->>\'id\' = $1',
-      [token.replace('session-', '')]
+    const userId = token.replace('session-', '');
+    const notificationsResult = await executeQuery(
+      'SELECT data FROM notifications WHERE data->>\'userId\' = $1 ORDER BY data->>\'timestamp\' DESC',
+      [userId]
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
+    // If no notifications exist yet, return empty array
+    if (notificationsResult.rows.length === 0) {
+      return res.json([]);
     }
 
-    res.json(result.rows[0].data.notifications || []);
+    res.json(notificationsResult.rows.map((row: DbRow) => row.data));
   } catch (error) {
     console.error('Failed to fetch notifications:', error);
     res.status(500).json({ error: 'Failed to fetch notifications' });
   }
 });
 
-// Session validation endpoint
-app.get('/api/auth/session', async (req, res) => {
+// Get user settings
+app.get('/api/settings', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const result = await executeQuery(
+    const userId = token.replace('session-', '');
+    const settingsResult = await executeQuery(
       'SELECT data FROM employees WHERE data->>\'id\' = $1',
-      [token.replace('session-', '')]
+      [userId]
     );
 
-    if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'Invalid session' });
+    if (settingsResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
     }
 
-    const { passwordHash, ...safeEmployee } = result.rows[0].data;
-    res.json({ user: safeEmployee });
+    // Return settings or default settings if none exist
+    const userSettings = settingsResult.rows[0].data.settings || defaultSettings;
+    res.json(userSettings);
   } catch (error) {
-    console.error('Session validation failed:', error);
-    res.status(500).json({ error: 'Session validation failed' });
+    console.error('Failed to fetch settings:', error);
+    res.status(500).json({ error: 'Failed to fetch settings' });
+  }
+});
+
+// Update user settings
+app.put('/api/settings', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const userId = token.replace('session-', '');
+    const newSettings = req.body;
+
+    await executeQuery(
+      'UPDATE employees SET data = jsonb_set(data, \'{settings}\', $1::jsonb) WHERE data->>\'id\' = $2',
+      [JSON.stringify(newSettings), userId]
+    );
+
+    res.json({ success: true, settings: newSettings });
+  } catch (error) {
+    console.error('Failed to update settings:', error);
+    res.status(500).json({ error: 'Failed to update settings' });
   }
 });
 
