@@ -790,5 +790,74 @@ app.get('/api/transport/orders', async (req, res) => {
   }
 });
 
+// Get all fulfillments
+app.get('/api/fulfillments/all', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const fulfillmentsResult = await executeQuery('SELECT data FROM fulfillments ORDER BY data->>\'createdAt\' DESC', []);
+    const fulfillments = fulfillmentsResult.rows.map((row: DbRow) => row.data);
+    res.json(fulfillments);
+  } catch (error) {
+    console.error('Failed to fetch all fulfillments:', error);
+    res.status(500).json({ error: 'Failed to fetch all fulfillments' });
+  }
+});
+
+// Get single fulfillment
+app.get('/api/fulfillments/:orderId', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { orderId } = req.params;
+    const fulfillmentResult = await executeQuery(
+      'SELECT data FROM fulfillments WHERE data->>\'orderId\' = $1',
+      [orderId]
+    );
+
+    if (fulfillmentResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Fulfillment not found' });
+    }
+
+    res.json(fulfillmentResult.rows[0].data);
+  } catch (error) {
+    console.error('Failed to fetch fulfillment:', error);
+    res.status(500).json({ error: 'Failed to fetch fulfillment' });
+  }
+});
+
+// Get single order
+app.get('/api/orders/:orderId', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { orderId } = req.params;
+    const { userId, isAdmin } = req.query;
+
+    const orderResult = await executeQuery(
+      'SELECT data FROM orders WHERE data->>\'id\' = $1',
+      [orderId]
+    );
+
+    if (orderResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    res.json(orderResult.rows[0].data);
+  } catch (error) {
+    console.error('Failed to fetch order:', error);
+    res.status(500).json({ error: 'Failed to fetch order' });
+  }
+});
+
 // Start the server
 startServer().catch(console.error);
