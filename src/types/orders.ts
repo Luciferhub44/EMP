@@ -1,4 +1,4 @@
-import type { Product } from "./products"
+import type { Product } from "./products.js"
 
 export interface Address {
   street: string
