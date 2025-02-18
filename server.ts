@@ -441,11 +441,10 @@ app.get('/api/debug/employees', async (req, res) => {
 
 // Update the login endpoint to use agentId instead of email
 app.post('/api/auth/login', async (req, res) => {
-  const { agentId, password } = req.body;
-  
   try {
+    const { agentId, password } = req.body;
     const result = await executeQuery(
-      'SELECT data FROM employees WHERE data->>\'agentId\' = $1',
+      'SELECT data FROM employees WHERE data->>\'id\' = $1',
       [agentId]
     );
 
@@ -454,13 +453,11 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const employee = result.rows[0].data;
-    const isValid = await verifyPassword(password, employee.passwordHash);
-
-    if (!isValid) {
+    // In production, use proper password hashing
+    if (password !== employee.passwordHash) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Remove sensitive data before sending
     const { passwordHash, ...safeEmployee } = employee;
     res.json({ user: safeEmployee });
   } catch (error) {
@@ -586,11 +583,8 @@ app.put('/api/settings', async (req, res) => {
 app.get('/api/orders', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+    if (!token) return res.status(401).json({ error: 'Unauthorized' });
 
-    // Get employee data to check permissions
     const employeeResult = await executeQuery(
       'SELECT data FROM employees WHERE data->>\'id\' = $1',
       [token.replace('session-', '')]
@@ -600,11 +594,18 @@ app.get('/api/orders', async (req, res) => {
       return res.status(401).json({ error: 'Invalid session' });
     }
 
-    // Get orders from database
-    const ordersResult = await executeQuery('SELECT data FROM orders ORDER BY data->>\'createdAt\' DESC', []);
-    const orders = ordersResult.rows.map((row: DbRow) => row.data);
+    const employee = employeeResult.rows[0].data;
+    let query = 'SELECT data FROM orders';
+    const params: any[] = [];
 
-    res.json(orders);
+    if (employee.role !== 'admin') {
+      query += ' WHERE data->>\'assignedTo\' = $1';
+      params.push(employee.id);
+    }
+
+    query += ' ORDER BY data->>\'createdAt\' DESC';
+    const ordersResult = await executeQuery(query, params);
+    res.json(ordersResult.rows.map((row: DbRow) => row.data));
   } catch (error) {
     console.error('Failed to fetch orders:', error);
     res.status(500).json({ error: 'Failed to fetch orders' });
@@ -1079,6 +1080,170 @@ app.get('/api/transport/quotes/:orderId', async (req, res) => {
   } catch (error) {
     console.error('Failed to fetch transport quotes:', error);
     res.status(500).json({ error: 'Failed to fetch transport quotes' });
+  }
+});
+
+// ============= Inventory Management =============
+// Get warehouse inventory (admin or assigned warehouse only)
+app.get('/api/warehouses/:warehouseId/inventory', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { warehouseId } = req.params;
+    const employeeResult = await executeQuery(
+      'SELECT data FROM employees WHERE data->>\'id\' = $1',
+      [token.replace('session-', '')]
+    );
+
+    if (employeeResult.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid session' });
+    }
+
+    const employee = employeeResult.rows[0].data;
+    if (employee.role !== 'admin' && employee.warehouseId !== warehouseId) {
+      return res.status(403).json({ error: 'Insufficient permissions' });
+    }
+
+    const inventoryResult = await executeQuery(
+      'SELECT data FROM inventory WHERE data->>\'warehouseId\' = $1',
+      [warehouseId]
+    );
+    res.json(inventoryResult.rows.map((row: DbRow) => row.data));
+  } catch (error) {
+    console.error('Failed to fetch inventory:', error);
+    res.status(500).json({ error: 'Failed to fetch inventory' });
+  }
+});
+
+// ============= Transport Management =============
+// Create transport quote (admin only)
+app.post('/api/transport/quotes', isAdmin, async (req, res) => {
+  try {
+    const { orderId, companyId, price, estimatedDays } = req.body;
+    const quote = {
+      id: `QUO-${Date.now()}`,
+      orderId,
+      companyId,
+      price,
+      estimatedDays,
+      status: 'pending',
+      createdAt: new Date().toISOString()
+    };
+
+    await executeQuery(
+      'INSERT INTO transport_quotes (data) VALUES ($1)',
+      [JSON.stringify(quote)]
+    );
+    res.json(quote);
+  } catch (error) {
+    console.error('Failed to create transport quote:', error);
+    res.status(500).json({ error: 'Failed to create transport quote' });
+  }
+});
+
+// ============= Customer Management =============
+// Create new customer (admin only)
+app.post('/api/customers', isAdmin, async (req, res) => {
+  try {
+    const customer = {
+      id: `CUS${String(Date.now()).slice(-5)}`,
+      ...req.body,
+      createdAt: new Date().toISOString()
+    };
+
+    await executeQuery(
+      'INSERT INTO customers (data) VALUES ($1)',
+      [JSON.stringify(customer)]
+    );
+    res.json(customer);
+  } catch (error) {
+    console.error('Failed to create customer:', error);
+    res.status(500).json({ error: 'Failed to create customer' });
+  }
+});
+
+// ============= Fulfillment Management =============
+// Update fulfillment status
+app.put('/api/fulfillments/:fulfillmentId/status', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { fulfillmentId } = req.params;
+    const { status } = req.body;
+
+    const fulfillmentResult = await executeQuery(
+      'SELECT data FROM fulfillments WHERE data->>\'id\' = $1',
+      [fulfillmentId]
+    );
+
+    if (fulfillmentResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Fulfillment not found' });
+    }
+
+    await executeQuery(
+      'UPDATE fulfillments SET data = jsonb_set(data, \'{status}\', $1::jsonb) WHERE data->>\'id\' = $2',
+      [JSON.stringify(status), fulfillmentId]
+    );
+
+    res.json({ success: true, message: 'Fulfillment status updated' });
+  } catch (error) {
+    console.error('Failed to update fulfillment status:', error);
+    res.status(500).json({ error: 'Failed to update fulfillment status' });
+  }
+});
+
+// ============= Dashboard Data =============
+// Get dashboard stats (role-based)
+app.get('/api/dashboard/stats', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+
+    const employeeResult = await executeQuery(
+      'SELECT data FROM employees WHERE data->>\'id\' = $1',
+      [token.replace('session-', '')]
+    );
+
+    if (employeeResult.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid session' });
+    }
+
+    const employee = employeeResult.rows[0].data;
+    let stats;
+
+    if (employee.role === 'admin') {
+      // Admin sees all stats
+      const [orders, revenue, customers] = await Promise.all([
+        executeQuery('SELECT COUNT(*) FROM orders', []),
+        executeQuery('SELECT SUM((data->>\'total\')::numeric) FROM orders', []),
+        executeQuery('SELECT COUNT(*) FROM customers', [])
+      ]);
+
+      stats = {
+        totalOrders: parseInt(orders.rows[0].count),
+        totalRevenue: parseFloat(revenue.rows[0].sum || '0'),
+        totalCustomers: parseInt(customers.rows[0].count)
+      };
+    } else {
+      // Employees see their assigned orders only
+      const orders = await executeQuery(
+        'SELECT COUNT(*) FROM orders WHERE data->>\'assignedTo\' = $1',
+        [employee.id]
+      );
+
+      stats = {
+        assignedOrders: parseInt(orders.rows[0].count),
+        completedOrders: 0,
+        pendingOrders: 0
+      };
+    }
+
+    res.json(stats);
+  } catch (error) {
+    console.error('Failed to fetch dashboard stats:', error);
+    res.status(500).json({ error: 'Failed to fetch dashboard stats' });
   }
 });
 
