@@ -16,11 +16,81 @@ import { transportCompanies, transportOrders } from "./src/data/transport.js"
 import { defaultSettings } from './src/config/default-settings.js';
 import bcrypt from 'bcryptjs';
 
+// Interfaces
 interface DbRow {
   data: {
     id: string;
     [key: string]: any;
   };
+}
+
+interface Employee {
+  id: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'manager' | 'agent';
+  status: 'active' | 'inactive';
+  warehouseId?: string;
+  passwordHash: string;
+  createdAt: string;
+  settings: any;
+}
+
+interface Order {
+  id: string;
+  customerId: string;
+  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  items: OrderItem[];
+  total: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface OrderItem {
+  productId: string;
+  quantity: number;
+  price: number;
+}
+
+interface Fulfillment {
+  id: string;
+  orderId: string;
+  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  carrier?: string;
+  trackingNumber?: string;
+  notes?: string;
+  history: FulfillmentHistory[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface FulfillmentHistory {
+  status: string;
+  timestamp: string;
+  note?: string;
+}
+
+interface TransportQuote {
+  id: string;
+  orderId: string;
+  provider: string;
+  method: string;
+  cost: number;
+  estimatedDays: number;
+  distance: number;
+  insurance: {
+    included: boolean;
+    cost?: number;
+  };
+  validUntil: string;
+  status: 'pending' | 'accepted' | 'expired';
+}
+
+interface Inventory {
+  productId: string;
+  warehouseId: string;
+  quantity: number;
+  lastUpdated: string;
 }
 
 const DEFAULT_PORT = Number(process.env.PORT) || 3001;
