@@ -114,7 +114,7 @@
   }
 
   .header-icon-button {
-    @apply relative rounded-full p-2 hover:bg-accent transition-colors;
+    @apply relative rounded-full p-2 hover:bg-[hsl(var(--accent))] transition-colors;
   }
 
   /* Navigation Components */
@@ -136,6 +136,14 @@
       ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium 
       placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 
       focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .input {
+    @apply flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors
+           file:border-0 file:bg-transparent file:text-sm file:font-medium 
+           placeholder:text-[hsl(var(--muted-foreground))]
+           focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring 
+           disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   /* Card Components */
@@ -211,12 +219,6 @@
 
   .btn-outline {
     @apply border border-input bg-transparent shadow-sm hover:bg-accent hover:text-accent-foreground;
-  }
-
-  .input {
-    @apply flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors
-           file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground 
-           focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .card {
