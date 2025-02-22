@@ -1,3 +1,11 @@
+-- Create authenticated role if not exists
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'authenticated') THEN
+    CREATE ROLE authenticated;
+  END IF;
+END
+$$;
 /*
   # Task Notifications and Alerts Migration
 

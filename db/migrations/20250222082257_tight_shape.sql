@@ -1,3 +1,11 @@
+-- Create authenticated role if not exists
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'authenticated') THEN
+    CREATE ROLE authenticated;
+  END IF;
+END
+$$;
 -- Create message_threads table
 CREATE TABLE message_threads (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
