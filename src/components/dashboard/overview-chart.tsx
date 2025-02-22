@@ -18,22 +18,23 @@ interface ChartData {
   total: number
 }
 
+interface RevenueData {
+  month: string
+  total: string
+}
+
 async function getChartData(): Promise<ChartData[]> {
   try {
-    const response = await query('SELECT * FROM analytics_monthly_revenue')
+    const response = await query<{ month: string, total: string }[]>('SELECT * FROM analytics_monthly_revenue')
     const data: ChartData[] = []
     
-    // Format the data for the chart
-    response.rows.forEach(row => {
+    (response || []).map((row: { month: string, total: string }) => {
       const date = new Date(row.month)
       data.push({
         name: date.toLocaleString('default', { month: 'short' }),
         total: Number(row.total)
       })
     })
-    
-    // Fill in missing months...
-    // ... rest of the data processing remains the same ...
     
     return data
   } catch (error) {

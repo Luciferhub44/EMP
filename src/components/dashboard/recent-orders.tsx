@@ -11,6 +11,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatCurrency } from "@/lib/utils"
 import { query } from "@/lib/db"
+import type { Order } from "@/types/orders"
+import { api } from "@/lib/api"
 
 interface ChartData {
   name: string
@@ -19,20 +21,16 @@ interface ChartData {
 
 async function getChartData(): Promise<ChartData[]> {
   try {
-    const response = await api.get<{ rows: { month: string, total: string }[] }>('/analytics/monthly-revenue')
+    const response = await api.get<{ month: string, total: string }[]>('/analytics/monthly-revenue')
     const data: ChartData[] = []
     
-    // Format the data for the chart
-    response.rows.forEach(row => {
+    (response || []).map((row: { month: string, total: string }) => {
       const date = new Date(row.month)
       data.push({
         name: date.toLocaleString('default', { month: 'short' }),
         total: Number(row.total)
       })
     })
-    
-    // Fill in missing months...
-    // ... rest of the data processing remains the same ...
     
     return data
   } catch (error) {
@@ -41,21 +39,15 @@ async function getChartData(): Promise<ChartData[]> {
   }
 }
 
-export function Overview() {
+export function RecentOrders() {
   const [data, setData] = useState<ChartData[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const orders = await query<Order>(
-          `SELECT o.*, c.name as customer_name
-           FROM orders o
-           INNER JOIN customers c ON c.id = o.customer_id
-           ORDER BY o.created_at DESC
-           LIMIT 5`
-        )
-        setRecentOrders(orders)
+        const chartData = await getChartData()
+        setData(chartData)
       } catch (error) {
         console.error('Error loading chart data:', error)
       } finally {

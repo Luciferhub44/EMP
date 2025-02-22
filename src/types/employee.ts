@@ -35,10 +35,13 @@ export interface Payment {
 }
 
 export interface PaymentHistory {
-  payments: Payment[]
-  totalPaid: number
-  lastPaymentDate: string | null
-  paymentFrequency: 'weekly' | 'biweekly' | 'monthly'
+  id: string
+  paymentDate: string
+  type: 'salary' | 'bonus' | 'commission' | 'reimbursement'
+  amount: number
+  description: string
+  status: 'pending' | 'completed' | 'failed'
+  reference?: string
 }
 
 export interface Employee {
