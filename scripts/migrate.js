@@ -1,4 +1,4 @@
-import { pool } from '../src/lib/db.js'
+import { pool } from '../src/lib/db.ts'
 import { readdir, readFile } from 'fs/promises'
 import { join } from 'path'
 
