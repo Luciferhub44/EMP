@@ -56,22 +56,13 @@ export default defineConfig(({ mode }) => {
       port: 3000,
       strictPort: true,
       host: true,
+      allowedHosts: ['emp-fnly.onrender.com'],
       proxy: {
-        '/rest/v1': {
-          target: env.VITE_SUPABASE_URL,
+        '/api': {
+          target: env.VITE_API_URL || 'http://localhost:5000',
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/rest\/v1/, '/rest/v1'),
-          headers: {
-            'apikey': env.VITE_SUPABASE_ANON_KEY
-          }
-        },
-        '/auth/v1': {
-          target: env.VITE_SUPABASE_URL,
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/auth\/v1/, '/auth/v1'),
-          headers: {
-            'apikey': env.VITE_SUPABASE_ANON_KEY
-          }
+          secure: false,
+          rewrite: (path) => path.replace(/^\/api/, '')
         }
       }
     },
