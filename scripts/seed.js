@@ -1,5 +1,5 @@
-import { pool } from '../src/lib/db.ts'
-import { hashPassword } from '../src/lib/api/password.ts'
+import { pool } from '../src/lib/db'
+import { hashPassword } from '../src/lib/api/password'
 
 async function seed() {
   try {

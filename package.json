@@ -3,6 +3,12 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
   "scripts": {
     "dev": "vite",
     "tsc": "tsc --project tsconfig.json",
@@ -13,7 +19,7 @@
     "seed": "node scripts/seed.js",
     "reset-db": "node scripts/reset.js",
     "db:setup": "yarn migrate && yarn seed",
-    "start": "yarn db:setup && vite preview --host --port $PORT"
+    "start": "yarn db:setup && node dist/server/index.js"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.0.4",

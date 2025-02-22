@@ -1,4 +1,4 @@
-import { pool } from '../src/lib/db.ts'
+import { pool } from '../src/lib/db'
 
 async function reset() {
   try {
