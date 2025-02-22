@@ -5,7 +5,7 @@ services:
     repo: https://github.com/Luciferhub44/EMP
     plan: starter
     env: node
-    buildCommand: yarn --frozen-lockfile install; npm run build
+    buildCommand: npm install; npm run build
     startCommand: npm run start
     envVars:
       - key: DATABASE_URL
@@ -15,6 +15,8 @@ services:
       - key: VITE_API_URL
         value: https://emp-fnly.onrender.com
       - key: NODE_ENV
+        value: production
+      - key: VITE_NODE_ENV
         value: production
     healthCheckPath: /api/health
     autoDeploy: true
