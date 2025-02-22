@@ -59,14 +59,14 @@ export default function EmployeeDetailsPage() {
     if (!user || !employee) return
 
     try {
-      const payment = await employeeService.issuePayment(
+      const result = await employeeService.issuePayment(
         employee.id,
         paymentData,
         user.id,
         user.role === 'admin'
-      ) as unknown as PaymentItem
+      )
       
-      setPayments(prev => [payment, ...prev])
+      setPayments(prev => [...prev, result.payments[0]])
       toast({
         title: "Success",
         description: "Payment issued successfully",
@@ -229,7 +229,7 @@ export default function EmployeeDetailsPage() {
               No payment history available
             </p>
           ) : (
-            <PaymentHistory payments={payments as unknown as PaymentHistoryType[]} />
+            <PaymentHistory payments={payments as unknown as PaymentHistoryType['payments']} />
           )}
         </CardContent>
       </Card>

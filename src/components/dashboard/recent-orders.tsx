@@ -19,22 +19,33 @@ interface ChartData {
   total: number
 }
 
+interface MonthlyRevenue {
+  id: string
+  month: string
+  total: string
+}
+
 async function getChartData(): Promise<ChartData[]> {
   try {
-    const response = await api.get<{ month: string, total: string }[]>('/analytics/monthly-revenue')
-    const data: ChartData[] = []
+    const { data } = await api.get<{ data: { data: MonthlyRevenue[] } }>('/analytics/monthly-revenue')
+    const monthlyData = data?.data || []
     
-    (response || []).map((row: { month: string, total: string }) => {
-      const date = new Date(row.month)
-      data.push({
-        name: date.toLocaleString('default', { month: 'short' }),
-        total: Number(row.total)
-      })
-    })
-    
-    return data
+    return monthlyData.map((row: MonthlyRevenue) => ({
+      name: new Date(row.month).toLocaleString('default', { month: 'short' }),
+      total: Number(row.total)
+    }))
   } catch (error) {
     console.error('Error fetching chart data:', error)
+    return []
+  }
+}
+
+async function getRecentOrders(): Promise<Order[]> {
+  try {
+    const response = await query<Order>('SELECT * FROM orders ORDER BY created_at DESC LIMIT 5')
+    return response
+  } catch (error) {
+    console.error('Error fetching recent orders:', error)
     return []
   }
 }
