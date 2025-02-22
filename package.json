@@ -18,8 +18,10 @@
     "migrate": "node scripts/migrate.js",
     "seed": "node scripts/seed.js",
     "reset-db": "node scripts/reset.js",
-    "db:setup": "yarn migrate && yarn seed",
-    "start": "yarn db:setup && vite preview --host --port $PORT"
+    "db:init": "node scripts/db.js",
+    "db:setup": "yarn db:init && yarn migrate && yarn seed",
+    "health": "node scripts/health.js",
+    "start": "yarn db:setup && yarn health && vite preview --host --port $PORT"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.0.4",
@@ -41,6 +43,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "date-fns": "^4.1.0",
+    "express": "^4.18.2",
     "lodash-es": "^4.17.21",
     "lucide-react": "^0.474.0",
     "next-themes": "^0.4.4",
@@ -58,21 +61,17 @@
     "vite": "^5.4.14"
   },
   "devDependencies": {
-    "@types/node": "^22.13.5",
-    "@types/pg": "^8.11.11",
-    "@types/pg-pool": "^2.0.6",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.0.0",
+    "@types/pg": "^8.11.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
-    "@types/react-router-dom": "^5.3.3",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
-    "@vitejs/plugin-react-swc": "^3.8.0",
     "eslint": "^8.56.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
-    "rollup-plugin-visualizer": "^5.14.0",
-    "ts-node": "^10.9.2",
-    "vite-plugin-compression": "^0.5.1"
+    "ts-node": "^10.9.2"
   },
   "engines": {
     "node": ">=18.0.0"
