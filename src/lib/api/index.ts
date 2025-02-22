@@ -1,75 +1,42 @@
 import type { Employee } from "@/types/employee"
 import { query, queryOne } from '@/lib/db'
 import { hashPassword, verifyPassword } from './password'
-import { Product } from "@/types/products";
+import { Product } from "@/types/products"
+import axios from 'axios'
 
 interface ApiError extends Error {
   status?: number;
   code?: string;
 }
 
-interface LoginResponse {
-  token: string;
-  user: Omit<Employee, 'passwordHash'>;
-}
+const baseURL = import.meta.env.VITE_API_URL || '/api'
 
-interface SessionResponse {
-  user: Omit<Employee, 'passwordHash'>;
-}
-
-const BASE_URL = '/api';
-
-const handleError = (error: unknown) => {
-  console.error('API Error:', error)
-  throw error
-}
-
-async function handleResponse<T>(response: Response): Promise<T> {
-  if (!response.ok) {
-    throw new Error(await response.text())
+const axiosInstance = axios.create({
+  baseURL,
+  headers: {
+    'Content-Type': 'application/json'
   }
-  return response.json()
-}
+})
 
-function getHeaders(): HeadersInit {
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-  }
-  
+axiosInstance.interceptors.request.use(config => {
   const token = localStorage.getItem('sessionId')
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`
+    config.headers.Authorization = `Bearer ${token}`
   }
-  
-  return headers
-}
-
-async function get<T>(url: string): Promise<T> {
-  const response = await fetch(url, {
-    headers: getHeaders()
-  })
-  return handleResponse<T>(response)
-}
-
-async function post<T>(url: string, data: any): Promise<T> {
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify(data)
-  })
-  return handleResponse<T>(response)
-}
+  return config
+})
 
 export const api = {
   async get<T>(endpoint: string, token?: string) {
     try {
       return await query<T>(`SELECT * FROM ${endpoint}`)
     } catch (error) {
-      handleError(error)
+      console.error('API Error:', error)
+      throw error
     }
   },
 
-  async post<T>(endpoint: string, data: unknown, token?: string) {
+  async post<T>(endpoint: string, data: unknown) {
     try {
       const columns = Object.keys(data as object).join(', ')
       const values = Object.values(data as object)
@@ -86,14 +53,14 @@ export const api = {
       
       return result
     } catch (error) {
-      handleError(error)
+      console.error('API Error:', error)
+      throw error
     }
   },
 
   auth: {
-    async login(email: string, password: string): Promise<LoginResponse | undefined> {
+    async login(email: string, password: string) {
       try {
-        // Get user by email
         const user = await queryOne<Employee & { password_hash: string }>(
           'SELECT * FROM users WHERE email = $1',
           [email]
@@ -103,13 +70,11 @@ export const api = {
           throw new Error('Invalid credentials')
         }
 
-        // Verify password
         const isValid = await verifyPassword(password, user.password_hash)
         if (!isValid) {
           throw new Error('Invalid credentials')
         }
 
-        // Create session
         const sessionId = crypto.randomUUID()
         await query(
           'INSERT INTO user_sessions (id, user_id) VALUES ($1, $2)',
@@ -122,11 +87,12 @@ export const api = {
           user: userWithoutPassword
         }
       } catch (error) {
-        handleError(error)
+        console.error('Auth Error:', error)
+        throw error
       }
     },
 
-    async validateSession(token: string): Promise<SessionResponse | undefined> {
+    async validateSession(token: string) {
       try {
         const user = await queryOne<Employee>(
           `SELECT u.* FROM users u
@@ -141,51 +107,20 @@ export const api = {
 
         return { user }
       } catch (error) {
-        handleError(error)
+        console.error('Auth Error:', error)
+        throw error
       }
     },
 
-    async logout(token: string): Promise<void> {
+    async logout(token: string) {
       try {
-        await query(
-          'DELETE FROM user_sessions WHERE id = $1',
-          [token]
-        )
+        await query('DELETE FROM user_sessions WHERE id = $1', [token])
       } catch (error) {
-        handleError(error)
+        console.error('Auth Error:', error)
+        throw error
       }
     }
   },
 
-  async getProduct(id: string) {
-    try {
-      const response = await fetch(`/api/products/${id}`)
-      if (!response.ok) {
-        throw new Error('Failed to fetch product')
-      }
-      return await response.json()
-    } catch (error) {
-      console.error('API error:', error)
-      throw error
-    }
-  },
-
-  async updateProduct(id: string, data: Partial<Product>) {
-    try {
-      const response = await fetch(`/api/products/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      })
-      if (!response.ok) {
-        throw new Error('Failed to update product')
-      }
-      return await response.json()
-    } catch (error) {
-      console.error('API error:', error)
-      throw error
-    }
-  }
+  http: axiosInstance
 }
