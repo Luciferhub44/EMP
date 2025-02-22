@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "NODE_ENV=production VITE_NODE_ENV=production tsc && vite build",
     "preview": "vite preview",
-    "start": "vite preview --host --port $PORT"
+    "start": "NODE_ENV=production VITE_NODE_ENV=production vite preview --host --port $PORT"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.0.4",
