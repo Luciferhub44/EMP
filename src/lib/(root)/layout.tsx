@@ -1,7 +1,7 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom"
 import { Sidebar } from "@/components/Sidebar"
 import { Header } from "@/components/Header"
-import { useAuth } from "@/contexts/auth-context" 
+import { useAuth } from "@/contexts/auth-context"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 
 export default function RootLayout() {
@@ -11,16 +11,9 @@ export default function RootLayout() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <LoadingSpinner size="lg" />
-          <p className="mt-4 text-muted-foreground">Loading...</p>
-        </div>
+        <LoadingSpinner size="lg" />
       </div>
     )
-  }
-
-  // If not authenticated, redirect to sign-in
-  if (!user) {
   }
 
   // If not authenticated, redirect to sign-in

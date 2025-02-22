@@ -1,6 +1,6 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom"
 import { useAuth } from "@/contexts/auth-context"
-import { Loader2 } from "lucide-react"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 
 export default function AuthLayout() {
   const { user, loading } = useAuth()
@@ -10,7 +10,7 @@ export default function AuthLayout() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <LoadingSpinner size="lg" />
       </div>
     )
   }
@@ -23,7 +23,7 @@ export default function AuthLayout() {
   return (
     <div className="container relative min-h-screen flex-col items-center justify-center grid lg:max-w-none lg:grid-cols-2 lg:px-0">
       <div className="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex dark:border-r">
-        <div className="absolute inset-0 bg-zinc-900" />
+        <div className="absolute inset-0 bg-zinc-900 opacity-50" />
         <div className="relative z-20 flex items-center text-lg font-medium">
           <img src="/ICON-SY.png" alt="Logo" className="h-8 w-8 mr-2" />
           SANY Equipment Management

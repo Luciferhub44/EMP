@@ -1,4 +1,6 @@
 import { createContext, useContext, ReactNode, useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/auth-context'
 
 interface DatabaseContextType {
   query: (text: string, params?: any[]) => Promise<any>
@@ -6,32 +8,8 @@ interface DatabaseContextType {
   error: string | null
 }
 
-// Create an API client for database operations
-const dbClient = {
-  query: async (text: string, params?: any[]) => {
-    const token = localStorage.getItem('auth_token')
-    try {
-      const response = await fetch('/api/db/query', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ text, params }),
-      })
-      if (!response.ok) {
-        throw new Error('Database query failed')
-      }
-      return response.json()
-    } catch (error) {
-      console.error('Database query error:', error)
-      throw error
-    }
-  }
-}
-
 const DatabaseContext = createContext<DatabaseContextType>({
-  query: dbClient.query,
+  query: async () => { throw new Error('Database context not initialized') },
   isConnected: false,
   error: null
 })
@@ -39,37 +17,49 @@ const DatabaseContext = createContext<DatabaseContextType>({
 export function DatabaseProvider({ children }: { children: ReactNode }) {
   const [isConnected, setIsConnected] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { user } = useAuth()
 
   useEffect(() => {
+    if (!user) return
+    
     const testConnection = async () => {
       try {
-        const token = localStorage.getItem('auth_token')
-        const response = await fetch('/api/db/test', {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          }
-        })
-        
-        if (!response.ok) {
-          throw new Error('Database connection test failed')
+        const { data, error } = await supabase.from('users').select('count')
+        if (error) {
+          throw error
         }
-
-        const data = await response.json()
-        setIsConnected(data.success)
+        setIsConnected(true)
         setError(null)
       } catch (error) {
         setIsConnected(false)
-        setError('Database connection failed')
+        setError(error instanceof Error ? error.message : 'Database connection failed')
       }
     }
 
     testConnection()
-  }, [])
+  }, [user])
+
+  const query = async (text: string, params?: any[]) => {
+    try {
+      const { data, error } = await supabase.rpc('execute_query', {
+        query_text: text,
+        query_params: params
+      })
+      
+      if (error) {
+        throw error
+      }
+      
+      return data
+    } catch (error) {
+      console.error('Query error:', error)
+      throw error
+    }
+  }
 
   return (
     <DatabaseContext.Provider value={{ 
-      query: dbClient.query,
+      query,
       isConnected,
       error
     }}>

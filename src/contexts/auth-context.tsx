@@ -1,11 +1,12 @@
+import { createContext, useContext, useState, useEffect } from "react"
+import { authService } from "@/lib/services/supabase/auth"
 import type { Employee } from "@/types/employee"
-import { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react"
 
 interface AuthContextType {
   user: Employee | null
   loading: boolean
   error: string | null
-  login: (agentId: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
 }
 
@@ -17,94 +18,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const validateSession = async () => {
+    const initAuth = async () => {
       try {
-        const token = localStorage.getItem("auth_token")
-        if (!token) {
-          setLoading(false)
-          return
-        }
-
-        const response = await fetch('/api/auth/session', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-
-        if (response.ok) {
-          const { user } = await response.json()
-          setUser(user)
-        } else {
-          localStorage.removeItem("auth_token")
-        }
+        const user = await authService.getCurrentUser()
+        setUser(user)
       } catch (error) {
         console.error("Auth initialization failed:", error)
         setError("Failed to initialize authentication")
-        localStorage.removeItem("auth_token")
       } finally {
         setLoading(false)
       }
     }
 
-    validateSession()
+    initAuth()
   }, [])
 
-  const login = async (agentId: string, password: string) => {
+  const login = async (email: string, password: string) => {
     try {
       setLoading(true)
       setError(null)
-
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          agentId: agentId.toUpperCase(),
-          password
-        })
-      })
-
-      if (!response.ok) {
-        throw new Error('Invalid credentials')
-      }
-
-      const { token, user } = await response.json()
-      localStorage.setItem("auth_token", token)
+      const { user } = await authService.signIn(email, password)
       setUser(user)
     } catch (error) {
       console.error("Login failed:", error)
-      setError(error instanceof Error ? error.message : "Login failed")
+      setError(error instanceof Error ? error.message : "Invalid credentials")
       throw error
     } finally {
       setLoading(false)
     }
   }
 
-  const logout = useCallback(async () => {
+  const logout = async () => {
     try {
-      const token = localStorage.getItem("auth_token")
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
+      await authService.signOut()
+      setUser(null)
     } catch (error) {
       console.error("Logout failed:", error)
-    } finally {
-      setUser(null)
-      localStorage.removeItem("auth_token")
+      throw error
     }
-  }, [])
+  }
 
-  const value = useMemo(() => ({
+  const value = {
     user,
     loading,
     error,
     login,
     logout,
-  }), [user, loading, error, logout])
+  }
 
   return (
     <AuthContext.Provider value={value}>

@@ -1,4 +1,13 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { ThemeProvider } from '@/components/theme-provider'
+import { AuthProvider } from '@/contexts/auth-context'
+import { NotificationProvider } from '@/contexts/notification-context'
+import { SettingsProvider } from '@/contexts/settings-context'
+import { DatabaseProvider } from '@/contexts/database-context'
+import { WebSocketProvider } from '@/contexts/websocket-context'
+import { Toaster } from "@/components/ui/toaster"
+import { ErrorBoundary } from 'react-error-boundary'
+
 import RootLayout from '@/lib/(root)/layout'
 import AuthLayout from '@/lib/(auth)/layout'
 import HomePage from '@/lib/(root)/page'
@@ -24,19 +33,11 @@ import InboxPage from '@/lib/(root)/inbox/page'
 import CustomerDetailsPage from '@/lib/(root)/customers/[id]/page'
 import CustomerNewPage from '@/lib/(root)/customers/new/page'
 import CustomerEditPage from '@/lib/(root)/customers/[id]/edit/page'
-import { ThemeProvider } from '@/components/theme-provider'
-import { AuthProvider } from '@/contexts/auth-context'
-import { NotificationProvider } from '@/contexts/notification-context'
-import { SettingsProvider } from '@/contexts/settings-context'
-import { DatabaseProvider } from '@/contexts/database-context'
-import { WebSocketProvider } from '@/contexts/websocket-context'
-import { Toaster } from "@/components/ui/toaster"
-import { ProtectedRoute } from '@/components/protected-route'
 import EmployeesPage from '@/lib/(root)/employees/page'
-import { AdminRoute } from "@/components/admin-route"
 import ThreadPage from '@/lib/(root)/messages/[threadId]/page'
 import EmployeeDetailsPage from '@/lib/(root)/employees/[id]/page'
-import { ErrorBoundary } from 'react-error-boundary'
+import { ProtectedRoute } from '@/components/protected-route'
+import { AdminRoute } from "@/components/admin-route"
 
 function ErrorFallback({ error }: { error: Error }) {
   return (
@@ -58,11 +59,11 @@ function ErrorFallback({ error }: { error: Error }) {
 export default function App() {
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
-      <DatabaseProvider>
-        <WebSocketProvider>
-          <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-            <Router>
-              <AuthProvider>
+      <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+        <Router>
+          <AuthProvider>
+            <DatabaseProvider>
+              <WebSocketProvider>
                 <NotificationProvider>
                   <SettingsProvider>
                     <Routes>
@@ -200,11 +201,11 @@ export default function App() {
                     <Toaster />
                   </SettingsProvider>
                 </NotificationProvider>
-              </AuthProvider>
-            </Router>
-          </ThemeProvider>
-        </WebSocketProvider>
-      </DatabaseProvider>
+              </WebSocketProvider>
+            </DatabaseProvider>
+          </AuthProvider>
+        </Router>
+      </ThemeProvider>
     </ErrorBoundary>
   )
 }

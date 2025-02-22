@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from '@/App'
+import { supabase } from '@/lib/supabase'
 
 const rootElement = document.getElementById('root')
 if (!rootElement) throw new Error('Failed to find the root element')
@@ -9,27 +10,11 @@ if (!rootElement) throw new Error('Failed to find the root element')
 // Initialize app
 const init = async () => {
   try {
-    // Add retry logic for API connection
-    const maxRetries = 3
-    let retries = 0
-    let connected = false
+    // Test Supabase connection
+    const { data, error } = await supabase.from('users').select('count')
     
-    while (retries < maxRetries && !connected) {
-      try {
-        const response = await fetch('/api/db/test')
-        if (!response.ok) throw new Error('API test failed')
-        const data = await response.json()
-        console.log('API connection test:', data)
-        connected = true
-      } catch (error) {
-        retries++
-        console.warn(`API connection attempt ${retries} failed:`, error)
-        if (retries === maxRetries) {
-          throw new Error('Failed to connect to API after multiple attempts')
-        }
-        // Wait before retrying
-        await new Promise(resolve => setTimeout(resolve, 1000))
-      }
+    if (error) {
+      throw new Error(`Failed to connect to Supabase: ${error.message}`)
     }
 
     // Render app
@@ -44,7 +29,12 @@ const init = async () => {
     rootElement.innerHTML = `
       <div style="padding: 20px; text-align: center;">
         <h1>Failed to start application</h1>
-        <p>${error instanceof Error ? error.message : 'Unknown error'}</p>
+        <p style="color: red; margin: 20px 0;">
+          ${error instanceof Error ? error.message : 'Unknown error'}
+        </p>
+        <p style="margin-bottom: 20px;">
+          Please make sure your environment variables are properly configured.
+        </p>
         <button onclick="window.location.reload()">Retry</button>
       </div>
     `

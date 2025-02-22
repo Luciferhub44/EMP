@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/contexts/auth-context"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { toast } from "@/components/ui/use-toast"
 import { useNavigate, useLocation } from "react-router-dom"
 
@@ -13,13 +14,13 @@ export default function SignInPage() {
   const location = useLocation()
   const [loading, setLoading] = useState(false)
   const [credentials, setCredentials] = useState({
-    agentId: "",
+    email: "",
     password: ""
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!credentials.agentId || !credentials.password) {
+    if (!credentials.email || !credentials.password) {
       toast({
         title: "Validation Error",
         description: "Please fill in all fields",
@@ -30,10 +31,11 @@ export default function SignInPage() {
 
     setLoading(true)
     try {
-      await login(credentials.agentId, credentials.password)
+      await login(credentials.email, credentials.password)
       const from = location.state?.from?.pathname || "/"
       navigate(from, { replace: true })
     } catch (error) {
+      console.error('Sign in error:', error)
       toast({
         title: "Authentication Failed",
         description: error instanceof Error ? error.message : "Invalid credentials",
@@ -49,20 +51,21 @@ export default function SignInPage() {
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl">Sign In</CardTitle>
         <CardDescription>
-          Enter your credentials to access your account
+          Enter your email and password to sign in
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="agentId">Agent ID</Label>
+            <Label htmlFor="email">Email</Label>
             <Input
-              id="agentId"
-              placeholder="Enter your agent ID"
-              value={credentials.agentId}
+              id="email"
+              type="email"
+              placeholder="admin@example.com"
+              value={credentials.email}
               onChange={(e) => setCredentials(prev => ({
                 ...prev,
-                agentId: e.target.value.toUpperCase()
+                email: e.target.value
               }))}
               required
               disabled={loading}
@@ -75,7 +78,7 @@ export default function SignInPage() {
             <Input
               id="password"
               type="password"
-              placeholder="Enter your password"
+              placeholder="••••••••"
               value={credentials.password}
               onChange={(e) => setCredentials(prev => ({
                 ...prev,
@@ -89,9 +92,16 @@ export default function SignInPage() {
           <Button 
             type="submit" 
             className="w-full" 
-            disabled={loading || !credentials.agentId || !credentials.password}
+            disabled={loading}
           >
-            {loading ? "Signing in..." : "Sign In"}
+            {loading ? (
+              <div className="flex items-center justify-center">
+                <LoadingSpinner size="sm" />
+                <span className="ml-2">Signing in...</span>
+              </div>
+            ) : (
+              "Sign In"
+            )}
           </Button>
         </form>
       </CardContent>

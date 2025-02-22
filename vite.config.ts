@@ -55,22 +55,22 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 3000,
       strictPort: true,
+      host: true,
       proxy: {
-        "/api": {
-          target: env.VITE_API_URL || "http://localhost:3001",
+        '/rest/v1': {
+          target: env.VITE_SUPABASE_URL,
           changeOrigin: true,
-          secure: false,
-          ws: true,
-          configure: (proxy, _options) => {
-            proxy.on('error', (err, _req, _res) => {
-              console.error('proxy error', err);
-            });
-            proxy.on('proxyReq', (proxyReq, req, _res) => {
-              console.log('Sending Request:', req.method, req.url);
-            });
-            proxy.on('proxyRes', (proxyRes, req, _res) => {
-              console.log('Received Response:', proxyRes.statusCode, req.url);
-            });
+          rewrite: (path) => path.replace(/^\/rest\/v1/, '/rest/v1'),
+          headers: {
+            'apikey': env.VITE_SUPABASE_ANON_KEY
+          }
+        },
+        '/auth/v1': {
+          target: env.VITE_SUPABASE_URL,
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/auth\/v1/, '/auth/v1'),
+          headers: {
+            'apikey': env.VITE_SUPABASE_ANON_KEY
           }
         }
       }
