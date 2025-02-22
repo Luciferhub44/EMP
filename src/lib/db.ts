@@ -1,8 +1,9 @@
-import { Pool, PoolClient } from 'pg'
+import type { Pool, PoolClient } from 'pg'
+import pg from 'pg'
 
 const connectionString = import.meta.env.DATABASE_URL || import.meta.env.VITE_DATABASE_URL
 
-export const pool = new Pool({
+export const pool = new pg.Pool({
   connectionString,
   ssl: import.meta.env.VITE_NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 })
@@ -12,7 +13,7 @@ export async function query<T>(text: string, params: any[] = []): Promise<T[]> {
   const client = await pool.connect()
   try {
     const result = await client.query(text, params)
-    return result.rows
+    return result.rows as T[]
   } finally {
     client.release()
   }
