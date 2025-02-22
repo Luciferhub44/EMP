@@ -1,12 +1,12 @@
 import { pool, query, queryOne } from '@/lib/db'
 import type { Session, SessionMetadata, ActiveSession } from "@/types/session"
 
-class SessionService {
+export class SessionService {
   async createSession(
     userId: string,
     metadata: SessionMetadata
   ): Promise<Session> {
-    return queryOne<Session>(
+    const session = await queryOne<Session>(
       `INSERT INTO user_sessions (
         user_id,
         token,
@@ -23,15 +23,17 @@ class SessionService {
         JSON.stringify(metadata)
       ]
     )
+    
+    if (!session) {
+      throw new Error('Failed to create session')
+    }
+    
+    return session
   }
 
-  async getSession(token: string): Promise<Session | null> {
-    return queryOne<Session>(
-      `SELECT * FROM user_sessions
-       WHERE token = $1
-       AND expires_at > NOW()`,
-      [token]
-    )
+  async getSession(id: string): Promise<Session | null> {
+    const session = await query<Session>('SELECT * FROM sessions WHERE id = $1', [id])
+    return session[0] || null
   }
 
   async getActiveSessions(userId: string): Promise<ActiveSession[]> {

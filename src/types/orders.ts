@@ -1,5 +1,4 @@
 import type { Product } from "./products.js"
-import type { TransportQuote } from './transport'
 
 export interface Address {
   street: string
@@ -95,6 +94,13 @@ export interface Order {
   assignedTo?: string
   notes?: string
   transportQuote?: TransportQuote
+  shippingAddress?: {
+    street: string
+    city: string
+    state: string
+    country: string
+    postalCode: string
+  }
 }
 
 interface FulfillmentHistoryEntry {
@@ -132,4 +138,21 @@ export interface OrderFormData {
     postalCode: string
   }
   notes?: string
+}
+
+export interface TransportQuote {
+  id: string
+  orderId: string
+  provider: string
+  method: string
+  cost: number
+  estimatedDays: number
+  distance: number
+  insurance: {
+    included: boolean
+    coverage: number
+    cost: number
+  }
+  status: 'pending' | 'accepted' | 'rejected'
+  validUntil: string
 } 

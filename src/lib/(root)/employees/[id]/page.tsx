@@ -10,7 +10,7 @@ import { formatDate, formatCurrency } from "@/lib/utils"
 import { toast } from "@/components/ui/use-toast"
 import { PaymentDialog } from "@/components/employees/payment-dialog"
 import { PaymentHistory } from "@/components/employees/payment-history"
-import type { Employee, PaymentHistory as PaymentHistoryType } from "@/types/employee"
+import type { Employee, PaymentHistory as PaymentHistoryType, PaymentType } from "@/types/employee"
 
 type PaymentItem = PaymentHistoryType['payments'][0]
 
@@ -51,7 +51,7 @@ export default function EmployeeDetailsPage() {
   }, [id, navigate])
 
   const handlePayment = async (paymentData: {
-    type: string
+    type: PaymentType
     amount: number
     description: string
     reference?: string
@@ -64,7 +64,8 @@ export default function EmployeeDetailsPage() {
         paymentData,
         user.id,
         user.role === 'admin'
-      )
+      ) as unknown as PaymentItem
+      
       setPayments(prev => [payment, ...prev])
       toast({
         title: "Success",
@@ -228,7 +229,7 @@ export default function EmployeeDetailsPage() {
               No payment history available
             </p>
           ) : (
-            <PaymentHistory payments={payments} />
+            <PaymentHistory payments={payments as unknown as PaymentHistoryType[]} />
           )}
         </CardContent>
       </Card>

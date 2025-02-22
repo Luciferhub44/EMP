@@ -1,5 +1,5 @@
 // Database connection configuration
-const config = {
+export const config = {
   user: import.meta.env.VITE_DB_USER,
   password: import.meta.env.VITE_DB_PASSWORD,
   host: import.meta.env.VITE_DB_HOST,
@@ -62,4 +62,4 @@ export async function testConnection(): Promise<boolean> {
 }
 
 // Export config for server-side use
-export { config }
+export { pool } from './db/pool'
