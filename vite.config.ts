@@ -19,13 +19,29 @@ export default defineConfig({
   build: {
     outDir: "dist",
     emptyOutDir: true,
-    sourcemap: false,
-    minify: true,
-    target: 'esnext'
+    sourcemap: process.env.NODE_ENV === 'development',
+    minify: 'esbuild',
+    target: 'esnext',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom'],
+          'ui-vendor': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu'],
+        }
+      }
+    }
   },
 
   server: {
     port: parseInt(process.env.PORT || '3000'),
-    host: true
+    host: true,
+    strictPort: true,
+    cors: true
+  },
+
+  preview: {
+    port: parseInt(process.env.PORT || '3000'),
+    host: true,
+    strictPort: true
   }
 })
