@@ -1,3 +1,4 @@
+import { Pool, PoolClient } from 'pg'
 import { query, queryOne, transaction } from '@/lib/db'
 import { toast } from "@/components/ui/use-toast"
 
@@ -19,7 +20,7 @@ export class BaseService {
     })
   }
 
-  protected async query<T>(sql: string, params?: any[]): Promise<T[]> {
+  protected async query<T extends Record<string, any>>(sql: string, params?: any[]): Promise<T[]> {
     try {
       return await query<T>(sql, params)
     } catch (error) {
@@ -28,7 +29,7 @@ export class BaseService {
     }
   }
 
-  protected async queryOne<T>(sql: string, params?: any[]): Promise<T | null> {
+  protected async queryOne<T extends Record<string, any>>(sql: string, params?: any[]): Promise<T | null> {
     try {
       return await queryOne<T>(sql, params)
     } catch (error) {
@@ -37,7 +38,7 @@ export class BaseService {
     }
   }
 
-  protected async transaction<T>(callback: (client: any) => Promise<T>): Promise<T> {
+  protected async transaction<T>(callback: (client: PoolClient) => Promise<T>): Promise<T> {
     try {
       return await transaction(callback)
     } catch (error) {

@@ -27,7 +27,7 @@ axiosInstance.interceptors.request.use((config) => {
 })
 
 export const api = {
-  async get<T>(endpoint: string, token?: string) {
+  async get<T extends Record<string, any>>(endpoint: string, token?: string) {
     try {
       return await query<T>(`SELECT * FROM ${endpoint}`)
     } catch (error) {
@@ -36,10 +36,10 @@ export const api = {
     }
   },
 
-  async post<T>(endpoint: string, data: unknown) {
+  async post<T extends Record<string, any>>(endpoint: string, data: Record<string, any>) {
     try {
-      const columns = Object.keys(data as object).join(', ')
-      const values = Object.values(data as object)
+      const columns = Object.keys(data).join(', ')
+      const values = Object.values(data)
       const placeholders = values.map((_, i) => `$${i + 1}`).join(', ')
       
       const result = await queryOne<T>(
