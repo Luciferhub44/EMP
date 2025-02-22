@@ -1,11 +1,11 @@
 import axios from 'axios'
 
 const baseURL = process.env.NODE_ENV === 'production' 
-  ? 'https://emp-m7tx.onrender.com/api'  // Add /api prefix
-  : 'http://localhost:3000/api'
+  ? 'https://emp-m7tx.onrender.com'  // Remove /api prefix
+  : 'http://localhost:3000'
 
 export const api = axios.create({
-  baseURL,
+  baseURL: `${baseURL}/api`,  // Add /api here instead
   withCredentials: true,
   timeout: 10000, // Increased timeout
   headers: {
