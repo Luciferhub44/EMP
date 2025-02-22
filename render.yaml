@@ -6,7 +6,7 @@ services:
     plan: starter
     env: node
     buildCommand: |
-      yarn global add vite typescript
+      yarn add -D vite typescript @vitejs/plugin-react-swc
       yarn install --frozen-lockfile
       yarn build
     startCommand: yarn start
