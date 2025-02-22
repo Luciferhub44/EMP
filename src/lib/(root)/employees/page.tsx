@@ -183,7 +183,7 @@ export default function EmployeesPage() {
         status: newStatus
       }, true)
       setEmployees(prev => 
-        prev.map(emp => emp.id === employeeId ? updatedEmployee : emp)
+        prev.map(emp => emp.id === employeeId ? updatedEmployee as Employee : emp)
       )
       toast({
         title: "Success",
@@ -453,8 +453,8 @@ export default function EmployeesPage() {
         <EmployeeDetails
           employee={selectedEmployee}
           open={!!selectedEmployee}
-          onOpenChange={(open) => !open && setSelectedEmployee(null)}
-          onUpdate={(updatedEmployee) => {
+          onOpenChange={(open: boolean) => !open && setSelectedEmployee(null)}
+          onUpdate={(updatedEmployee: Employee) => {
             setEmployees(prev => 
               prev.map(emp => emp.id === updatedEmployee.id ? updatedEmployee : emp)
             )

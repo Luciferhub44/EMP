@@ -2,8 +2,9 @@ import { query, queryOne, transaction } from '@/lib/db'
 import { hashPassword } from '@/lib/api/password'
 import type { Employee, EmployeeCredentials, PaymentHistory, PaymentType } from "@/types/employee"
 import type { Order } from "@/types/orders"
+import { BaseService } from './base'
 
-class EmployeeService {
+export class EmployeeService extends BaseService {
   // Authentication
   async login(credentials: EmployeeCredentials) {
     const user = await queryOne<Employee>(
@@ -209,7 +210,7 @@ class EmployeeService {
       throw new Error("Only administrators can issue payments")
     }
 
-    return queryOne<PaymentHistory>(
+    const result = await this.queryOne<PaymentHistory>(
       `INSERT INTO employee_payments (
         employee_id,
         type,
@@ -229,6 +230,12 @@ class EmployeeService {
         issuerId
       ]
     )
+
+    if (!result) {
+      throw new Error('Failed to issue payment')
+    }
+
+    return result
   }
 
   async calculateCommission(employeeId: string, orderAmount: number) {
@@ -239,17 +246,20 @@ class EmployeeService {
     return (orderAmount * employee.payrollInfo.commissionRate) / 100
   }
 
-  async getPaymentHistory(employeeId: string, requesterId: string, isAdmin: boolean) {
-    if (!isAdmin && requesterId !== employeeId) {
-      throw new Error("Access denied")
-    }
+  async getPaymentHistory(employeeId: string): Promise<PaymentHistory> {
+    const result = await this.queryOne<PaymentHistory>(`
+      SELECT payment_history
+      FROM employees
+      WHERE id = $1
+    `, [employeeId])
 
-    return query<PaymentHistory>(
-      `SELECT * FROM employee_payments
-       WHERE employee_id = $1
-       ORDER BY created_at DESC`,
-      [employeeId]
-    )
+    // Return empty payment history if none found
+    return result || {
+      payments: [],
+      totalPaid: 0,
+      lastPaymentDate: null,
+      paymentFrequency: 'monthly'
+    }
   }
 
   async getEmployeesDuePayment(isAdmin: boolean) {
@@ -257,7 +267,7 @@ class EmployeeService {
       throw new Error("Only administrators can view payment due information")
     }
 
-    return query<Employee>(
+    return this.query<Employee>(
       `SELECT u.* FROM users u
        WHERE u.status = 'active'
        AND (

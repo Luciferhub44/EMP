@@ -1,4 +1,4 @@
-import { pool, query, queryOne, transaction } from '@/lib/db'
+import { query, queryOne, transaction } from '@/lib/db'
 import { toast } from "@/components/ui/use-toast"
 
 export class BaseService {

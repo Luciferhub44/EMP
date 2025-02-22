@@ -1,8 +1,9 @@
-import { pool, query, queryOne, transaction } from '@/lib/db'
+import { query, queryOne, transaction } from '@/lib/db'
+import { BaseService } from './base'
 import type { Customer } from "@/types/customer"
 import type { Order } from "@/types/orders"
 
-class CustomerService {
+class CustomerService extends BaseService {
   async getCustomers(userId: string, isAdmin: boolean) {
     const sql = `
       SELECT * FROM customers
@@ -16,18 +17,18 @@ class CustomerService {
       ORDER BY name
     `
     const params = !isAdmin ? [userId] : []
-    return query<Customer>(sql, params)
+    return this.query<Customer>(sql, params)
   }
 
   async getCustomer(id: string) {
-    return queryOne<Customer>(
+    return this.queryOne<Customer>(
       'SELECT * FROM customers WHERE id = $1',
       [id]
     )
   }
 
   async createCustomer(customerData: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>) {
-    return queryOne<Customer>(
+    return this.queryOne<Customer>(
       `INSERT INTO customers (
         name,
         email,
@@ -82,11 +83,11 @@ class CustomerService {
       address: updates.address ? JSON.stringify(updates.address) : undefined
     }
 
-    return queryOne<Customer>(sql, Object.values(params))
+    return this.queryOne<Customer>(sql, Object.values(params))
   }
 
   async getCustomerOrders(customerId: string): Promise<Order[]> {
-    return query<Order>(
+    return this.query<Order>(
       `SELECT o.*, c.name as customer_name
        FROM orders o
        INNER JOIN customers c ON c.id = o.customer_id
@@ -97,7 +98,7 @@ class CustomerService {
   }
 
   async getCustomerStats(customerId: string) {
-    return queryOne<{
+    return this.queryOne<{
       totalOrders: number
       totalSpent: number
       averageOrderValue: number
@@ -119,7 +120,7 @@ class CustomerService {
       throw new Error("Only administrators can delete customers")
     }
 
-    await transaction(async (client) => {
+    await this.transaction(async (client) => {
       // Delete related orders first
       await client.query(
         'DELETE FROM orders WHERE customer_id = $1',

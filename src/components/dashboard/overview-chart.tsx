@@ -10,6 +10,7 @@ import {
 } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatCurrency } from "@/lib/utils"
+import { query } from "@/lib/db"
 import { api } from "@/lib/api"
 
 interface ChartData {
@@ -19,7 +20,7 @@ interface ChartData {
 
 async function getChartData(): Promise<ChartData[]> {
   try {
-    const response = await api.get<{ rows: { month: string, total: string }[] }>('/analytics/monthly-revenue')
+    const response = await query('SELECT * FROM analytics_monthly_revenue')
     const data: ChartData[] = []
     
     // Format the data for the chart

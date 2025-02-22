@@ -1,6 +1,7 @@
 import type { Employee } from "@/types/employee"
 import { query, queryOne } from '@/lib/db'
 import { hashPassword, verifyPassword } from './password'
+import { Product } from "@/types/products";
 
 interface ApiError extends Error {
   status?: number;
@@ -117,6 +118,38 @@ export const api = {
       } catch (error) {
         handleError(error)
       }
+    }
+  },
+
+  async getProduct(id: string) {
+    try {
+      const response = await fetch(`/api/products/${id}`)
+      if (!response.ok) {
+        throw new Error('Failed to fetch product')
+      }
+      return await response.json()
+    } catch (error) {
+      console.error('API error:', error)
+      throw error
+    }
+  },
+
+  async updateProduct(id: string, data: Partial<Product>) {
+    try {
+      const response = await fetch(`/api/products/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      })
+      if (!response.ok) {
+        throw new Error('Failed to update product')
+      }
+      return await response.json()
+    } catch (error) {
+      console.error('API error:', error)
+      throw error
     }
   }
 }

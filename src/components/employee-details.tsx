@@ -1,4 +1,17 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { formatCurrency } from "@/lib/utils"
+import { query } from "@/lib/db"
+import { api } from "@/lib/api"
 import {
   Dialog,
   DialogContent,
@@ -6,340 +19,134 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Employee } from "@/types/employee"
-import { employeeService } from "@/lib/services/employee"
-import { toast } from "@/components/ui/use-toast"
+import type { Employee } from "@/types/employee"
+import { Overview } from "./dashboard/overview-chart"
+
+interface ChartData {
+  name: string
+  total: number
+}
+
+async function getChartData(): Promise<ChartData[]> {
+  try {
+    const response = await query('SELECT * FROM analytics_monthly_revenue')
+    const data: ChartData[] = []
+    
+    // Format the data for the chart
+    if (Array.isArray(response)) {
+      response.forEach((row: any) => {
+        const date = new Date(row.month)
+        data.push({
+          name: date.toLocaleString('default', { month: 'short' }),
+          total: Number(row.total)
+        })
+      })
+    }
+    
+    return data
+  } catch (error) {
+    console.error('Error fetching chart data:', error)
+    return []
+  }
+}
 
 interface EmployeeDetailsProps {
   employee: Employee
   open: boolean
   onOpenChange: (open: boolean) => void
-  onUpdate: (updatedEmployee: Employee) => void
+  onUpdate: (employee: Employee) => void
 }
 
 export function EmployeeDetails({ 
   employee, 
   open, 
-  onOpenChange,
+  onOpenChange, 
   onUpdate 
 }: EmployeeDetailsProps) {
-  const [isUpdating, setIsUpdating] = useState(false)
-  const [formData, setFormData] = useState({
-    businessInfo: employee.businessInfo || {
-      companyName: "",
-      registrationNumber: "",
-      taxId: "",
-      businessAddress: {
-        street: "",
-        city: "",
-        state: "",
-        postalCode: "",
-        country: ""
-      }
-    },
-    payrollInfo: employee.payrollInfo || {
-      bankName: "",
-      accountNumber: "",
-      routingNumber: "",
-      paymentFrequency: "monthly" as const,
-      baseRate: 0,
-      currency: "USD"
-    }
-  })
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsUpdating(true)
-    try {
-      const updatedEmployee = await employeeService.updateEmployee(
-        employee.id, 
-        {
-          businessInfo: formData.businessInfo,
-          payrollInfo: formData.payrollInfo
-        },
-        true
-      )
-      onUpdate(updatedEmployee)
-      toast({
-        title: "Success",
-        description: "Employee information updated successfully",
-      })
-      onOpenChange(false)
-    } catch (error) {
-      console.error("Failed to update employee:", error)
-      toast({
-        title: "Error",
-        description: "Failed to update employee information",
-        variant: "destructive",
-      })
-    } finally {
-      setIsUpdating(false)
-    }
-  }
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Employee Details</DialogTitle>
+          <DialogTitle>{employee.name}</DialogTitle>
           <DialogDescription>
-            View and edit employee information
+            Employee details and performance overview
           </DialogDescription>
         </DialogHeader>
-        <Tabs defaultValue="business">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="business">Business Information</TabsTrigger>
-            <TabsTrigger value="payroll">Payroll Information</TabsTrigger>
-          </TabsList>
-          <form onSubmit={handleSubmit}>
-            <TabsContent value="business" className="space-y-4">
-              <div className="grid gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="companyName">Company Name</Label>
-                  <Input
-                    id="companyName"
-                    value={formData.businessInfo.companyName}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      businessInfo: {
-                        ...prev.businessInfo,
-                        companyName: e.target.value
-                      }
-                    }))}
-                  />
+        
+        <div className="space-y-6">
+          {/* Employee Info Section */}
+          <div className="grid gap-4 py-4">
+            <div>
+              <h3 className="text-lg font-medium">Basic Information</h3>
+              <div className="grid grid-cols-2 gap-4 mt-2">
+                <div>
+                  <p className="text-sm text-muted-foreground">Email</p>
+                  <p>{employee.email}</p>
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="registrationNumber">Registration Number</Label>
-                  <Input
-                    id="registrationNumber"
-                    value={formData.businessInfo.registrationNumber}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      businessInfo: {
-                        ...prev.businessInfo,
-                        registrationNumber: e.target.value
-                      }
-                    }))}
-                  />
+                <div>
+                  <p className="text-sm text-muted-foreground">Agent ID</p>
+                  <p>{employee.agentId}</p>
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="taxId">Tax ID</Label>
-                  <Input
-                    id="taxId"
-                    value={formData.businessInfo.taxId}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      businessInfo: {
-                        ...prev.businessInfo,
-                        taxId: e.target.value
-                      }
-                    }))}
-                  />
+                <div>
+                  <p className="text-sm text-muted-foreground">Role</p>
+                  <p className="capitalize">{employee.role}</p>
                 </div>
-                <div className="grid gap-4">
-                  <h3 className="text-lg font-semibold">Business Address</h3>
-                  <div className="grid gap-2">
-                    <Label htmlFor="street">Street</Label>
-                    <Input
-                      id="street"
-                      value={formData.businessInfo.businessAddress.street}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        businessInfo: {
-                          ...prev.businessInfo,
-                          businessAddress: {
-                            ...prev.businessInfo.businessAddress,
-                            street: e.target.value
-                          }
-                        }
-                      }))}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="city">City</Label>
-                      <Input
-                        id="city"
-                        value={formData.businessInfo.businessAddress.city}
-                        onChange={(e) => setFormData(prev => ({
-                          ...prev,
-                          businessInfo: {
-                            ...prev.businessInfo,
-                            businessAddress: {
-                              ...prev.businessInfo.businessAddress,
-                              city: e.target.value
-                            }
-                          }
-                        }))}
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="state">State</Label>
-                      <Input
-                        id="state"
-                        value={formData.businessInfo.businessAddress.state}
-                        onChange={(e) => setFormData(prev => ({
-                          ...prev,
-                          businessInfo: {
-                            ...prev.businessInfo,
-                            businessAddress: {
-                              ...prev.businessInfo.businessAddress,
-                              state: e.target.value
-                            }
-                          }
-                        }))}
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="postalCode">Postal Code</Label>
-                      <Input
-                        id="postalCode"
-                        value={formData.businessInfo.businessAddress.postalCode}
-                        onChange={(e) => setFormData(prev => ({
-                          ...prev,
-                          businessInfo: {
-                            ...prev.businessInfo,
-                            businessAddress: {
-                              ...prev.businessInfo.businessAddress,
-                              postalCode: e.target.value
-                            }
-                          }
-                        }))}
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="country">Country</Label>
-                      <Input
-                        id="country"
-                        value={formData.businessInfo.businessAddress.country}
-                        onChange={(e) => setFormData(prev => ({
-                          ...prev,
-                          businessInfo: {
-                            ...prev.businessInfo,
-                            businessAddress: {
-                              ...prev.businessInfo.businessAddress,
-                              country: e.target.value
-                            }
-                          }
-                        }))}
-                      />
-                    </div>
-                  </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Status</p>
+                  <p className="capitalize">{employee.status}</p>
                 </div>
               </div>
-            </TabsContent>
-            <TabsContent value="payroll" className="space-y-4">
-              <div className="grid gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="bankName">Bank Name</Label>
-                  <Input
-                    id="bankName"
-                    value={formData.payrollInfo.bankName}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      payrollInfo: {
-                        ...prev.payrollInfo,
-                        bankName: e.target.value
-                      }
-                    }))}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="accountNumber">Account Number</Label>
-                    <Input
-                      id="accountNumber"
-                      value={formData.payrollInfo.accountNumber}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        payrollInfo: {
-                          ...prev.payrollInfo,
-                          accountNumber: e.target.value
-                        }
-                      }))}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="routingNumber">Routing Number</Label>
-                    <Input
-                      id="routingNumber"
-                      value={formData.payrollInfo.routingNumber}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        payrollInfo: {
-                          ...prev.payrollInfo,
-                          routingNumber: e.target.value
-                        }
-                      }))}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="baseRate">Base Rate</Label>
-                    <Input
-                      id="baseRate"
-                      type="number"
-                      value={formData.payrollInfo.baseRate}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        payrollInfo: {
-                          ...prev.payrollInfo,
-                          baseRate: parseFloat(e.target.value)
-                        }
-                      }))}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="currency">Currency</Label>
-                    <Input
-                      id="currency"
-                      value={formData.payrollInfo.currency}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        payrollInfo: {
-                          ...prev.payrollInfo,
-                          currency: e.target.value
-                        }
-                      }))}
-                    />
-                  </div>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="paymentFrequency">Payment Frequency</Label>
-                  <select
-                    id="paymentFrequency"
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                    value={formData.payrollInfo.paymentFrequency}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      payrollInfo: {
-                        ...prev.payrollInfo,
-                        paymentFrequency: e.target.value as "weekly" | "biweekly" | "monthly"
-                      }
-                    }))}
-                  >
-                    <option value="weekly">Weekly</option>
-                    <option value="biweekly">Bi-weekly</option>
-                    <option value="monthly">Monthly</option>
-                  </select>
-                </div>
-              </div>
-            </TabsContent>
-            <div className="mt-6 flex justify-end">
-              <Button type="submit" disabled={isUpdating}>
-                {isUpdating ? "Updating..." : "Save Changes"}
-              </Button>
             </div>
-          </form>
-        </Tabs>
+
+            {/* Business Information */}
+            <div>
+              <h3 className="text-lg font-medium">Business Information</h3>
+              <div className="grid grid-cols-2 gap-4 mt-2">
+                <div>
+                  <p className="text-sm text-muted-foreground">Company Name</p>
+                  <p>{employee.businessInfo.companyName || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Registration Number</p>
+                  <p>{employee.businessInfo.registrationNumber || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Tax ID</p>
+                  <p>{employee.businessInfo.taxId || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Payroll Information */}
+            <div>
+              <h3 className="text-lg font-medium">Payroll Information</h3>
+              <div className="grid grid-cols-2 gap-4 mt-2">
+                <div>
+                  <p className="text-sm text-muted-foreground">Bank Name</p>
+                  <p>{employee.payrollInfo.bankName || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Account Number</p>
+                  <p>{employee.payrollInfo.accountNumber || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Payment Frequency</p>
+                  <p className="capitalize">{employee.payrollInfo.paymentFrequency}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Base Rate</p>
+                  <p>${employee.payrollInfo.baseRate}/hr</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Performance Overview */}
+          <Overview />
+        </div>
       </DialogContent>
     </Dialog>
   )
-} 
+}
+
+export { Overview } 

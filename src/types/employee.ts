@@ -26,18 +26,19 @@ export interface PayrollInfo {
 
 export type PaymentType = 'salary' | 'commission' | 'misc' | 'bonus'
 
-export interface PaymentHistory {
+export interface Payment {
   id: string
-  employeeId: string
-  type: PaymentType
   amount: number
-  currency: string
-  description: string
+  date: string
   status: 'pending' | 'completed' | 'failed'
-  paymentDate: string
-  createdAt: string
-  createdBy: string
-  reference?: string
+  type: 'salary' | 'bonus' | 'commission'
+}
+
+export interface PaymentHistory {
+  payments: Payment[]
+  totalPaid: number
+  lastPaymentDate: string | null
+  paymentFrequency: 'weekly' | 'biweekly' | 'monthly'
 }
 
 export interface Employee {
@@ -88,22 +89,4 @@ export interface EmployeeStats {
   totalRevenue: number
   averageOrderValue: number
   customerSatisfaction: number
-}
-
-export interface Payment {
-  id: string;
-  employeeId: string;
-  amount: number;
-  currency: string;
-  status: 'pending' | 'completed' | 'failed';
-  type: PaymentType;
-  description: string;
-  reference?: string;
-  period: {
-    start: string;
-    end: string;
-  };
-  createdAt: string;
-  paidAt: string;
-  token: string;
 }

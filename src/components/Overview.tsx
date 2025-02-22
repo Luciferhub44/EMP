@@ -1,4 +1,25 @@
-import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { useState, useEffect } from "react"
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { formatCurrency } from "@/lib/utils"
+import { api } from "@/lib/api"
+
+interface ChartData {
+  name: string
+  total: number
+}
+
+interface OverviewProps {
+  employeeId: string
+}
 
 const data = [
   { name: 'Jan', total: 2400 },
@@ -10,7 +31,7 @@ const data = [
   { name: 'Jul', total: 4300 },
 ]
 
-export function Overview() {
+export function Overview({ employeeId }: OverviewProps) {
   return (
     <ResponsiveContainer width="100%" height={350}>
       <LineChart data={data}>

@@ -1,7 +1,8 @@
-import { pool, query, queryOne } from '@/lib/db'
+import { pool, query, queryOne, transaction } from '@/lib/db'
+import { BaseService } from './base'
 import type { AuditActionType, AuditLog, AuditQuery, AuditSummary } from "@/types/audit"
 
-class AuditService {
+export class AuditService extends BaseService {
   async log(
     action: AuditActionType,
     userId: string,
@@ -76,31 +77,31 @@ class AuditService {
   }
 
   async getAuditSummary(startDate: Date, endDate: Date): Promise<AuditSummary> {
-    return queryOne<AuditSummary>(
-      `SELECT
-        COUNT(*) as "totalEvents",
-        COUNT(*) FILTER (WHERE details->>'status' = 'success') as "successCount",
-        COUNT(*) FILTER (WHERE details->>'status' = 'failure') as "failureCount",
-        jsonb_object_agg(
-          action,
-          COUNT(*)
-        ) as "actionCounts",
-        jsonb_object_agg(
-          user_id,
-          COUNT(*)
-        ) as "userCounts",
-        array_agg(
-          json_build_object(
-            'hour', EXTRACT(HOUR FROM created_at),
-            'count', COUNT(*)
-          )
-        ) as "timeDistribution"
-       FROM audit_logs
-       WHERE created_at >= $1
-       AND created_at < $2
-       GROUP BY DATE_TRUNC('day', created_at)`,
-      [startDate, endDate]
-    )
+    try {
+      const result = await this.queryOne<AuditSummary>(`
+        SELECT 
+          COUNT(*) as total_entries,
+          COUNT(DISTINCT user_id) as unique_users,
+          COUNT(DISTINCT action_type) as action_types
+        FROM audit_logs
+        WHERE created_at BETWEEN $1 AND $2
+      `, [startDate, endDate])
+
+      // Ensure we always return a valid AuditSummary object
+      return result || {
+        totalEntries: 0,
+        uniqueUsers: 0,
+        actionTypes: 0
+      }
+    } catch (error) {
+      this.handleError(error, 'Failed to get audit summary')
+      // Return default values if error occurs
+      return {
+        totalEntries: 0,
+        uniqueUsers: 0,
+        actionTypes: 0
+      }
+    }
   }
 
   async clearOldLogs(olderThan: Date): Promise<void> {

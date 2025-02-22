@@ -1,16 +1,18 @@
 export interface ChatMessage {
   id: string
-  userId: string
-  userName: string
-  userRole: "admin" | "employee"
+  sessionId: string
   content: string
-  timestamp: string
-  attachments?: {
-    id: string
-    name: string
-    url: string
-    type: string
-  }[]
+  role: 'user' | 'assistant'
+  metadata?: Record<string, any>
+  createdAt: string
+}
+
+export interface ChatSession {
+  id: string
+  userId: string
+  metadata?: Record<string, any>
+  createdAt: string
+  updatedAt: string
 }
 
 export interface ChatUser {
