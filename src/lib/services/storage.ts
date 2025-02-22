@@ -1,4 +1,4 @@
-import { pool, query, queryOne, transaction } from '@/lib/db'
+import { query, queryOne } from '@/lib/db'
 import type { Employee } from "@/types/employee"
 import type { Order, OrderItem } from "@/types/order"
 import type { Customer } from "@/types/customer"
@@ -21,7 +21,7 @@ export class StorageService extends BaseService {
   }
 
   async setValue<T>(key: string, value: T): Promise<void> {
-    await pool.query(
+    await query(
       `INSERT INTO storage (key, value)
        VALUES ($1, $2)
        ON CONFLICT (key) DO UPDATE
@@ -69,14 +69,14 @@ export class StorageService extends BaseService {
   }
 
   async updateEmployees(employees: Employee[]): Promise<void> {
-    await pool.query('BEGIN')
+    await query('BEGIN')
     try {
       // Clear existing employees
-      await pool.query('DELETE FROM users')
+      await query('DELETE FROM users')
 
       // Insert new employees
       for (const employee of employees) {
-        await pool.query(
+        await query(
           `INSERT INTO users (
             id,
             email,
@@ -100,22 +100,22 @@ export class StorageService extends BaseService {
         )
       }
 
-      await pool.query('COMMIT')
+      await query('COMMIT')
     } catch (error) {
-      await pool.query('ROLLBACK')
+      await query('ROLLBACK')
       throw error
     }
   }
 
   async updateOrders(orders: Order[]): Promise<void> {
-    await pool.query('BEGIN')
+    await query('BEGIN')
     try {
       // Clear existing orders
-      await pool.query('DELETE FROM orders')
+      await query('DELETE FROM orders')
 
       // Insert new orders
       for (const order of orders) {
-        await pool.query(
+        await query(
           `INSERT INTO orders (
             id,
             customer_id,
@@ -151,22 +151,22 @@ export class StorageService extends BaseService {
         )
       }
 
-      await pool.query('COMMIT')
+      await query('COMMIT')
     } catch (error) {
-      await pool.query('ROLLBACK')
+      await query('ROLLBACK')
       throw error
     }
   }
 
   async updateCustomers(customers: Customer[]): Promise<void> {
-    await pool.query('BEGIN')
+    await query('BEGIN')
     try {
       // Clear existing customers
-      await pool.query('DELETE FROM customers')
+      await query('DELETE FROM customers')
 
       // Insert new customers
       for (const customer of customers) {
-        await pool.query(
+        await query(
           `INSERT INTO customers (
             id,
             name,
@@ -186,24 +186,24 @@ export class StorageService extends BaseService {
         )
       }
 
-      await pool.query('COMMIT')
+      await query('COMMIT')
     } catch (error) {
-      await pool.query('ROLLBACK')
+      await query('ROLLBACK')
       throw error
     }
   }
 
   async updateProducts(products: Product[]): Promise<void> {
-    await pool.query('BEGIN')
+    await query('BEGIN')
     try {
       // Clear existing products and inventory
-      await pool.query('DELETE FROM inventory')
-      await pool.query('DELETE FROM products')
+      await query('DELETE FROM inventory')
+      await query('DELETE FROM products')
 
       // Insert new products
       for (const product of products) {
         // Insert product
-        await pool.query(
+        await query(
           `INSERT INTO products (
             id,
             name,
@@ -230,8 +230,8 @@ export class StorageService extends BaseService {
 
         // Insert inventory records
         if (product.inventory) {
-          for (const inv of product.inventory) {
-            await pool.query(
+          for (const inv of product.inventory as WarehouseStock[]) {
+            await query(
               `INSERT INTO inventory (
                 product_id,
                 warehouse_id,
@@ -249,9 +249,9 @@ export class StorageService extends BaseService {
         }
       }
 
-      await pool.query('COMMIT')
+      await query('COMMIT')
     } catch (error) {
-      await pool.query('ROLLBACK')
+      await query('ROLLBACK')
       throw error
     }
   }

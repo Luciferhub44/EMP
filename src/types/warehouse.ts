@@ -11,4 +11,10 @@ export interface StockLevel {
   warehouseId: string
   quantity: number
   minimumStock: number
+}
+
+export interface WarehouseStock {
+  warehouseId: string
+  quantity: number
+  minimumStock: number
 } 

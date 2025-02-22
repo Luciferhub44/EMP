@@ -24,6 +24,42 @@ const handleError = (error: unknown) => {
   throw error
 }
 
+async function handleResponse<T>(response: Response): Promise<T> {
+  if (!response.ok) {
+    throw new Error(await response.text())
+  }
+  return response.json()
+}
+
+function getHeaders(): HeadersInit {
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  }
+  
+  const token = localStorage.getItem('sessionId')
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+  
+  return headers
+}
+
+async function get<T>(url: string): Promise<T> {
+  const response = await fetch(url, {
+    headers: getHeaders()
+  })
+  return handleResponse<T>(response)
+}
+
+async function post<T>(url: string, data: any): Promise<T> {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(data)
+  })
+  return handleResponse<T>(response)
+}
+
 export const api = {
   async get<T>(endpoint: string, token?: string) {
     try {
@@ -55,7 +91,7 @@ export const api = {
   },
 
   auth: {
-    async login(email: string, password: string): Promise<LoginResponse> {
+    async login(email: string, password: string): Promise<LoginResponse | undefined> {
       try {
         // Get user by email
         const user = await queryOne<Employee & { password_hash: string }>(
@@ -90,7 +126,7 @@ export const api = {
       }
     },
 
-    async validateSession(token: string): Promise<SessionResponse> {
+    async validateSession(token: string): Promise<SessionResponse | undefined> {
       try {
         const user = await queryOne<Employee>(
           `SELECT u.* FROM users u

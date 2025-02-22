@@ -1,6 +1,12 @@
 import { pool, query, queryOne, transaction } from '@/lib/db'
 import { BaseService } from './base'
-import type { AuditActionType, AuditLog, AuditQuery, AuditSummary } from "@/types/audit"
+import type { AuditActionType, AuditLog, AuditQuery } from "@/types/audit"
+
+interface AuditSummary {
+  total_entries: number
+  unique_users: number
+  action_types: number
+}
 
 export class AuditService extends BaseService {
   async log(
@@ -78,7 +84,7 @@ export class AuditService extends BaseService {
 
   async getAuditSummary(startDate: Date, endDate: Date): Promise<AuditSummary> {
     try {
-      const result = await this.queryOne<AuditSummary>(`
+      const result = await queryOne<AuditSummary>(`
         SELECT 
           COUNT(*) as total_entries,
           COUNT(DISTINCT user_id) as unique_users,
@@ -87,19 +93,17 @@ export class AuditService extends BaseService {
         WHERE created_at BETWEEN $1 AND $2
       `, [startDate, endDate])
 
-      // Ensure we always return a valid AuditSummary object
       return result || {
-        totalEntries: 0,
-        uniqueUsers: 0,
-        actionTypes: 0
+        total_entries: 0,
+        unique_users: 0,
+        action_types: 0
       }
     } catch (error) {
       this.handleError(error, 'Failed to get audit summary')
-      // Return default values if error occurs
       return {
-        totalEntries: 0,
-        uniqueUsers: 0,
-        actionTypes: 0
+        total_entries: 0,
+        unique_users: 0,
+        action_types: 0
       }
     }
   }
