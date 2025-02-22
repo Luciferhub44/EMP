@@ -4,11 +4,8 @@ services:
     runtime: node
     repo: https://github.com/Luciferhub44/EMP
     plan: starter
-    env: node
     buildCommand: |
-      export NODE_ENV=production
-      yarn add -D tailwindcss@latest postcss@latest autoprefixer@latest
-      yarn install --frozen-lockfile --production=false
+      yarn install --frozen-lockfile
       yarn build
     startCommand: yarn start
     envVars:
@@ -16,11 +13,7 @@ services:
         fromDatabase:
           name: EMPDB
           property: connectionString
-      - key: VITE_API_URL
-        value: https://emp-fnly.onrender.com
       - key: NODE_ENV
-        value: production
-      - key: VITE_NODE_ENV
         value: production
       - key: PORT
         value: 10000
