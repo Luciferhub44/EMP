@@ -38,7 +38,7 @@ export default defineConfig(({ mode }) => {
     },
 
     build: {
-      outDir: "dist/client",
+      outDir: "dist",
       emptyOutDir: true,
       sourcemap: !isProd,
       rollupOptions: {
@@ -53,10 +53,8 @@ export default defineConfig(({ mode }) => {
     },
 
     server: {
-      port: 3000,
-      strictPort: true,
+      port: process.env.PORT ? parseInt(process.env.PORT) : 3000,
       host: true,
-      allowedHosts: ['emp-fnly.onrender.com'],
       proxy: {
         '/api': {
           target: env.VITE_API_URL || 'http://localhost:5000',
