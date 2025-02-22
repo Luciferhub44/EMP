@@ -3,6 +3,7 @@ import { query, queryOne } from '@/lib/db'
 import { hashPassword, verifyPassword } from './password'
 import { Product } from "@/types/products"
 import axios from 'axios'
+import type { AxiosRequestConfig } from 'axios'
 
 interface ApiError extends Error {
   status?: number;
@@ -18,10 +19,13 @@ const axiosInstance = axios.create({
   }
 })
 
-axiosInstance.interceptors.request.use(config => {
+axiosInstance.interceptors.request.use((config: AxiosRequestConfig) => {
   const token = localStorage.getItem('sessionId')
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+    config.headers = {
+      ...config.headers,
+      Authorization: `Bearer ${token}`
+    }
   }
   return config
 })

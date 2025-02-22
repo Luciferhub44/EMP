@@ -27,8 +27,8 @@ interface MonthlyRevenue {
 
 async function getChartData(): Promise<ChartData[]> {
   try {
-    const { data: monthlyData } = await api.get<{ data: MonthlyRevenue[] }>('/analytics/monthly-revenue')
-    return monthlyData.data.map((row: MonthlyRevenue) => ({
+    const { data } = await api.http.get<{ data: MonthlyRevenue[] }>('/analytics/monthly-revenue')
+    return data.data.map((row: MonthlyRevenue) => ({
       name: new Date(row.month).toLocaleString('default', { month: 'short' }),
       total: Number(row.total)
     }))
