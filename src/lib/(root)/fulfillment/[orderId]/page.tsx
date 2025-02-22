@@ -14,7 +14,7 @@ import { fulfillmentService } from "@/lib/services/fulfillment"
 import { useAuth } from "@/contexts/auth-context"
 import { toast } from "@/components/ui/use-toast"
 import { TransportQuotes } from "@/components/fulfillment/transport-quote-card"
-import type { Order, FulfillmentDetails } from "@/types/orders"
+import type { Order, FulfillmentDetails, FulfillmentUpdate } from "@/types/orders"
 
 export default function FulfillmentPage() {
   const { orderId } = useParams()
@@ -53,24 +53,24 @@ export default function FulfillmentPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!orderId || !user) return
+    if (!orderId || !user || !fulfillment?.status) return
     setIsUpdating(true)
 
     try {
       const formData = new FormData(e.currentTarget)
-      const updates = {
+      const updates: FulfillmentUpdate = {
+        orderId,
+        status: fulfillment.status,
         trackingNumber: formData.get("trackingNumber") as string,
-        carrier: formData.get("carrier") as string,
-        notes: formData.get("notes") as string,
-        status: fulfillment?.status // Preserve existing status
+        carrierNotes: [(formData.get("notes") as string)]
       }
 
-      const updatedFulfillment = await fulfillmentService.updateFulfillment(orderId, updates)
-      setFulfillment(updatedFulfillment)
-      toast({
-        title: "Success",
-        description: "Fulfillment details updated successfully",
-      })
+      await fulfillmentService.updateFulfillment(updates)
+      const updatedFulfillment = await fulfillmentService.getOrderFulfillment(orderId)
+      if (updatedFulfillment) {
+        setFulfillment(updatedFulfillment)
+        toast({ title: "Success", description: "Fulfillment details updated successfully" })
+      }
     } catch (error) {
       console.error("Failed to update fulfillment:", error)
       toast({
@@ -85,6 +85,21 @@ export default function FulfillmentPage() {
 
   const handlePaymentRedirect = () => {
     navigate(`/fulfillment/payment/${orderId}`)
+  }
+
+  const updateFulfillment = async () => {
+    if (!orderId) return
+
+    try {
+      await fulfillmentService.updateFulfillment({
+        orderId: orderId,
+        status: 'processing'
+      })
+      const updatedFulfillment = await fulfillmentService.getOrderFulfillment(orderId)
+      setFulfillment(updatedFulfillment)
+    } catch (error) {
+      console.error('Failed to update fulfillment:', error)
+    }
   }
 
   if (isLoading) {

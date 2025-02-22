@@ -11,7 +11,6 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatCurrency } from "@/lib/utils"
 import { query } from "@/lib/db"
-import { api } from "@/lib/api"
 
 interface ChartData {
   name: string
@@ -25,18 +24,11 @@ interface RevenueData {
 
 async function getChartData(): Promise<ChartData[]> {
   try {
-    const response = await query<{ month: string, total: string }[]>('SELECT * FROM analytics_monthly_revenue')
-    const data: ChartData[] = []
-    
-    (response || []).map((row: { month: string, total: string }) => {
-      const date = new Date(row.month)
-      data.push({
-        name: date.toLocaleString('default', { month: 'short' }),
-        total: Number(row.total)
-      })
-    })
-    
-    return data
+    const response = await query<{ month: string, total: string }>('SELECT * FROM analytics_monthly_revenue')
+    return response.map(row => ({
+      name: new Date(row.month).toLocaleString('default', { month: 'short' }),
+      total: Number(row.total)
+    }))
   } catch (error) {
     console.error('Error fetching chart data:', error)
     return []

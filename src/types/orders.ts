@@ -23,7 +23,7 @@ export type PaymentStatus =
   | "refunded"
 export type PaymentMethod = "credit_card" | "bank_transfer" | "financing" | "wire_transfer"
 
-export type FulfillmentStatus = "pending" | "processing" | "shipped" | "delivered" | "failed"
+export type FulfillmentStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled'
 
 export interface OrderItem {
   productId: string
@@ -155,4 +155,11 @@ export interface TransportQuote {
   }
   status: 'pending' | 'accepted' | 'rejected'
   validUntil: string
+}
+
+export interface FulfillmentUpdate {
+  orderId: string
+  status: FulfillmentStatus
+  trackingNumber?: string
+  carrierNotes?: string[]
 } 
