@@ -1,4 +1,4 @@
-import type { Pool, PoolClient } from 'pg'
+import type { Pool, PoolClient, QueryResult } from 'pg'
 import pg from 'pg'
 
 const connectionString = import.meta.env.DATABASE_URL || import.meta.env.VITE_DATABASE_URL
@@ -9,18 +9,18 @@ export const pool = new pg.Pool({
 })
 
 // Simple query function that uses fetch API instead of pg
-export async function query<T>(text: string, params: any[] = []): Promise<T[]> {
+export async function query<T extends Record<string, any>>(text: string, params: any[] = []): Promise<T[]> {
   const client = await pool.connect()
   try {
-    const result = await client.query(text, params)
-    return result.rows as T[]
+    const result = await client.query<T>(text, params)
+    return result.rows
   } finally {
     client.release()
   }
 }
 
 // Query for single row
-export async function queryOne<T>(text: string, params: any[] = []): Promise<T | null> {
+export async function queryOne<T extends Record<string, any>>(text: string, params: any[] = []): Promise<T | null> {
   const result = await query<T>(text, params)
   return result[0] || null
 }
