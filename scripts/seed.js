@@ -1,5 +1,5 @@
 import { pool } from './db.js'
-import { hashPassword } from '../src/lib/api/password.js'
+import { hashPassword } from './password.js'
 
 async function seed() {
   try {
