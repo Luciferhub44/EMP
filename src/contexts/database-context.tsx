@@ -1,5 +1,5 @@
 import { createContext, useContext, ReactNode, useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { query, testConnection } from '@/lib/db'
 import { useAuth } from '@/contexts/auth-context'
 
 interface DatabaseContextType {
@@ -22,13 +22,10 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) return
     
-    const testConnection = async () => {
+    const checkConnection = async () => {
       try {
-        const { data, error } = await supabase.from('users').select('count')
-        if (error) {
-          throw error
-        }
-        setIsConnected(true)
+        const connected = await testConnection()
+        setIsConnected(connected)
         setError(null)
       } catch (error) {
         setIsConnected(false)
@@ -36,21 +33,12 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    testConnection()
+    checkConnection()
   }, [user])
 
-  const query = async (text: string, params?: any[]) => {
+  const executeQuery = async (text: string, params?: any[]) => {
     try {
-      const { data, error } = await supabase.rpc('execute_query', {
-        query_text: text,
-        query_params: params
-      })
-      
-      if (error) {
-        throw error
-      }
-      
-      return data
+      return await query(text, params)
     } catch (error) {
       console.error('Query error:', error)
       throw error
@@ -59,7 +47,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
 
   return (
     <DatabaseContext.Provider value={{ 
-      query,
+      query: executeQuery,
       isConnected,
       error
     }}>
@@ -68,4 +56,10 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   )
 }
 
-export const useDatabase = () => useContext(DatabaseContext)
+export const useDatabase = () => {
+  const context = useContext(DatabaseContext)
+  if (context === undefined) {
+    throw new Error('useDatabase must be used within a DatabaseProvider')
+  }
+  return context
+}

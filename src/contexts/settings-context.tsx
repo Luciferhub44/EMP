@@ -1,8 +1,8 @@
 import { defaultSettings } from '@/config/default-settings'
 import { createContext, useContext, useState, useEffect, useCallback } from "react"
-import { settingsService } from '@/lib/services/supabase/settings'
 import { useAuth } from "./auth-context"
-import { supabase } from "@/lib/supabase"
+import { query, queryOne } from '@/lib/db'
+
 interface UserSettings {
   notifications: {
     email: boolean
@@ -45,9 +45,13 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
     const fetchSettings = async () => {
       try {
-        const data = await settingsService.getUserSettings(user.id)
+        const data = await queryOne<{ settings: UserSettings }>(
+          'SELECT settings FROM settings WHERE user_id = $1',
+          [user.id]
+        )
+        
         if (data) {
-          setSettings(data)
+          setSettings(data.settings)
         }
       } catch (error) {
         console.error('Failed to load settings:', error)
@@ -63,11 +67,18 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
     setIsLoading(true)
     try {
-      await settingsService.updateUserSettings(user.id, newSettings)
-      setSettings(prev => ({
-        ...prev,
-        ...newSettings
-      }))
+      const result = await queryOne<{ settings: UserSettings }>(
+        `INSERT INTO settings (user_id, settings)
+         VALUES ($1, $2)
+         ON CONFLICT (user_id) 
+         DO UPDATE SET settings = settings.settings || $2
+         RETURNING settings`,
+        [user.id, JSON.stringify(newSettings)]
+      )
+        
+      if (result) {
+        setSettings(result.settings)
+      }
     } catch (error) {
       console.error('Failed to update settings:', error)
       setError('Failed to update settings')
@@ -82,12 +93,30 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
     setIsLoading(true)
     try {
-      await settingsService.updateUserSettings(user.id, {
-        profile: {
-          ...settings.profile,
-          ...profile
-        }
-      })
+      // Update settings table
+      await query(
+        `UPDATE settings 
+         SET settings = jsonb_set(
+           settings,
+           '{profile}',
+           settings->'profile' || $1::jsonb
+         )
+         WHERE user_id = $2`,
+        [JSON.stringify(profile), user.id]
+      )
+
+      // Update users table if name or email changed
+      if (profile.name || profile.email) {
+        await query(
+          `UPDATE users 
+           SET name = COALESCE($1, name),
+               email = COALESCE($2, email),
+               updated_at = NOW()
+           WHERE id = $3`,
+          [profile.name, profile.email, user.id]
+        )
+      }
+
       setSettings(prev => ({
         ...prev,
         profile: {
@@ -102,15 +131,39 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false)
     }
-  }, [user, settings.profile])
+  }, [user])
 
   const updatePassword = useCallback(async (currentPassword: string, newPassword: string) => {
+    if (!user) return
+
     setIsLoading(true)
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword
-      })
-      if (error) throw error
+      // Verify current password
+      const userData = await queryOne<{ password_hash: string }>(
+        'SELECT password_hash FROM users WHERE id = $1',
+        [user.id]
+      )
+
+      if (!userData) {
+        throw new Error('User not found')
+      }
+
+      // Verify password
+      const { verifyPassword } = await import('@/lib/api/password')
+      const isValid = await verifyPassword(currentPassword, userData.password_hash)
+      if (!isValid) {
+        throw new Error('Current password is incorrect')
+      }
+
+      // Hash new password
+      const { hashPassword } = await import('@/lib/api/password')
+      const newPasswordHash = await hashPassword(newPassword)
+
+      // Update password
+      await query(
+        'UPDATE users SET password_hash = $1 WHERE id = $2',
+        [newPasswordHash, user.id]
+      )
     } catch (error) {
       console.error('Failed to update password:', error)
       setError('Failed to update password')
@@ -118,7 +171,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [user])
 
   return (
     <SettingsContext.Provider
@@ -142,4 +195,4 @@ export function useSettings() {
     throw new Error('useSettings must be used within a SettingsProvider')
   }
   return context
-} 
+}

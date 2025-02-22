@@ -1,11 +1,22 @@
-import { supabase } from '@/lib/supabase'
-import type { Employee, EmployeeCredentials } from "@/types/employee"
+import type { Employee } from "@/types/employee"
+import { query, queryOne } from '@/lib/db'
 import { hashPassword, verifyPassword } from './password'
 
 interface ApiError extends Error {
   status?: number;
   code?: string;
 }
+
+interface LoginResponse {
+  token: string;
+  user: Omit<Employee, 'passwordHash'>;
+}
+
+interface SessionResponse {
+  user: Omit<Employee, 'passwordHash'>;
+}
+
+const BASE_URL = '/api';
 
 const handleError = (error: unknown) => {
   console.error('API Error:', error)
@@ -15,15 +26,7 @@ const handleError = (error: unknown) => {
 export const api = {
   async get<T>(endpoint: string, token?: string) {
     try {
-      const { data, error } = await supabase
-        .from(endpoint)
-        .select('*')
-
-      if (error) {
-        throw error
-      }
-
-      return data as T
+      return await query<T>(`SELECT * FROM ${endpoint}`)
     } catch (error) {
       handleError(error)
     }
@@ -31,84 +34,73 @@ export const api = {
 
   async post<T>(endpoint: string, data: unknown, token?: string) {
     try {
-      const { data: result, error } = await supabase
-        .from(endpoint)
-        .insert(data)
-        .select()
-        .single()
-
-      if (error) {
-        throw error
+      const columns = Object.keys(data as object).join(', ')
+      const values = Object.values(data as object)
+      const placeholders = values.map((_, i) => `$${i + 1}`).join(', ')
+      
+      const result = await queryOne<T>(
+        `INSERT INTO ${endpoint} (${columns}) VALUES (${placeholders}) RETURNING *`,
+        values
+      )
+      
+      if (!result) {
+        throw new Error('Failed to create record')
       }
-
-      return result as T
+      
+      return result
     } catch (error) {
       handleError(error)
     }
   },
 
   auth: {
-    async login(credentials: EmployeeCredentials) {
+    async login(email: string, password: string): Promise<LoginResponse> {
       try {
-        // Get user by agent ID
-        const { data: user, error: userError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('agent_id', credentials.agentId.toUpperCase())
-          .single()
+        // Get user by email
+        const user = await queryOne<Employee & { password_hash: string }>(
+          'SELECT * FROM users WHERE email = $1',
+          [email]
+        )
 
-        if (userError || !user) {
+        if (!user) {
           throw new Error('Invalid credentials')
         }
 
         // Verify password
-        const isValid = await verifyPassword(credentials.password, user.passwordHash)
+        const isValid = await verifyPassword(password, user.password_hash)
         if (!isValid) {
           throw new Error('Invalid credentials')
         }
 
-        // Sign in with Supabase auth
-        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-          email: user.email,
-          password: credentials.password
-        })
+        // Create session
+        const sessionId = crypto.randomUUID()
+        await query(
+          'INSERT INTO user_sessions (id, user_id) VALUES ($1, $2)',
+          [sessionId, user.id]
+        )
 
-        if (authError) {
-          throw authError
-        }
-
+        const { password_hash, ...userWithoutPassword } = user
         return {
-          session: authData.session,
-          user: {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role,
-            agentId: user.agentId,
-            status: user.status
-          }
+          token: sessionId,
+          user: userWithoutPassword
         }
       } catch (error) {
         handleError(error)
       }
     },
 
-    async validateSession() {
+    async validateSession(token: string): Promise<SessionResponse> {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession()
-        if (error) throw error
-        
-        if (!session) {
-          throw new Error('No active session')
+        const user = await queryOne<Employee>(
+          `SELECT u.* FROM users u
+           INNER JOIN user_sessions s ON s.user_id = u.id
+           WHERE s.id = $1 AND s.expires_at > NOW()`,
+          [token]
+        )
+
+        if (!user) {
+          throw new Error('Invalid or expired session')
         }
-
-        const { data: user, error: userError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', session.user.id)
-          .single()
-
-        if (userError) throw userError
 
         return { user }
       } catch (error) {
@@ -116,10 +108,12 @@ export const api = {
       }
     },
 
-    async logout() {
+    async logout(token: string): Promise<void> {
       try {
-        const { error } = await supabase.auth.signOut()
-        if (error) throw error
+        await query(
+          'DELETE FROM user_sessions WHERE id = $1',
+          [token]
+        )
       } catch (error) {
         handleError(error)
       }

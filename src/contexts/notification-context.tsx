@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react"
-import { notificationService } from '@/lib/services/supabase/notifications'
+import { notificationService } from '@/lib/services/notifications'
 import { useAuth } from '@/contexts/auth-context'
 import type { Notification } from "@/types/notification"
 
@@ -25,7 +25,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     
     const fetchNotifications = async () => {
       try {
-        const data = await notificationService.getNotifications(user?.id || '')
+        const data = await notificationService.getNotifications(user.id)
         setNotifications(data)
       } catch (error) {
         console.error('Failed to load notifications:', error)
@@ -39,19 +39,22 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const unreadCount = notifications.filter(n => !n.isRead).length
 
   const addNotification = useCallback(async (notification: Omit<Notification, "id" | "timestamp" | "isRead">) => {
+    if (!user) return
+    
     try {
-      await notificationService.createNotification(user?.id || '', notification)
-      const updatedNotifications = await notificationService.getNotifications(user?.id || '')
-      setNotifications(updatedNotifications)
+      const newNotification = await notificationService.createNotification(user.id, notification)
+      setNotifications(prev => [newNotification, ...prev])
     } catch (error) {
       console.error('Failed to create notification:', error)
       setError('Failed to create notification')
     }
-  }, [])
+  }, [user])
 
   const markAsRead = useCallback(async (notificationId: string) => {
+    if (!user) return
+
     try {
-      await notificationService.markAsRead(notificationId, user?.id || '')
+      await notificationService.markAsRead(notificationId, user.id)
       setNotifications(prev =>
         prev.map(n =>
           n.id === notificationId ? { ...n, isRead: true } : n
@@ -61,34 +64,36 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       console.error('Failed to mark notification as read:', error)
       setError('Failed to mark notification as read')
     }
-  }, [])
+  }, [user])
 
-  const markAllAsRead = useCallback(() => {
+  const markAllAsRead = useCallback(async () => {
     if (!user) return
     
-    setNotifications(prev =>
-      prev.map(n => ({ ...n, isRead: true }))
-    )
-  }, [])
+    try {
+      await notificationService.markAllAsRead(user.id)
+      setNotifications(prev =>
+        prev.map(n => ({ ...n, isRead: true }))
+      )
+    } catch (error) {
+      console.error('Failed to mark all notifications as read:', error)
+      setError('Failed to mark all notifications as read')
+    }
+  }, [user])
 
   const clearAll = useCallback(() => {
-    if (!user) return
-    
     setNotifications([])
   }, [])
 
   return (
-    <NotificationContext.Provider
-      value={{
-        notifications,
-        unreadCount,
-        addNotification,
-        markAsRead,
-        markAllAsRead,
-        clearAll,
-        error
-      }}
-    >
+    <NotificationContext.Provider value={{
+      notifications,
+      unreadCount,
+      addNotification,
+      markAsRead,
+      markAllAsRead,
+      clearAll,
+      error
+    }}>
       {children}
     </NotificationContext.Provider>
   )
