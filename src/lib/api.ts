@@ -1,8 +1,15 @@
 import axios from 'axios'
 
+const baseURL = process.env.NODE_ENV === 'production' 
+  ? 'https://emp-m7tx.onrender.com'  // Update this to your actual production URL
+  : 'http://localhost:3000'
+
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
-  withCredentials: true
+  baseURL,
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json'
+  }
 })
 
 export const testConnection = async () => {
