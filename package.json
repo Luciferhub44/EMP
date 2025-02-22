@@ -15,9 +15,9 @@
     "vite-build": "vite build",
     "build": "yarn tsc && yarn vite-build",
     "preview": "vite preview",
-    "migrate": "node --loader ts-node/esm scripts/migrate.ts",
-    "seed": "node --loader ts-node/esm scripts/seed.ts",
-    "reset-db": "node --loader ts-node/esm scripts/reset.ts",
+    "migrate": "node scripts/migrate.js",
+    "seed": "node scripts/seed.js",
+    "reset-db": "node scripts/reset.js",
     "db:setup": "yarn migrate && yarn seed",
     "start": "yarn db:setup && node dist/server/index.js"
   },

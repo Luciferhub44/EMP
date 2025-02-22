@@ -1,6 +1,10 @@
 import { pool } from '../src/lib/db.js'
 import { readdir, readFile } from 'fs/promises'
-import { join } from 'path'
+import { join, dirname } from 'path'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 async function migrate() {
   try {
@@ -20,7 +24,7 @@ async function migrate() {
     const executedMigrations = new Set(executed.map(row => row.name))
 
     // Read migration files
-    const migrationsDir = join(process.cwd(), 'db/migrations')
+    const migrationsDir = join(__dirname, '../db/migrations')
     const files = await readdir(migrationsDir)
     const pendingMigrations = files
       .filter(f => f.endsWith('.sql'))
