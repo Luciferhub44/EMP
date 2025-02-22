@@ -12,26 +12,28 @@ import { PaymentDialog } from "@/components/employees/payment-dialog"
 import { PaymentHistory } from "@/components/employees/payment-history"
 import type { Employee, PaymentHistory as PaymentHistoryType } from "@/types/employee"
 
+type PaymentItem = PaymentHistoryType['payments'][0]
+
 export default function EmployeeDetailsPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
   const [employee, setEmployee] = useState<Employee | null>(null)
-  const [payments, setPayments] = useState<PaymentHistoryType[]>([])
+  const [payments, setPayments] = useState<PaymentItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showPaymentDialog, setShowPaymentDialog] = useState(false)
 
   useEffect(() => {
     const loadEmployeeData = async () => {
-      if (!id || !user) return
+      if (!id) return
       setIsLoading(true)
       try {
         const [employeeData, paymentData] = await Promise.all([
           employeeService.getEmployee(id),
-          employeeService.getPaymentHistory(id, user.id, user.role === 'admin')
+          employeeService.getPaymentHistory(id)
         ])
         setEmployee(employeeData)
-        setPayments(paymentData)
+        setPayments(paymentData.payments)
       } catch (error) {
         console.error("Failed to load employee data:", error)
         toast({
@@ -46,10 +48,10 @@ export default function EmployeeDetailsPage() {
     }
 
     loadEmployeeData()
-  }, [id, user, navigate])
+  }, [id, navigate])
 
   const handlePayment = async (paymentData: {
-    type: PaymentHistoryType['type']
+    type: string
     amount: number
     description: string
     reference?: string

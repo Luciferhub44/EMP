@@ -24,7 +24,14 @@ export interface PayrollInfo {
   lastPaymentDate?: string
 }
 
-export type PaymentType = 'salary' | 'commission' | 'misc' | 'bonus'
+export type PaymentType = 'salary' | 'bonus' | 'commission' | 'reimbursement'
+
+export interface PaymentData {
+  type: PaymentType
+  amount: number
+  description: string
+  reference?: string
+}
 
 export interface Payment {
   id: string
@@ -35,13 +42,18 @@ export interface Payment {
 }
 
 export interface PaymentHistory {
-  id: string
-  paymentDate: string
-  type: 'salary' | 'bonus' | 'commission' | 'reimbursement'
-  amount: number
-  description: string
-  status: 'pending' | 'completed' | 'failed'
-  reference?: string
+  payments: {
+    id: string
+    paymentDate: string
+    type: PaymentType
+    amount: number
+    description: string
+    status: 'pending' | 'completed' | 'failed'
+    reference?: string
+  }[]
+  totalPaid: number
+  lastPaymentDate: string | null
+  paymentFrequency: string
 }
 
 export interface Employee {

@@ -115,15 +115,16 @@ export default function NewOrderPage() {
     const product = products.find(p => p.id === selectedProduct)
     if (!product) return
 
-    setFormData(prev => ({
+    setFormData((prev: OrderFormData) => ({
       ...prev,
       items: [
         ...prev.items,
         {
           productId: product.id,
-          quantity: parseInt(quantity),
+          quantity: 1,
           price: product.price,
-          productName: product.name
+          productName: product.name,
+          warehouseId: product.inventory?.[0]?.warehouseId || 'WH-1'
         }
       ]
     }))

@@ -114,4 +114,22 @@ export interface FulfillmentDetails {
   transportQuote?: string
   notes?: string
   history: FulfillmentHistoryEntry[]
+}
+
+export interface OrderFormData {
+  customerId: string
+  items: (OrderItem | {
+    productId: string
+    quantity: number
+    price: number
+    productName: string
+  })[]
+  shippingAddress: {
+    street: string
+    city: string
+    state: string
+    country: string
+    postalCode: string
+  }
+  notes?: string
 } 
