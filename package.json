@@ -19,7 +19,7 @@
     "seed": "node scripts/seed.js",
     "reset-db": "node scripts/reset.js",
     "db:setup": "yarn migrate && yarn seed",
-    "start": "yarn db:setup && node dist/server/index.js"
+    "start": "yarn db:setup && node dist/server/index.ts"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.0.4",
