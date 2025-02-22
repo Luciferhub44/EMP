@@ -41,38 +41,13 @@ export default defineConfig(({ mode }) => {
       outDir: "dist",
       emptyOutDir: true,
       sourcemap: !isProd,
-      rollupOptions: {
-        output: {
-          manualChunks: {
-            'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-            'ui-vendor': ['@radix-ui/react-icons', '@radix-ui/react-slot'],
-            'utils-vendor': ['lodash-es']
-          }
-        }
-      }
+      minify: isProd,
+      target: 'esnext'
     },
 
     server: {
-      port: process.env.PORT ? parseInt(process.env.PORT) : 3000,
-      host: true,
-      proxy: {
-        '/api': {
-          target: env.VITE_API_URL || 'http://localhost:5000',
-          changeOrigin: true,
-          secure: false,
-          rewrite: (path) => path.replace(/^\/api/, '')
-        }
-      }
-    },
-
-    optimizeDeps: {
-      include: [
-        'react',
-        'react-dom',
-        'react-router-dom',
-        '@radix-ui/react-icons',
-        '@radix-ui/react-slot'
-      ]
+      port: parseInt(process.env.PORT || '3000'),
+      host: true
     }
   }
 })

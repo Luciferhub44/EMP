@@ -6,14 +6,14 @@
   "scripts": {
     "dev": "vite",
     "tsc": "tsc --project tsconfig.json",
-    "vite-build": "vite build",
+    "vite-build": "NODE_ENV=production VITE_NODE_ENV=production ./node_modules/.bin/vite build",
     "build": "yarn tsc && yarn vite-build",
     "preview": "vite preview",
     "migrate": "node scripts/migrate.js",
     "seed": "node scripts/seed.js",
     "reset-db": "node scripts/reset.js",
     "db:setup": "yarn migrate && yarn seed",
-    "start": "yarn db:setup && VITE_NODE_ENV=production vite preview --host --port $PORT"
+    "start": "yarn db:setup && NODE_ENV=production VITE_NODE_ENV=production vite preview --host --port $PORT"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.0.4",

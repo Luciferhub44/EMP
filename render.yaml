@@ -5,7 +5,10 @@ services:
     repo: https://github.com/Luciferhub44/EMP
     plan: starter
     env: node
-    buildCommand: yarn install --frozen-lockfile && yarn build
+    buildCommand: |
+      yarn global add vite typescript
+      yarn install --frozen-lockfile
+      yarn build
     startCommand: yarn start
     envVars:
       - key: DATABASE_URL
