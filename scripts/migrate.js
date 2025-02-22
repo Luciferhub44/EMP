@@ -1,4 +1,4 @@
-import { pool } from '../src/lib/db.js'
+import { pool } from '../dist/lib/db.js'
 import { readdir, readFile } from 'fs/promises'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
