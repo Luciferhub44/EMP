@@ -18,25 +18,28 @@ export interface OrderItem {
   productId: string
   quantity: number
   price: number
-  product?: Product
+  warehouseId: string
+  weight?: number
+  dimensions?: {
+    length: number
+    width: number
+    height: number
+  }
 }
 
 export interface Order {
   id: string
   customerId: string
+  customerName: string
+  status: 'pending' | 'processing' | 'completed' | 'cancelled'
+  paymentStatus: 'pending' | 'paid' | 'failed'
   items: OrderItem[]
-  status: OrderStatus
-  totalAmount: number
+  shippingAddress: string
+  subtotal: number
+  tax: number
+  shippingCost: number
+  total: number
+  notes?: string
   createdAt: string
   updatedAt: string
-  shippingAddress: {
-    street: string
-    city: string
-    state: string
-    country: string
-    postalCode: string
-  }
-  paymentStatus: PaymentStatus
-  paymentMethod: PaymentMethod
-  notes?: string
 } 

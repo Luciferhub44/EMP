@@ -1,10 +1,18 @@
-import { pool, query, queryOne } from '@/lib/db'
+import { pool, query, queryOne, transaction } from '@/lib/db'
 import type { Employee } from "@/types/employee"
-import type { Order } from "@/types/orders"
+import type { Order, OrderItem } from "@/types/order"
 import type { Customer } from "@/types/customer"
 import type { Product } from "@/types/products"
+import { BaseService } from './base'
+import type { Warehouse, StockLevel } from '@/types/warehouse'
 
-class StorageService {
+interface WarehouseStock {
+  warehouseId: string
+  quantity: number
+  minimumStock: number
+}
+
+export class StorageService extends BaseService {
   async getValue<T>(key: string): Promise<T | null> {
     return queryOne<T>(
       'SELECT value FROM storage WHERE key = $1',
@@ -246,6 +254,14 @@ class StorageService {
       await pool.query('ROLLBACK')
       throw error
     }
+  }
+
+  async allocateOrderItems(order: Order & { shippingAddress: string }, items: OrderItem[]): Promise<void> {
+    // ... implementation
+  }
+
+  async updateStockLevels(levels: WarehouseStock[]): Promise<void> {
+    // ... implementation using the updated interface
   }
 }
 

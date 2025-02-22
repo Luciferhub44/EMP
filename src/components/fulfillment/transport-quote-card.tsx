@@ -6,7 +6,7 @@ import { formatCurrency, formatDate } from "@/lib/utils"
 import { Loader2, Truck } from "lucide-react"
 import { ordersService } from "@/lib/services/orders"
 import { toast } from "@/components/ui/use-toast"
-import type { TransportQuote } from "@/types/orders"
+import type { TransportQuote } from "@/types/transport"
 import { transportService } from "@/lib/services/transport"
 
 interface TransportQuotesProps {
@@ -46,7 +46,6 @@ export function TransportQuotes({ orderId }: TransportQuotesProps) {
         title: "Success",
         description: "Transport quote accepted successfully",
       })
-      // Refresh the page or update the order state
       window.location.reload()
     } catch (error) {
       console.error("Failed to accept quote:", error)
@@ -83,10 +82,7 @@ export function TransportQuotes({ orderId }: TransportQuotesProps) {
   return (
     <div className="grid gap-4 md:grid-cols-3">
       {quotes.map((quote) => (
-        <Card
-          key={quote.id}
-          className={`relative overflow-hidden transition-colors`}
-        >
+        <Card key={quote.id} className="relative overflow-hidden">
           <CardContent className="p-6">
             <div className="space-y-4">
               <div className="space-y-2">
@@ -111,9 +107,9 @@ export function TransportQuotes({ orderId }: TransportQuotesProps) {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Insurance</span>
                   <span>
-                    {quote.insurance?.included ? (
+                    {quote.insurance.included ? (
                       'Included'
-                    ) : quote.insurance?.cost ? (
+                    ) : quote.insurance.cost ? (
                       `+${formatCurrency(quote.insurance.cost)}`
                     ) : (
                       'Not available'

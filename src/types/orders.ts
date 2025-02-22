@@ -1,4 +1,5 @@
 import type { Product } from "./products.js"
+import type { TransportQuote } from './transport'
 
 export interface Address {
   street: string
@@ -30,6 +31,7 @@ export interface OrderItem {
   productName: string
   quantity: number
   price: number
+  warehouseId: string
   weight?: number
   dimensions?: {
     length: number
@@ -50,23 +52,6 @@ export interface ShippingDetails {
   method: string
   cost: number
   estimatedDelivery: string
-}
-
-export interface TransportQuote {
-  id: string
-  orderId: string
-  provider: string
-  method: string
-  cost: number
-  estimatedDays: number
-  distance: number
-  weightBased: boolean
-  validUntil: string
-  insurance: {
-    included: boolean
-    coverage?: number
-    cost?: number
-  }
 }
 
 export interface ShippingCalculation {
@@ -109,6 +94,7 @@ export interface Order {
   fulfillmentStatus: FulfillmentStatus
   assignedTo?: string
   notes?: string
+  transportQuote?: TransportQuote
 }
 
 interface FulfillmentHistoryEntry {

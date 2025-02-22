@@ -19,6 +19,9 @@ export interface SessionMetadata {
     country?: string
     ip: string
   }
+  userAgent: string
+  ipAddress?: string
+  lastActivity: string
 }
 
 export interface ActiveSession extends Session {

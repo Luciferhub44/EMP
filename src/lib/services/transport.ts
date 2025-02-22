@@ -1,8 +1,15 @@
 import { query, queryOne, transaction } from '@/lib/db'
-import type { TransportQuote, ShippingCalculation, Order } from "@/types/orders"
+import type { ShippingCalculation, Order } from "@/types/orders"
 import { calculateDistance } from '@/lib/utils/distance'
+import { BaseService } from './base'
+import type { OrderItem } from '@/types/order'
+import type { TransportQuote } from '@/types/transport'
 
-class TransportService {
+interface EnhancedOrderItem extends OrderItem {
+  warehouseId: string
+}
+
+export class TransportService extends BaseService {
   async getQuotes(orderId: string): Promise<TransportQuote[]> {
     return query<TransportQuote>(
       `SELECT * FROM transport_quotes
@@ -22,7 +29,7 @@ class TransportService {
     // Get warehouse address
     const warehouse = await queryOne<{ location: string }>(
       'SELECT location FROM warehouses WHERE id = $1',
-      [order.items[0]?.warehouseId || 'WH-1'] // Default to main warehouse
+      [order.items[0]?.warehouseId || 'WH-1']
     )
 
     if (!warehouse) {
@@ -47,7 +54,7 @@ class TransportService {
     )
 
     // Generate quote
-    return queryOne<TransportQuote>(
+    const result = await queryOne<TransportQuote>(
       `INSERT INTO transport_quotes (
         order_id,
         provider,
@@ -76,6 +83,23 @@ class TransportService {
         new Date(Date.now() + 24 * 60 * 60 * 1000) // Valid for 24 hours
       ]
     )
+
+    if (!result) {
+      return {
+        id: '',
+        orderId: '',
+        provider: 'unknown',
+        method: 'standard',
+        cost: 0,
+        estimatedDays: 0,
+        distance: 0,
+        insurance: { included: false, coverage: 0, cost: 0 },
+        status: 'pending',
+        validUntil: new Date().toISOString()
+      }
+    }
+
+    return result
   }
 
   async acceptQuote(quoteId: string, orderId: string): Promise<void> {
@@ -194,6 +218,29 @@ class TransportService {
       totalValue,
       requiresInsurance: totalValue > 10000
     }
+  }
+
+  async getQuote(items: EnhancedOrderItem[]): Promise<TransportQuote> {
+    const result = await this.queryOne<TransportQuote>(`
+      // ... SQL query
+    `, [/* params */])
+
+    if (!result) {
+      return {
+        id: '',
+        orderId: '',
+        provider: 'unknown',
+        method: 'standard',
+        cost: 0,
+        estimatedDays: 0,
+        distance: 0,
+        insurance: { included: false, coverage: 0, cost: 0 },
+        status: 'pending',
+        validUntil: new Date().toISOString()
+      }
+    }
+
+    return result
   }
 }
 

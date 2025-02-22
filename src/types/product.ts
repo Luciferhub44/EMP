@@ -5,6 +5,11 @@ export interface Product {
   price: number
   category: string
   // ... other product fields
+  inventory?: {
+    warehouseId: string
+    quantity: number
+    minimumStock: number
+  }[]
 }
 
 export interface ProductWithStock {
