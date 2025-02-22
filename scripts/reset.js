@@ -1,4 +1,4 @@
-import { pool } from '../src/lib/db.js'
+import { pool } from './db.js'
 
 async function reset() {
   try {
