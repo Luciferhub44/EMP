@@ -66,7 +66,7 @@
   }
 
   * {
-    @apply border-[hsl(var(--border))];
+    @apply border-border;
   }
 
   body {
@@ -195,6 +195,38 @@
       focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none 
       disabled:opacity-50 h-9 w-9;
   }
+
+  .btn {
+    @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors 
+           focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply bg-primary text-primary-foreground shadow hover:bg-primary/90;
+  }
+
+  .btn-destructive {
+    @apply bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90;
+  }
+
+  .btn-outline {
+    @apply border border-input bg-transparent shadow-sm hover:bg-accent hover:text-accent-foreground;
+  }
+
+  .input {
+    @apply flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors
+           file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground 
+           focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .card {
+    @apply rounded-lg border bg-card text-card-foreground shadow-sm;
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors 
+           focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
+  }
 }
 
 @layer utilities {
@@ -235,6 +267,10 @@
 
   ::-webkit-scrollbar-thumb {
     @apply bg-muted-foreground/50 rounded-full;
+  }
+
+  .text-balance {
+    text-wrap: balance;
   }
 }
 
