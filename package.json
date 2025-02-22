@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "NODE_ENV=production VITE_NODE_ENV=production tsc && vite build",
+    "build": "yarn tsc && yarn vite build",
     "preview": "vite preview",
     "start": "NODE_ENV=production VITE_NODE_ENV=production vite preview --host --port $PORT"
   },
