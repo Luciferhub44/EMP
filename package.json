@@ -47,7 +47,7 @@
   "devDependencies": {
     "@types/node": "^22.13.1",
     "@types/pg": "^8.11.11",
-    "@types/pg-pool": "^2.0.5",
+    "@types/pg-pool": "^2.0.6",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@types/react-router-dom": "^5.3.3",
