@@ -7,29 +7,55 @@ import { formatCurrency } from "@/lib/utils"
 import { api } from "@/lib/api"
 import { Product, ProductStatus } from "@/types/products"
 import { Loader2 } from "lucide-react"
+import { toast } from "@/components/ui/use-toast"
+import { queryOne } from "@/lib/db"
+
+interface ProductDetails {
+  product: Product
+  stock: number
+  needsRestock: boolean
+}
 
 export default function ProductPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const [product, setProduct] = useState<Product | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [totalStockCount, setTotalStockCount] = useState(0)
-  const [isRestocking, setIsRestocking] = useState(false)
+  const [productDetails, setProductDetails] = useState<ProductDetails | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    async function loadData() {
+    const loadProduct = async () => {
+      if (!id) return
       try {
-        const response = await api.get<{ product: Product, stock: number, needsRestock: boolean }>(`/products/${id}`)
-        setProduct(response.product)
-        setTotalStockCount(response.stock)
-        setIsRestocking(response.needsRestock)
+        const response = await queryOne<ProductDetails>(
+          `SELECT 
+            p.*,
+            COALESCE(SUM(i.quantity), 0) as stock,
+            COALESCE(MIN(i.quantity) <= i.minimum_stock, false) as needs_restock
+          FROM products p
+          LEFT JOIN inventory i ON i.product_id = p.id
+          WHERE p.id = $1
+          GROUP BY p.id`,
+          [id]
+        )
+
+        if (!response) {
+          throw new Error('Product not found')
+        }
+
+        setProductDetails(response)
       } catch (error) {
-        console.error('Failed to load product:', error)
+        console.error('Error loading product:', error)
+        toast({
+          title: 'Error',
+          description: 'Failed to load product details',
+          variant: 'destructive'
+        })
       } finally {
-        setLoading(false)
+        setIsLoading(false)
       }
     }
-    loadData()
+
+    loadProduct()
   }, [id])
 
   const getStatusVariant = (status: ProductStatus) => {
@@ -45,7 +71,7 @@ export default function ProductPage() {
     }
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[50vh]">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -53,13 +79,13 @@ export default function ProductPage() {
     )
   }
   
-  if (!product) return <div>Product not found</div>
+  if (!productDetails) return <div>Product not found</div>
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">{product.name}</h2>
+          <h2 className="text-3xl font-bold tracking-tight">{productDetails.product.name}</h2>
           <p className="text-muted-foreground">
             Product details and inventory management
           </p>
@@ -79,8 +105,8 @@ export default function ProductPage() {
           <CardHeader>
             <CardTitle>Details</CardTitle>
             <CardDescription>
-              Total Stock: {totalStockCount} units
-              {isRestocking && (
+              Total Stock: {productDetails.stock} units
+              {productDetails.needsRestock && (
                 <Badge variant="destructive" className="ml-2 flex w-fit items-center gap-1">
                   Needs Restocking
                 </Badge>
@@ -90,24 +116,24 @@ export default function ProductPage() {
           <CardContent className="space-y-4">
             <div>
               <p className="font-semibold">Model</p>
-              <p className="text-muted-foreground">{product.model}</p>
+              <p className="text-muted-foreground">{productDetails.product.model}</p>
             </div>
             <div>
               <p className="font-semibold">SKU</p>
-              <p className="text-muted-foreground">{product.sku}</p>
+              <p className="text-muted-foreground">{productDetails.product.sku}</p>
             </div>
             <div>
               <p className="font-semibold">Price</p>
-              <p className="text-muted-foreground">{formatCurrency(product.price)}</p>
+              <p className="text-muted-foreground">{formatCurrency(productDetails.product.price)}</p>
             </div>
             <div>
               <p className="font-semibold">Category</p>
-              <p className="text-muted-foreground">{product.category}</p>
+              <p className="text-muted-foreground">{productDetails.product.category}</p>
             </div>
             <div>
               <p className="font-semibold">Status</p>
-              <Badge variant={getStatusVariant(product.status as ProductStatus)}>
-                {product.status}
+              <Badge variant={getStatusVariant(productDetails.product.status as ProductStatus)}>
+                {productDetails.product.status}
               </Badge>
             </div>
           </CardContent>
@@ -118,7 +144,7 @@ export default function ProductPage() {
             <CardTitle>Specifications</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {Object.entries(product.specifications).map(([key, value]) => (
+            {Object.entries(productDetails.product.specifications).map(([key, value]) => (
               <div key={key}>
                 <p className="font-semibold capitalize">
                   {key.replace(/([A-Z])/g, ' $1').trim()}

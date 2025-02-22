@@ -1,6 +1,13 @@
 import { pool, query, queryOne, transaction } from '@/lib/db'
 import type { FulfillmentDetails, FulfillmentStatus } from "@/types/orders"
 
+interface FulfillmentUpdate {
+  orderId: string
+  status: FulfillmentStatus
+  trackingNumber?: string
+  carrierNotes?: string[]
+}
+
 class FulfillmentService {
   async getOrderFulfillment(orderId: string, userId?: string, isAdmin?: boolean) {
     const sql = `
@@ -62,78 +69,21 @@ class FulfillmentService {
     })
   }
 
-  async updateFulfillment(
-    orderId: string,
-    updates: Partial<FulfillmentDetails>,
-    userId?: string,
-    isAdmin?: boolean
-  ) {
-    return transaction(async (client) => {
-      // Verify access
-      const canAccess = await client.query(
-        `SELECT 1 FROM orders
-         WHERE id = $1
-         AND (assigned_to = $2 OR $3 = true)`,
-        [orderId, userId, isAdmin]
-      )
-
-      if (canAccess.rowCount === 0) {
-        throw new Error('Access denied')
-      }
-
-      // Build update query
-      const allowedUpdates = [
-        'status',
-        'carrier',
-        'tracking_number',
-        'estimated_delivery',
-        'actual_delivery',
-        'notes'
+  async updateFulfillment(update: FulfillmentUpdate): Promise<void> {
+    await query(
+      `UPDATE orders 
+       SET 
+         fulfillment_status = $1,
+         tracking_number = $2,
+         carrier_notes = $3
+       WHERE id = $4`,
+      [
+        update.status,
+        update.trackingNumber || null,
+        update.carrierNotes ? JSON.stringify(update.carrierNotes) : null,
+        update.orderId
       ]
-
-      const updateFields = Object.entries(updates)
-        .filter(([key]) => allowedUpdates.includes(key))
-        .map(([key, value]) => {
-          if (key === 'notes' && Array.isArray(value)) {
-            return `${key} = array_append(${key}, $${key})`
-          }
-          return `${key} = $${key}`
-        })
-
-      if (updateFields.length === 0) {
-        throw new Error('No valid fields to update')
-      }
-
-      const sql = `
-        UPDATE fulfillments 
-        SET ${updateFields.join(', ')},
-            updated_at = NOW()
-        WHERE order_id = $orderId
-        RETURNING *
-      `
-
-      const params = {
-        orderId,
-        ...updates
-      }
-
-      const result = await client.query(sql, Object.values(params))
-
-      // Add history entry if status changed
-      if (updates.status) {
-        await client.query(
-          `INSERT INTO order_history (
-            order_id,
-            status,
-            changed_by,
-            notes
-          ) VALUES ($1, $2, $3, $4)`,
-          [orderId, updates.status, userId, updates.notes?.[0] || null]
-        )
-      }
-
-      return result.rows[0]
-    })
+    )
   }
 
   async updateStatus(
@@ -144,13 +94,12 @@ class FulfillmentService {
     isAdmin?: boolean
   ) {
     return this.updateFulfillment(
-      orderId,
       {
+        orderId,
         status,
-        notes: note ? [note] : undefined
-      },
-      userId,
-      isAdmin
+        trackingNumber: undefined,
+        carrierNotes: undefined
+      }
     )
   }
 
@@ -163,15 +112,12 @@ class FulfillmentService {
     isAdmin?: boolean
   ) {
     return this.updateFulfillment(
-      orderId,
       {
-        carrier,
+        orderId,
+        status: 'shipped',
         trackingNumber,
-        estimatedDelivery,
-        notes: [`Tracking added: ${carrier} - ${trackingNumber}`]
-      },
-      userId,
-      isAdmin
+        carrierNotes: [`Tracking added: ${carrier} - ${trackingNumber}`]
+      }
     )
   }
 

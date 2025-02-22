@@ -25,16 +25,16 @@ class NotificationService {
     userId: string,
     notification: Omit<Notification, 'id' | 'isRead' | 'timestamp'>
   ): Promise<Notification> {
-    return queryOne<Notification>(
+    const result = await queryOne<Notification>(
       `INSERT INTO notifications (
-         user_id,
-         type,
-         title,
-         message,
-         action_url,
-         metadata
-       ) VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING *`,
+        user_id,
+        type,
+        title,
+        message,
+        action_url,
+        metadata
+      ) VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *`,
       [
         userId,
         notification.type,
@@ -44,6 +44,12 @@ class NotificationService {
         JSON.stringify(notification.metadata || {})
       ]
     )
+    
+    if (!result) {
+      throw new Error('Failed to create notification')
+    }
+    
+    return result
   }
 
   async markAsRead(notificationId: string, userId: string): Promise<void> {
@@ -168,6 +174,19 @@ class NotificationService {
        WHERE user_id = $1`,
       [userId, JSON.stringify(preferences)]
     )
+  }
+
+  async getNotification(id: string): Promise<Notification> {
+    const notification = await queryOne<Notification>(
+      'SELECT * FROM notifications WHERE id = $1',
+      [id]
+    )
+    
+    if (!notification) {
+      throw new Error('Notification not found')
+    }
+    
+    return notification
   }
 }
 

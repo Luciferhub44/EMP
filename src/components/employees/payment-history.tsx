@@ -10,8 +10,10 @@ import { Badge } from "@/components/ui/badge"
 import { formatDate, formatCurrency } from "@/lib/utils"
 import type { PaymentHistory } from "@/types/employee"
 
+type PaymentItem = PaymentHistory['payments'][0]
+
 interface PaymentHistoryProps {
-  payments: PaymentHistory[]
+  payments: PaymentItem[]
 }
 
 export function PaymentHistory({ payments }: PaymentHistoryProps) {
@@ -36,7 +38,7 @@ export function PaymentHistory({ payments }: PaymentHistoryProps) {
                 {payment.type}
               </Badge>
             </TableCell>
-            <TableCell>{formatCurrency(payment.amount as number)}</TableCell>
+            <TableCell>{formatCurrency(payment.amount)}</TableCell>
             <TableCell>{payment.description}</TableCell>
             <TableCell>
               <Badge
