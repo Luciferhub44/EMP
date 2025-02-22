@@ -1,5 +1,6 @@
 import type { Pool, PoolClient, QueryResult } from 'pg'
 import pg from 'pg'
+import { testConnection as apiTestConnection } from './api'
 
 const connectionString = import.meta.env.DATABASE_URL || import.meta.env.VITE_DATABASE_URL
 
@@ -42,12 +43,11 @@ export async function transaction<T>(callback: (client: PoolClient) => Promise<T
 }
 
 // Test database connection
-export async function testConnection(): Promise<boolean> {
+export const testConnection = async () => {
   try {
-    await query('SELECT NOW()')
-    return true
+    return await apiTestConnection()
   } catch (error) {
-    console.error('Database connection test failed:', error)
+    console.error('Database connection failed:', error)
     return false
   }
 }
