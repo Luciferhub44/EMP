@@ -1,91 +1,128 @@
-import type { Employee } from "@/types/employee"
+import { supabase } from '@/lib/supabase'
+import type { Employee, EmployeeCredentials } from "@/types/employee"
+import { hashPassword, verifyPassword } from './password'
 
 interface ApiError extends Error {
   status?: number;
   code?: string;
 }
 
-interface LoginResponse {
-  token: string;
-  user: Omit<Employee, 'passwordHash'>;
+const handleError = (error: unknown) => {
+  console.error('API Error:', error)
+  throw error
 }
-
-interface SessionResponse {
-  user: Omit<Employee, 'passwordHash'>;
-}
-
-const BASE_URL = '/api';
 
 export const api = {
   async get<T>(endpoint: string, token?: string) {
     try {
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json'
-      }
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`
-      }
+      const { data, error } = await supabase
+        .from(endpoint)
+        .select('*')
 
-      const response = await fetch(`${BASE_URL}${endpoint}`, { 
-        method: 'GET',
-        headers 
-      })
-
-      if (!response.ok) {
-        const error: ApiError = new Error('API request failed')
-        error.status = response.status
+      if (error) {
         throw error
       }
 
-      return response.json() as Promise<T>
+      return data as T
     } catch (error) {
-      console.error('API Error:', error)
-      throw error
+      handleError(error)
     }
   },
 
   async post<T>(endpoint: string, data: unknown, token?: string) {
     try {
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json'
-      }
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`
-      }
+      const { data: result, error } = await supabase
+        .from(endpoint)
+        .insert(data)
+        .select()
+        .single()
 
-      const response = await fetch(`${BASE_URL}${endpoint}`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(data),
-      })
-      
-      if (!response.ok) {
-        const error: ApiError = new Error('API request failed')
-        error.status = response.status
+      if (error) {
         throw error
       }
 
-      return response.json() as Promise<T>
+      return result as T
     } catch (error) {
-      console.error('API Error:', error)
-      throw error
+      handleError(error)
     }
   },
 
   auth: {
-    async login(agentId: string, password: string): Promise<LoginResponse> {
-      return api.post<LoginResponse>('/auth/login', { 
-        agentId: agentId.toUpperCase(), 
-        password 
-      })
+    async login(credentials: EmployeeCredentials) {
+      try {
+        // Get user by agent ID
+        const { data: user, error: userError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('agent_id', credentials.agentId.toUpperCase())
+          .single()
+
+        if (userError || !user) {
+          throw new Error('Invalid credentials')
+        }
+
+        // Verify password
+        const isValid = await verifyPassword(credentials.password, user.passwordHash)
+        if (!isValid) {
+          throw new Error('Invalid credentials')
+        }
+
+        // Sign in with Supabase auth
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email: user.email,
+          password: credentials.password
+        })
+
+        if (authError) {
+          throw authError
+        }
+
+        return {
+          session: authData.session,
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            agentId: user.agentId,
+            status: user.status
+          }
+        }
+      } catch (error) {
+        handleError(error)
+      }
     },
 
-    async validateSession(token: string): Promise<SessionResponse> {
-      return api.get<SessionResponse>('/auth/session', token)
+    async validateSession() {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (error) throw error
+        
+        if (!session) {
+          throw new Error('No active session')
+        }
+
+        const { data: user, error: userError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', session.user.id)
+          .single()
+
+        if (userError) throw userError
+
+        return { user }
+      } catch (error) {
+        handleError(error)
+      }
     },
 
-    async logout(token: string): Promise<void> {
-      return api.post<void>('/auth/logout', {}, token)
+    async logout() {
+      try {
+        const { error } = await supabase.auth.signOut()
+        if (error) throw error
+      } catch (error) {
+        handleError(error)
+      }
     }
   }
-} 
+}
