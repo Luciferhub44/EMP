@@ -8,8 +8,8 @@
     "outDir": "dist",
 
     /* Bundler mode */
-    "moduleResolution": "Node",
-    "allowSyntheticDefaultImports": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
@@ -26,10 +26,7 @@
     /* Path Aliases */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@/lib/*": ["src/lib/*"],
-      "@/components/*": ["src/components/*"]
-      
+      "@/*": ["src/*"]
     }
   },
   "include": ["src"],

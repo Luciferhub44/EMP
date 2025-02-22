@@ -14,14 +14,14 @@
     "tsc": "tsc --project tsconfig.json",
     "vite-build": "vite build",
     "build": "tsc && vite build",
-    "preview": "vite preview",
+    "preview": "vite preview --host --port $PORT",
     "migrate": "node scripts/migrate.js",
     "seed": "node scripts/seed.js",
     "reset-db": "node scripts/reset.js",
     "db:init": "node scripts/db.js",
-    "db:setup": "yarn db:init && yarn migrate && yarn seed",
+    "db:setup": "node scripts/db.js",
     "health": "node scripts/health.js",
-    "start": "yarn db:setup && yarn health && vite preview --host --port $PORT"
+    "start": "node scripts/db.js && vite preview --host --port $PORT"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.0.4",
