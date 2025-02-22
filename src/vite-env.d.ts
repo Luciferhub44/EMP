@@ -9,15 +9,14 @@ interface ImportMetaEnv {
   readonly VITE_NODE_ENV: 'development' | 'production' | 'test'
   readonly VITE_ADMIN_ID: string
   readonly VITE_ADMIN_PASSWORD: string
+  readonly VITE_ADMIN_EMAIL: string
   readonly VITE_AGENT1_ID: string
   readonly VITE_AGENT1_PASSWORD: string
   readonly VITE_AGENT2_ID: string
   readonly VITE_AGENT2_PASSWORD: string
   readonly VITE_PUSHER_APP_KEY: string
   readonly VITE_PUSHER_CLUSTER: string
-  readonly VITE_ADMIN_EMAIL: string
-  readonly VITE_ADMIN_PASSWORD: string
-  readonly VITE_ADMIN_ID: string
+  readonly DATABASE_URL: string
 }
 
 interface ImportMeta {
