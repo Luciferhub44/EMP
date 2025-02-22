@@ -39,6 +39,8 @@ import EmployeeDetailsPage from '@/lib/(root)/employees/[id]/page'
 import { ProtectedRoute } from '@/components/protected-route'
 import { AdminRoute } from "@/components/admin-route"
 
+const DEBUG = true;
+
 function ErrorFallback({ error }: { error: Error }) {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4">
@@ -57,8 +59,13 @@ function ErrorFallback({ error }: { error: Error }) {
 }
 
 export default function App() {
+  if (DEBUG) console.log('App rendering');
+  
   return (
-    <ErrorBoundary FallbackComponent={ErrorFallback}>
+    <ErrorBoundary 
+      FallbackComponent={ErrorFallback}
+      onError={(error) => console.error('App Error:', error)}
+    >
       <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
         <Router>
           <AuthProvider>

@@ -1,9 +1,9 @@
 import { createContext, useContext, ReactNode, useState, useEffect } from 'react'
-import { query, testConnection } from '@/lib/db'
+import { api } from '@/lib/api'
 import { useAuth } from '@/contexts/auth-context'
 
 interface DatabaseContextType {
-  query: (text: string, params?: any[]) => Promise<any>
+  query: (endpoint: string) => Promise<any>
   isConnected: boolean
   error: string | null
 }
@@ -20,34 +20,23 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
 
   useEffect(() => {
-    if (!user) return
-    
     const checkConnection = async () => {
       try {
-        const connected = await testConnection()
-        setIsConnected(connected)
+        const response = await api.get('/health')
+        setIsConnected(response.status === 200)
         setError(null)
       } catch (error) {
         setIsConnected(false)
-        setError(error instanceof Error ? error.message : 'Database connection failed')
+        setError(error instanceof Error ? error.message : 'Connection failed')
       }
     }
 
     checkConnection()
   }, [user])
 
-  const executeQuery = async (text: string, params?: any[]) => {
-    try {
-      return await query(text, params)
-    } catch (error) {
-      console.error('Query error:', error)
-      throw error
-    }
-  }
-
   return (
     <DatabaseContext.Provider value={{ 
-      query: executeQuery,
+      query: api.get,
       isConnected,
       error
     }}>
