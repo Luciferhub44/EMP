@@ -6,6 +6,7 @@ services:
     plan: starter
     env: node
     buildCommand: |
+      yarn add tailwindcss postcss autoprefixer
       yarn add vite typescript @vitejs/plugin-react-swc
       yarn install --frozen-lockfile
       yarn build
