@@ -1,4 +1,4 @@
-import { Pool } from 'pg'
+import { Pool, PoolClient } from 'pg'
 
 const connectionString = import.meta.env.DATABASE_URL || import.meta.env.VITE_DATABASE_URL
 
@@ -25,7 +25,7 @@ export async function queryOne<T>(text: string, params: any[] = []): Promise<T |
 }
 
 // Transaction helper
-export async function transaction<T>(callback: (client: any) => Promise<T>): Promise<T> {
+export async function transaction<T>(callback: (client: PoolClient) => Promise<T>): Promise<T> {
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
