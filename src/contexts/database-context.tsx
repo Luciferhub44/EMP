@@ -6,12 +6,14 @@ interface DatabaseContextType {
   query: (endpoint: string) => Promise<any>
   isConnected: boolean
   error: string | null
+  retryConnection: () => Promise<void>
 }
 
 const DatabaseContext = createContext<DatabaseContextType>({
   query: async () => { throw new Error('Database context not initialized') },
   isConnected: false,
-  error: null
+  error: null,
+  retryConnection: async () => {}
 })
 
 export function DatabaseProvider({ children }: { children: ReactNode }) {
@@ -19,26 +21,38 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const { user } = useAuth()
 
-  useEffect(() => {
-    const checkConnection = async () => {
-      try {
-        const response = await api.get('/health')
-        setIsConnected(response.status === 200)
-        setError(null)
-      } catch (error) {
-        setIsConnected(false)
-        setError(error instanceof Error ? error.message : 'Connection failed')
-      }
+  const checkConnection = async () => {
+    try {
+      const response = await api.get('/api/health', { timeout: 3000 })
+      const isHealthy = response.data.status === 'healthy'
+      setIsConnected(isHealthy)
+      setError(isHealthy ? null : 'Database connection unhealthy')
+    } catch (error) {
+      setIsConnected(false)
+      setError(error instanceof Error ? error.message : 'Connection failed')
     }
+  }
 
+  const retryConnection = async () => {
+    setError(null)
+    await checkConnection()
+  }
+
+  useEffect(() => {
     checkConnection()
+    
+    // Poll health check every 30 seconds
+    const interval = setInterval(checkConnection, 30000)
+    
+    return () => clearInterval(interval)
   }, [user])
 
   return (
     <DatabaseContext.Provider value={{ 
       query: api.get,
       isConnected,
-      error
+      error,
+      retryConnection
     }}>
       {children}
     </DatabaseContext.Provider>
@@ -47,7 +61,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
 
 export const useDatabase = () => {
   const context = useContext(DatabaseContext)
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useDatabase must be used within a DatabaseProvider')
   }
   return context

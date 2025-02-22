@@ -7,6 +7,7 @@ const baseURL = process.env.NODE_ENV === 'production'
 export const api = axios.create({
   baseURL,
   withCredentials: true,
+  timeout: 5000,
   headers: {
     'Content-Type': 'application/json'
   }
@@ -14,10 +15,10 @@ export const api = axios.create({
 
 export const testConnection = async () => {
   try {
-    const response = await api.get('/api/health')
-    return response.status === 200
+    const response = await api.get('/api/health', { timeout: 3000 })
+    return response.data.status === 'healthy'
   } catch (error) {
-    console.error('Health check failed:', error)
+    console.error('API health check failed:', error)
     return false
   }
 }

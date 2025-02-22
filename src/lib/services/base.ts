@@ -1,10 +1,10 @@
-import { Pool, PoolClient } from 'pg'
+import type { PoolClient } from 'pg'
 import { query, queryOne, transaction } from '@/lib/db'
 import { toast } from "@/components/ui/use-toast"
 
 export class BaseService {
   protected handleError(error: unknown, customMessage?: string) {
-    console.error(error)
+    console.error('Service Error:', error)
     toast({
       title: "Error",
       description: customMessage || "An unexpected error occurred",
@@ -24,7 +24,11 @@ export class BaseService {
     try {
       return await query<T>(sql, params)
     } catch (error) {
-      this.handleError(error, "Database query failed")
+      if (error instanceof Error && error.message.includes('connection')) {
+        this.handleError(error, "Database connection failed")
+      } else {
+        this.handleError(error, "Database query failed")
+      }
       throw error
     }
   }
@@ -33,7 +37,11 @@ export class BaseService {
     try {
       return await queryOne<T>(sql, params)
     } catch (error) {
-      this.handleError(error, "Database query failed")
+      if (error instanceof Error && error.message.includes('connection')) {
+        this.handleError(error, "Database connection failed")
+      } else {
+        this.handleError(error, "Database query failed")
+      }
       throw error
     }
   }
@@ -42,7 +50,11 @@ export class BaseService {
     try {
       return await transaction(callback)
     } catch (error) {
-      this.handleError(error, "Transaction failed")
+      if (error instanceof Error && error.message.includes('connection')) {
+        this.handleError(error, "Database connection failed")
+      } else {
+        this.handleError(error, "Transaction failed")
+      }
       throw error
     }
   }
@@ -54,18 +66,21 @@ export class BaseService {
     allowedFields: string[],
     additionalConditions?: string
   ) {
-    const updateFields = Object.entries(updates)
+    const filteredUpdates: Record<string, unknown> = Object.entries(updates)
       .filter(([key]) => allowedFields.includes(key))
-      .map(([key, value], index) => {
-        if (typeof value === 'object') {
-          return `${key} = $${index + 2}::jsonb`
-        }
-        return `${key} = $${index + 2}`
-      })
+      .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {} as Record<string, unknown>)
 
-    if (updateFields.length === 0) {
+    if (Object.keys(filteredUpdates).length === 0) {
       throw new Error('No valid fields to update')
     }
+
+    const updateFields = Object.keys(filteredUpdates)
+      .map((key, index) => {
+        const value = filteredUpdates[key]
+        return typeof value === 'object' 
+          ? `${key} = $${index + 2}::jsonb`
+          : `${key} = $${index + 2}`
+      })
 
     const conditions = [`id = $1`]
     if (additionalConditions) {
@@ -80,7 +95,7 @@ export class BaseService {
         WHERE ${conditions.join(' AND ')}
         RETURNING *
       `,
-      values: [id, ...Object.values(updates).filter((_, i) => allowedFields.includes(Object.keys(updates)[i]))]
+      values: [id, ...Object.values(filteredUpdates)]
     }
   }
 
@@ -95,8 +110,8 @@ export class BaseService {
 
     return {
       sql: `
-        INSERT INTO ${table} (${fields.join(', ')})
-        VALUES (${placeholders})
+        INSERT INTO ${table} (${fields.join(', ')}, created_at, updated_at)
+        VALUES (${placeholders}, NOW(), NOW())
         RETURNING ${returnFields}
       `,
       values
@@ -134,7 +149,7 @@ export class BaseService {
         ${orderBy}
         ${limit}
         ${offset}
-      `,
+      `.trim(),
       values: Object.values(conditions)
     }
   }

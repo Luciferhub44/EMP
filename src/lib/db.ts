@@ -8,21 +8,18 @@ const connectionConfig = {
   ssl: isDevelopment ? false : {
     rejectUnauthorized: false
   },
-  // Add connection pool settings
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  max: 5,
+  idleTimeoutMillis: 10000,
+  connectionTimeoutMillis: 5000,
+  application_name: 'emp_app'
 }
 
 export const pool = new pg.Pool(connectionConfig) as pg.Pool & { on: Function }
 
-// Add connection error handling
 pool.on('error', (err: Error) => {
-  console.error('Unexpected error on idle client', err)
-  process.exit(-1)
+  console.error('Database pool error:', err)
 })
 
-// Simple query function
 export async function query<T extends Record<string, any>>(text: string, params: any[] = []): Promise<T[]> {
   const client = await pool.connect()
   try {
@@ -55,16 +52,13 @@ export async function transaction<T>(callback: (client: pg.PoolClient) => Promis
   }
 }
 
-// Test database connection
+// Simplified health check
 export const testConnection = async () => {
   try {
-    const client = await pool.connect()
-    const result = await client.query('SELECT NOW()')
-    client.release()
-    console.log('Database connection successful:', result.rows[0])
+    await query('SELECT 1')
     return true
   } catch (error) {
-    console.error('Database connection failed:', error)
+    console.error('Database health check failed:', error)
     return false
   }
 }

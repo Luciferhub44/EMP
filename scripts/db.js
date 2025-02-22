@@ -1,25 +1,25 @@
 import pg from 'pg'
 import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { dirname } from 'path'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
 const isDevelopment = process.env.NODE_ENV !== 'production'
-const connectionString = process.env.DATABASE_URL || process.env.VITE_DATABASE_URL
+const connectionString = process.env.DATABASE_URL
 
 export const pool = new pg.Pool({
   connectionString,
   ssl: isDevelopment ? false : { rejectUnauthorized: false },
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  max: 5,
+  idleTimeoutMillis: 10000,
+  connectionTimeoutMillis: 5000,
+  application_name: 'emp_app'
 })
 
 // Add connection error handling
 pool.on('error', (err) => {
   console.error('Unexpected error on idle client', err)
-  process.exit(-1)
 })
 
 // Simple query function
@@ -29,7 +29,7 @@ export async function query(text, params = []) {
     const result = await client.query(text, params)
     return result.rows
   } finally {
-    client.release()
+    client.release(true)
   }
 }
 
@@ -44,7 +44,7 @@ export async function healthCheck() {
   try {
     const client = await pool.connect()
     await client.query('SELECT 1')
-    client.release()
+    client.release(true)
     return true
   } catch (error) {
     console.error('Health check failed:', error)
