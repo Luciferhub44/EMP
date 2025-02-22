@@ -53,7 +53,7 @@ class OrderService {
       const tax = subtotal * 0.1 // 10% tax rate
       const total = subtotal + tax + (orderData.shippingCost || 0)
 
-      const result = await client.query(
+      const result = await client.query<Order>(
         `INSERT INTO orders (
           customer_id,
           customer_name,
@@ -137,7 +137,7 @@ class OrderService {
   async updateStatus(orderId: string, status: OrderStatus) {
     return transaction(async (client) => {
       // Update order status
-      const result = await client.query(
+      const result = await client.query<Order>(
         `UPDATE orders 
          SET status = $1,
              updated_at = NOW()
@@ -158,7 +158,7 @@ class OrderService {
           orderId,
           status,
           result.rows[0].status,
-          result.rows[0].assigned_to
+          result.rows[0].assignedTo
         ]
       )
 

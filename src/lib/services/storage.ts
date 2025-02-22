@@ -13,7 +13,7 @@ interface WarehouseStock {
 }
 
 export class StorageService extends BaseService {
-  async getValue<T>(key: string): Promise<T | null> {
+  async getValue<T extends Record<string, any>>(key: string): Promise<T | null> {
     return queryOne<T>(
       'SELECT value FROM storage WHERE key = $1',
       [key]

@@ -40,7 +40,7 @@ export class EmployeeService extends BaseService {
       const passwordHash = await hashPassword(employeeData.password)
 
       // Create employee
-      const result = await client.query(
+      const result = await client.query<Employee>(
         `INSERT INTO users (
           email,
           name,

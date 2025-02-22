@@ -79,7 +79,7 @@ class MessagesService {
   ): Promise<ChatThread> {
     return transaction(async (client) => {
       // Create thread
-      const threadResult = await client.query(
+      const threadResult = await client.query<ChatThread>(
         `INSERT INTO message_threads (department, subject)
          VALUES ($1, $2)
          RETURNING *`,
@@ -104,7 +104,7 @@ class MessagesService {
       )
 
       // Add initial message
-      const messageResult = await client.query(
+      const messageResult = await client.query<Message>(
         `INSERT INTO messages (thread_id, sender_id, content)
          VALUES ($1, $2, $3)
          RETURNING *`,
@@ -138,7 +138,7 @@ class MessagesService {
       }
 
       // Send message
-      const result = await client.query(
+      const result = await client.query<Message>(
         `INSERT INTO messages (thread_id, sender_id, content)
          VALUES ($1, $2, $3)
          RETURNING *`,
@@ -153,15 +153,10 @@ class MessagesService {
         [threadId]
       )
 
-      // Create notifications for other participants
+      // Create notifications
       await client.query(
         `INSERT INTO notifications (
-           user_id,
-           type,
-           title,
-           message,
-           action_url,
-           metadata
+           user_id, type, title, message, action_url, metadata
          )
          SELECT
            p.user_id,

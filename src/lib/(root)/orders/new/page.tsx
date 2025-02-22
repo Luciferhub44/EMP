@@ -21,6 +21,7 @@ import { formatCurrency } from "@/lib/utils"
 import type { Customer } from "@/types/customer"
 import type { Product } from "@/types/products"
 import type { OrderItem } from "@/types/orders"
+import type { Order } from "@/types/orders"
 
 interface OrderFormData {
   customerId: string
@@ -166,7 +167,8 @@ export default function NewOrderPage() {
           customerName: customers.find(c => c.id === formData.customerId)?.name || "",
         },
         true,
-      )
+      ) as Order
+
       toast({
         title: "Success",
         description: "Order created successfully",

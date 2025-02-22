@@ -40,7 +40,7 @@ class ProductService {
   async createProduct(productData: Omit<Product, 'id' | 'inventory'>) {
     return transaction(async (client) => {
       // Create product
-      const result = await client.query(
+      const result = await client.query<Product>(
         `INSERT INTO products (
           name,
           model,
@@ -64,8 +64,8 @@ class ProductService {
         ]
       )
 
-      // Initialize inventory records for all warehouses
-      const { rows: warehouses } = await client.query('SELECT id FROM warehouses')
+      // Initialize inventory records
+      const { rows: warehouses } = await client.query<{ id: string }>('SELECT id FROM warehouses')
       for (const warehouse of warehouses) {
         await client.query(
           `INSERT INTO inventory (
@@ -168,7 +168,7 @@ class ProductService {
         [productId, fromWarehouseId]
       )
 
-      if (!source || source.quantity < quantity) {
+      if (!source || (source as { quantity: number }).quantity < quantity) {
         throw new Error('Insufficient stock in source warehouse')
       }
 
