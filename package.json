@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "yarn tsc && yarn vite build",
+    "build": "tsc --project tsconfig.json && vite build",
     "preview": "vite preview",
     "start": "NODE_ENV=production VITE_NODE_ENV=production vite preview --host --port $PORT"
   },
