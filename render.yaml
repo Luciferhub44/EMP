@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: EMP
+    runtime: node
+    repo: https://github.com/Luciferhub44/EMP
+    plan: starter
+    env: node
+    buildCommand: yarn --frozen-lockfile install; npm run build
+    startCommand: npm run start
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: EMPDB
+          property: connectionString
+      - key: VITE_API_URL
+        value: https://emp-fnly.onrender.com
+      - key: NODE_ENV
+        value: production
+    healthCheckPath: /api/health
+    autoDeploy: true
+
+databases:
+  - name: EMPDB
+    databaseName: empdb_ihmy
+    user: empdb_ihmy_user
+    plan: basic-256mb
+    region: oregon
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: everywhere
+    postgresMajorVersion: "16"
+    diskSizeGB: 15 
