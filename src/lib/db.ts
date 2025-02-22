@@ -8,24 +8,24 @@ export const pool = new pg.Pool({
 })
 
 // Simple query function
-export async function query(text, params = []) {
+export async function query<T extends Record<string, any>>(text: string, params: any[] = []): Promise<T[]> {
   const client = await pool.connect()
   try {
     const result = await client.query(text, params)
-    return result.rows
+    return result.rows as T[]
   } finally {
     client.release()
   }
 }
 
 // Query for single row
-export async function queryOne(text, params = []) {
-  const result = await query(text, params)
+export async function queryOne<T extends Record<string, any>>(text: string, params: any[] = []): Promise<T | null> {
+  const result = await query<T>(text, params)
   return result[0] || null
 }
 
 // Transaction helper
-export async function transaction(callback) {
+export async function transaction<T>(callback: (client: pg.PoolClient) => Promise<T>): Promise<T> {
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
