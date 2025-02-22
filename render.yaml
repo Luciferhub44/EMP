@@ -5,7 +5,7 @@ services:
     repo: https://github.com/Luciferhub44/EMP
     plan: starter
     buildCommand: |
-      yarn install --frozen-lockfile
+      yarn install --frozen-lockfile --production=false
       yarn build
     startCommand: yarn start
     envVars:
