@@ -1,15 +1,14 @@
-import type { Pool, PoolClient, QueryResult } from 'pg'
+import type { Pool, PoolClient } from 'pg'
 import pg from 'pg'
-import { testConnection as apiTestConnection } from './api'
 
-const connectionString = import.meta.env.DATABASE_URL || import.meta.env.VITE_DATABASE_URL
+const connectionString = process.env.DATABASE_URL || process.env.VITE_DATABASE_URL
 
 export const pool = new pg.Pool({
   connectionString,
-  ssl: import.meta.env.VITE_NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 })
 
-// Simple query function that uses fetch API instead of pg
+// Simple query function
 export async function query<T extends Record<string, any>>(text: string, params: any[] = []): Promise<T[]> {
   const client = await pool.connect()
   try {
@@ -45,7 +44,10 @@ export async function transaction<T>(callback: (client: PoolClient) => Promise<T
 // Test database connection
 export const testConnection = async () => {
   try {
-    return await apiTestConnection()
+    const client = await pool.connect()
+    await client.query('SELECT NOW()')
+    client.release()
+    return true
   } catch (error) {
     console.error('Database connection failed:', error)
     return false
